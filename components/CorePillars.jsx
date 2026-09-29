@@ -6,70 +6,70 @@ import CrumbleDivider from './CrumbleDivider';
 export default function CorePillars() {
   const blocks = [
     {
-      id: 'scale',
-      align: 'right', // text right, image left or vice versa
-      subtitle: 'UNMATCHED SCALE & FIDELITY',
-      titlePrimary: 'REAL-TIME VOXEL',
-      titleSecondary: 'BALLISTICS & SIMULATION',
+      id: 'gunplay',
+      align: 'right',
+      subtitle: 'CS2-GRADE TACTICAL FIDELITY',
+      titlePrimary: 'PHOTOREALISTIC COMBAT &',
+      titleSecondary: 'WAR DOGS MILITARY GRIT',
       description:
-        'Every projectile, laser trace, and cratering detonation is physically calculated in real-time. Blast through subterranean caverns, collapse enemy fortress foundations, and sculpt trenches across thousands of kilometers of procedural planetary landscape.',
+        'Engineered for extreme competitive precision. Experience sub-tick level input responsiveness, mastery-driven physical recoil patterns, localized ballistic hitboxes, and dynamic volumetric smoke that physically interacts with gunfire and doorways.',
       actions: [
-        { text: 'SCREENSHOTS VAULT', href: '/game#screenshots', variant: 'outline' },
-        { text: 'GAMEPLAY MECHANICS', href: '/game', variant: 'primary' },
+        { text: 'GUNPLAY CODEX', href: '/guides', variant: 'primary' },
+        { text: 'WEAPON ARSENAL', href: '/game#weapons', variant: 'outline' },
       ],
       img: '/screenshots/shot2.png',
-      alt: 'Massive Modular Base Combat and Extraction',
-      hudTag: 'SECTOR-04 // LAT: 42.81°N LON: 114.2°W',
-      statLabel: 'DEFORMATION RESOLUTION',
-      statValue: '0.1M TRUE VOXEL',
+      alt: 'Tactical Military Combat and High-Intensity Gunplay',
+      hudTag: 'BALLISTICS // SUB-TICK 60Hz PRECISION',
+      statLabel: 'INPUT LATENCY',
+      statValue: 'SUB-1MS BUFFER',
     },
     {
-      id: 'terrain',
+      id: 'basebuilding',
       align: 'left',
-      subtitle: 'GEOGRAPHIC SUPREMACY',
-      titlePrimary: 'STRATEGIC IMPORTANCE',
-      titleSecondary: 'OF PLANETARY TERRAIN',
+      subtitle: 'COOPERATIVE PVE SANCTUARY',
+      titlePrimary: 'PERSISTENT BASEBUILDING &',
+      titleSecondary: 'SQUAD COSMETICS',
       description:
-        'The geological contours of each world dictate which strategies triumph. Radar telemetry cannot pierce volcanic mountain peaks, geothermal rifts provide limitless reactor power, and orbital artillery physically levels ridges to deny hostile line-of-sight.',
-      actions: [{ text: 'LEARN HOW TO PLAY', href: '/guides', variant: 'primary' }],
-      img: '/screenshots/shot7.jpg',
-      alt: 'Planetary Rift Survey and High-Ground Base Outpost',
-      hudTag: 'ATMOSPHERIC HAZARD // CLASS-V RADIATION',
-      statLabel: 'TERRAIN TYPES',
-      statValue: '12 PROCEDURAL BIOMES',
-    },
-    {
-      id: 'controls',
-      align: 'right',
-      subtitle: 'EFFORTLESS AUTOMATION',
-      titlePrimary: 'WORLD-CLASS',
-      titleSecondary: 'COMMAND GRID 2.0',
-      description:
-        'Command thousands of robotic Vassal drones, automated conveyor pipelines, and planetary extractors without overwhelming micro-management. Queue multi-stage build workflows, route logistics lines, and execute synchronized orbital drops with intuitive macro commands.',
-      actions: [{ text: 'COMMANDS OVERVIEW', href: '/game#commands', variant: 'primary' }],
+        'Your Sanctum is an un-raidable private homeworld shared with your friends. Snap together fortified compound walls, modular workshops, weapon display racks, and cozy squad lounges. Decorate with trophy mounts from defeated dimensional bosses and custom cosmetic camos.',
+      actions: [{ text: 'BASE ARCHITECTURE GUIDE', href: '/guides', variant: 'primary' }],
       img: '/crafting-base.jpg',
-      alt: 'Modular Base Workshop and Logistics Hub',
-      hudTag: 'MACRO DISPATCH // 0ms INPUT BUFFER',
-      statLabel: 'LOGISTICS THROUGHPUT',
-      statValue: '10,000+ DISPATCH ORDERS/SEC',
+      alt: 'Modular Co-op Sanctum Base and Workshop',
+      hudTag: 'SANCTUM PROTOCOL // SAFE HAVEN STATUS',
+      statLabel: 'MODULAR COMPONENTS',
+      statValue: '150+ SNAP-FIT TILES',
     },
     {
-      id: 'tactics',
-      align: 'left',
-      subtitle: 'ZERO BLOAT ARCHITECTURE',
-      titlePrimary: 'RELENTLESS DESIGN',
-      titleSecondary: 'UNIQUE WITH PURPOSE',
+      id: 'rifts',
+      align: 'right',
+      subtitle: 'SPACETIME DETECTION ARRAY',
+      titlePrimary: 'SEARCH THE STARS FOR',
+      titleSecondary: 'RARE VOLATILE RIFTS',
       description:
-        'Every unit, exosuit chassis, and defensive battery serves a distinct tactical role. Mix-and-match modular components to synthesize endless loadouts. Whether mounting surprise cloaked extraction raids or fortifying an impregnable planetary bastion, creativity is your ultimate weapon.',
+        'Erect telemetry radar dishes atop your compound to monitor deep-space frequencies. Standard rifts offer stable resource extraction, while rare, highly volatile tear lines trigger server-wide alerts, offering mythical prototype gear and legendary boss bounties.',
+      actions: [{ text: 'STAR CHARTS & MAPS', href: '/maps', variant: 'primary' }],
+      img: '/screenshots/shot7.jpg',
+      alt: 'Planetary Radar Telemetry and Dimensional Rift Tracking',
+      hudTag: 'FREQUENCY SCAN // ANOMALY DETECTED',
+      statLabel: 'RIFT STABILITY CLASSES',
+      statValue: 'TIER I - V VOLATILITY',
+    },
+    {
+      id: 'incursions',
+      align: 'left',
+      subtitle: 'HIGH-STAKES EXTRACTION',
+      titlePrimary: 'TIMED PVPVE SCAVENGING &',
+      titleSecondary: 'DIMENSIONAL BOSS DISTURBANCES',
+      description:
+        'Teleport into hazardous foreign dimensions where the countdown clock is ticking. Scavenge high-value technology, eliminate rogue bio-mechanoids, and survive intense fire fights against rival contractor squads. Endure mid-raid gravity shifts, EMP storms, and defeat colossal Void Bosses before the gate permanently collapses.',
       actions: [
-        { text: 'COMPARE TECH TREES', href: '/game#compare', variant: 'outline' },
-        { text: 'EXPLORE FACTIONS', href: '/game#factions', variant: 'primary' },
+        { text: 'EXTRACTION INTEL', href: '/game', variant: 'primary' },
+        { text: 'PLAY ALPHA FREE', href: '#download', variant: 'outline' },
       ],
       img: '/screenshots/shot8.jpg',
-      alt: 'Crafting Fabrication & Planetary Vehicle Bay',
-      hudTag: 'TECH TREE REPERTOIRE // T1 - T4 ADVANCED',
-      statLabel: 'CUSTOM MODULAR COMBINATIONS',
-      statValue: 'OVER 15,000 LOADOUTS',
+      alt: 'Dimensional Rift Incursion and Boss Battlefield',
+      hudTag: 'COLLAPSE WINDOW // 20:00 HARD LIMIT',
+      statLabel: 'MAX OPERATORS PER RIFT',
+      statValue: '16 CONTRACTORS',
     },
   ];
 
@@ -86,12 +86,12 @@ export default function CorePillars() {
       <div className="container-full">
         {/* Section Header */}
         <div style={{ textAlign: 'center', marginBottom: '5rem' }}>
-          <div className="section-subtitle">NEXT-GENERATION GAMING // ARCHITECTURE</div>
+          <div className="section-subtitle">PROJECT RIFTFALL // CORE PILLARS</div>
           <h2 className="section-title">
-            PLANETARY STRATEGY <span style={{ color: 'var(--armada-cyan)' }}>REDEFINED</span>
+            TACTICAL EXTRACTION <span style={{ color: 'var(--armada-cyan)' }}>REDEFINED</span>
           </h2>
           <p className="section-desc" style={{ margin: '0 auto' }}>
-            Every voxel, bullet, and planetary anomaly simulated in real-time on dedicated 60Hz tickrate server architecture.
+            Photorealistic CS2-grade weapon handling meets persistent cooperative base engineering and high-stakes dimensional rift warfare.
           </p>
         </div>
 
@@ -250,7 +250,6 @@ export default function CorePillars() {
         </div>
       </div>
 
-      {/* Embedded Pillar Styles */}
       <style jsx>{`
         .pillar-img:hover {
           transform: scale(1.03);
