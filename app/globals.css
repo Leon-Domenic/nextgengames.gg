@@ -1,0 +1,449 @@
+@import url('https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&family=Montserrat:wght@400;500;600;700;800;900&family=Rajdhani:wght@500;600;700&family=Ubuntu+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ==========================================================================
+   BEYOND ALL REASON / NEXTGENGAMES HIGH-TECH SCI-FI DESIGN SYSTEM
+   ========================================================================== */
+:root {
+  /* Core Base Colors */
+  --bg-deep: #060709;
+  --bg-dark: #0a0d12;
+  --bg-surface: #10141d;
+  --bg-surface-elevated: #161c28;
+  --bg-glass: rgba(16, 20, 29, 0.78);
+  --bg-glass-heavy: rgba(10, 13, 18, 0.92);
+
+  /* Faction Signatures */
+  --armada-cyan: #00f0ff;
+  --armada-blue: #0ea5e9;
+  --armada-glow: rgba(0, 240, 255, 0.35);
+
+  --cortex-red: #ff3344;
+  --cortex-orange: #f97316;
+  --cortex-glow: rgba(255, 51, 68, 0.35);
+
+  --legion-green: #10b981;
+  --legion-acid: #00ff88;
+  --legion-glow: rgba(0, 255, 136, 0.35);
+
+  /* Primary Brand Neutrals */
+  --white: #ffffff;
+  --text-main: #f0f4f8;
+  --text-dim: #94a3b8;
+  --text-muted: #64748b;
+  --border-dim: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.16);
+  --border-cyan: rgba(0, 240, 255, 0.3);
+  --border-red: rgba(255, 51, 68, 0.3);
+
+  /* Typography */
+  --font-display: 'Exo 2', 'Rajdhani', sans-serif;
+  --font-heading: 'Exo 2', 'Montserrat', sans-serif;
+  --font-body: 'Inter', -apple-system, sans-serif;
+  --font-mono: 'Ubuntu Mono', monospace;
+
+  /* Layout & Animation Tokens */
+  --max-width: 1400px;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --chamfer-sm: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  --chamfer-md: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+  --chamfer-lg: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
+}
+
+/* ==========================================================================
+   RESET & GLOBAL BASE
+   ========================================================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-main);
+  background-color: var(--bg-deep);
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--bg-deep);
+  color: var(--text-main);
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Custom High-Tech Scrollbar matching BAR */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #08090d;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--armada-cyan);
+}
+
+::selection {
+  background: var(--armada-cyan);
+  color: #000;
+}
+
+img, video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: all 0.2s var(--ease-smooth);
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+}
+
+/* ==========================================================================
+   TYPOGRAPHY
+   ========================================================================== */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--white);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+}
+
+/* Subtitle & Badge Styling */
+.section-subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--armada-cyan);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.section-subtitle::before {
+  content: '//';
+  opacity: 0.6;
+}
+
+.section-title {
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  font-weight: 900;
+  margin-bottom: 1rem;
+  letter-spacing: 0.02em;
+}
+
+.section-desc {
+  font-size: 1.1rem;
+  color: var(--text-dim);
+  max-width: 720px;
+  line-height: 1.65;
+}
+
+/* ==========================================================================
+   ANGULAR CRUMBLE & CHEVRON DIVIDERS (BAR Signature Design)
+   ========================================================================== */
+.crumble-divider {
+  position: relative;
+  width: 100%;
+  line-height: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.crumble-divider svg {
+  display: block;
+  width: 100%;
+  height: 38px;
+}
+
+.crumble-top {
+  transform: rotate(180deg);
+  margin-bottom: -1px;
+}
+
+.crumble-bottom {
+  margin-top: -1px;
+}
+
+/* ==========================================================================
+   PREMIUM BUTTONS (BAR Chamfered Tech Buttons)
+   ========================================================================== */
+.btn-tech {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1.85rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--white);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-medium);
+  clip-path: var(--chamfer-sm);
+  transition: all 0.25s var(--ease-out-expo);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn-tech:hover {
+  transform: translateY(-2px);
+  border-color: var(--armada-cyan);
+  box-shadow: 0 6px 20px var(--armada-glow);
+  color: var(--white);
+}
+
+.btn-tech:active {
+  transform: translateY(0);
+}
+
+.btn-tech-primary {
+  background: linear-gradient(135deg, #0284c7 0%, #00f0ff 100%);
+  color: #06080d;
+  font-weight: 800;
+  border-color: #38bdf8;
+  box-shadow: 0 0 25px var(--armada-glow);
+}
+
+.btn-tech-primary:hover {
+  background: linear-gradient(135deg, #00f0ff 0%, #38bdf8 100%);
+  color: #000000;
+  box-shadow: 0 0 35px rgba(0, 240, 255, 0.65);
+}
+
+.btn-tech-red {
+  background: linear-gradient(135deg, #b91c1c 0%, #ff3344 100%);
+  color: var(--white);
+  border-color: #f87171;
+  box-shadow: 0 0 20px var(--cortex-glow);
+}
+
+.btn-tech-red:hover {
+  background: linear-gradient(135deg, #ff3344 0%, #f97316 100%);
+  border-color: #ff3344;
+  box-shadow: 0 0 30px rgba(255, 51, 68, 0.6);
+}
+
+.btn-tech-alt {
+  background: rgba(16, 20, 29, 0.85);
+  backdrop-filter: blur(8px);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-tech-alt:hover {
+  background: rgba(22, 28, 40, 0.95);
+  border-color: var(--armada-cyan);
+}
+
+.btn-tech-outline-cyan {
+  background: transparent;
+  border: 1px solid var(--armada-cyan);
+  color: var(--armada-cyan);
+}
+
+.btn-tech-outline-cyan:hover {
+  background: rgba(0, 240, 255, 0.1);
+  box-shadow: 0 0 20px var(--armada-glow);
+  color: var(--white);
+}
+
+.btn-tech-sm {
+  padding: 0.5rem 1.1rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+}
+
+.btn-tech-lg {
+  padding: 1.1rem 2.4rem;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+/* ==========================================================================
+   HUD & SCI-FI CARD UTILITIES
+   ========================================================================== */
+.hud-frame {
+  position: relative;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-dim);
+  clip-path: var(--chamfer-md);
+  padding: 2rem;
+  transition: all 0.3s var(--ease-smooth);
+}
+
+.hud-frame::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  border-top: 2px solid var(--armada-cyan);
+  border-left: 2px solid var(--armada-cyan);
+  pointer-events: none;
+}
+
+.hud-frame::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 14px;
+  height: 14px;
+  border-bottom: 2px solid var(--armada-cyan);
+  border-right: 2px solid var(--armada-cyan);
+  pointer-events: none;
+}
+
+.hud-frame:hover {
+  border-color: var(--border-cyan);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 0 25px var(--armada-glow);
+}
+
+.hud-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 2px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hud-badge-cyan {
+  background: rgba(0, 240, 255, 0.12);
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  color: var(--armada-cyan);
+}
+
+.hud-badge-red {
+  background: rgba(255, 51, 68, 0.12);
+  border: 1px solid rgba(255, 51, 68, 0.35);
+  color: var(--cortex-red);
+}
+
+.hud-badge-green {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: var(--legion-acid);
+}
+
+/* ==========================================================================
+   ANIMATIONS & KEYFRAMES
+   ========================================================================== */
+@keyframes radar-pulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+}
+
+.radar-ping {
+  position: relative;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: var(--legion-acid);
+  border-radius: 50%;
+}
+
+.radar-ping::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--legion-acid);
+  border-radius: 50%;
+  animation: radar-pulse 2s infinite ease-out;
+}
+
+@keyframes scanline {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 100%;
+  }
+}
+
+.scanline-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%,
+    rgba(0, 0, 0, 0.25) 50%
+  ),
+  linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.03),
+    rgba(0, 255, 0, 0.01),
+    rgba(0, 0, 255, 0.03)
+  );
+  background-size: 100% 3px, 6px 100%;
+  pointer-events: none;
+  opacity: 0.4;
+  z-index: 2;
+}
+
+/* ==========================================================================
+   RESPONSIVE CONTAINER
+   ========================================================================== */
+.container-full {
+  width: 100%;
+  max-width: var(--max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .container-full {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
