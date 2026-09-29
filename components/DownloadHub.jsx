@@ -50,7 +50,7 @@ export default function DownloadHub() {
           }}
         >
           <div className="section-subtitle" style={{ justifyContent: 'center' }}>
-            CROSS-PLATFORM ALPHA // IMMEDIATE ACCESS
+            STEAM EXCLUSIVE // PC EARLY ACCESS
           </div>
           <h2
             style={{
@@ -61,8 +61,8 @@ export default function DownloadHub() {
               color: '#ffffff',
             }}
           >
-            READY TO COLONIZE?{' '}
-            <span style={{ color: 'var(--armada-cyan)' }}>PLAY THE ALPHA NOW</span>
+            READY FOR THE RIFT?{' '}
+            <span style={{ color: 'var(--armada-cyan)' }}>WISHLIST ON STEAM</span>
           </h2>
           <p
             style={{
@@ -73,7 +73,7 @@ export default function DownloadHub() {
               lineHeight: 1.6,
             }}
           >
-            Join over 100,000 pioneers shaping the next generation of planetary voxel strategy. Free to download on Steam, Windows, Linux, and major consoles.
+            Target platform is exclusively Steam (PC) for Early Access and full launch. Engineered with native Steamworks multiplayer lobbies, Steam Cloud blueprint sync, and VAC anticheat.
           </p>
 
           {/* Platform Launcher Buttons */}
@@ -91,31 +91,19 @@ export default function DownloadHub() {
               target="_blank"
               rel="noreferrer"
               className="btn-tech btn-tech-primary btn-tech-lg"
-              style={{ minWidth: '220px' }}
+              style={{ minWidth: '280px', padding: '1rem 2rem' }}
             >
-              <img src="/icons/platform-steam.svg" alt="Steam" width="22" height="22" />
-              PLAY ON STEAM
+              <img src="/icons/platform-steam.svg" alt="Steam" width="24" height="24" />
+              WISHLIST ON STEAM
             </a>
 
             <button
-              onClick={() => alert('Starting direct standalone client download for Windows / Linux (v0.9.4)...')}
+              onClick={() => alert('Steam Playtest signups will open soon! Stay tuned on our Discord.')}
               className="btn-tech btn-tech-alt btn-tech-lg"
-              style={{ minWidth: '220px' }}
+              style={{ minWidth: '240px' }}
             >
-              <img src="/icons/platform-direct.svg" alt="Direct Client" width="22" height="22" />
-              DIRECT LAUNCHER
+              REQUEST STEAM PLAYTEST
             </button>
-
-            <a
-              href="https://epicgames.com"
-              target="_blank"
-              rel="noreferrer"
-              className="btn-tech btn-tech-alt btn-tech-lg"
-              style={{ minWidth: '220px' }}
-            >
-              <img src="/icons/platform-epic.svg" alt="Epic Games" width="22" height="22" />
-              EPIC GAMES STORE
-            </a>
           </div>
 
           <div
@@ -129,11 +117,11 @@ export default function DownloadHub() {
               color: 'var(--text-muted)',
             }}
           >
-            <span>WINDOWS 10/11 &amp; LINUX NATIVE</span>
+            <span>WINDOWS 10/11 (64-BIT) PC</span>
             <span>•</span>
-            <span>BUILD v0.9.4 (18.4 GB)</span>
+            <span>STEAMWORKS SDK INTEGRATION</span>
             <span>•</span>
-            <span>AUTOMATIC AUTO-UPDATER</span>
+            <span>VALVE ANTI-CHEAT (VAC)</span>
           </div>
         </div>
 
