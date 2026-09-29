@@ -56,20 +56,20 @@ export default function CorePillars() {
     {
       id: 'incursions',
       align: 'left',
-      subtitle: 'HIGH-STAKES EXTRACTION',
-      titlePrimary: 'TIMED PVPVE SCAVENGING &',
-      titleSecondary: 'DIMENSIONAL BOSS DISTURBANCES',
+      subtitle: 'ARC RAIDERS-INSPIRED PVE & PVPVE // 4 DIFFICULTY TIERS',
+      titlePrimary: 'THE KUÍ-LĚI THREAT &',
+      titleSecondary: 'DYNAMIC RIFT DIFFICULTY MATRIX',
       description:
-        'Teleport into hazardous foreign dimensions where the countdown clock is ticking. Scavenge high-value technology, eliminate rogue bio-mechanoids, and survive intense fire fights against rival contractor squads. Endure mid-raid gravity shifts, EMP storms, and defeat colossal Void Bosses before the gate permanently collapses.',
+        'Face off against the Kuí-Lěi (傀儡)—eerie Chinese-engineered humanoid combat automatons patrolling contested rift wastelands. Feature ARC Raiders-style acoustic stealth, 3-second siren alerts that trigger orbital drop-pod reinforcements, and localized weak-point dismemberment. Venture into 4 scaled difficulty tiers—from Green Recon incursions to high-stakes Mythic Void Singularities with escalating loot rarity and tighter countdown clocks.',
       actions: [
-        { text: 'EXTRACTION INTEL', href: '/game', variant: 'primary' },
-        { text: 'PLAY ALPHA FREE', href: '#download', variant: 'outline' },
+        { text: 'RIFT DIFFICULTY TIERS', href: '/game', variant: 'primary' },
+        { text: 'PLAYTEST ON STEAM', href: '#download', variant: 'outline' },
       ],
-      img: '/screenshots/shot8.jpg',
-      alt: 'Dimensional Rift Incursion and Boss Battlefield',
-      hudTag: 'COLLAPSE WINDOW // 20:00 HARD LIMIT',
-      statLabel: 'MAX OPERATORS PER RIFT',
-      statValue: '16 CONTRACTORS',
+      img: '/screenshots/humanoid_threats.jpg',
+      alt: 'Kuí-Lěi Chinese Humanoid Combat Automatons in Rift Sector',
+      hudTag: 'THREAT CLASS: KUÍ-LĚI G-SERIES // 4 DIFFICULTY TIERS',
+      statLabel: 'REINFORCEMENT SPEED',
+      statValue: '3.0s SIREN DROP-PODS',
     },
   ];
 
