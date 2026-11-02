@@ -1,36 +1,45 @@
 import './globals.css';
-import NavTop from '@/components/NavTop';
-import Footer from '@/components/Footer';
 
 export const metadata = {
-  title: 'NextGenGames ★ Epic-Scale Planetary Strategy & Voxel Sandbox',
+  title: 'NextGenGames ★ Coming Soon | Next-Generation Tactical & Planetary Sandbox',
   description:
-    'NextGenGames: Command colossal armies and autonomous robotic Vassals in battles with thousands of simulated units across procedural worlds in real-time. Built with Unreal Engine 5 voxel physics. Play the Alpha now for Windows and Linux!',
+    'NextGenGames is forging the future of massive-scale tactical combat and procedural voxel sandboxes. Powered by Unreal Engine 5. Closed Alpha transmission imminent.',
   keywords:
-    'NextGenGames, Beyond All Reason, RTS, Voxel, Unreal Engine 5, Strategy, Planetary Extraction, Multiplayer, Sci-Fi, PC Gaming',
+    'NextGenGames, NextGen Games, RTS, Voxel, Unreal Engine 5, Strategy, Planetary Sandbox, Multiplayer, Sci-Fi, PC Gaming, Coming Soon',
   openGraph: {
-    title: 'NextGenGames ★ Epic-Scale Planetary Strategy & Voxel Sandbox',
+    title: 'NextGenGames ★ Coming Soon | Next-Generation Tactical & Planetary Sandbox',
     description:
-      'Command colossal armies and autonomous robotic Vassals across procedural worlds. Fully simulated projectile ballistics, explosion physics, and terrain deformation.',
+      'NextGenGames is forging the future of massive-scale tactical combat and procedural voxel sandboxes. Closed Alpha clearance opening soon.',
     type: 'website',
     url: 'https://nextgengames.gg',
     siteName: 'NextGenGames',
+    images: [
+      {
+        url: '/combat-scene.png',
+        width: 1920,
+        height: 1080,
+        alt: 'NextGenGames Tactical Sandbox Teaser',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'NextGenGames ★ Epic-Scale Planetary Strategy & Voxel Sandbox',
+    title: 'NextGenGames ★ Coming Soon',
     description:
-      'Command colossal armies and autonomous robotic Vassals across procedural worlds in real-time. Play for free now!',
+      'Next-generation voxel physics and tactical planetary warfare. Alpha clearance opening soon.',
+    images: ['/combat-scene.png'],
   },
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/favicon.ico" />
+        <meta name="theme-color" content="#04060a" />
+      </head>
       <body>
-        <NavTop />
-        <main>{children}</main>
-        <Footer />
+        {children}
       </body>
     </html>
   );
