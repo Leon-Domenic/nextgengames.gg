@@ -20,6 +20,8 @@ import ActionCardDock from '@/components/board-brawl/ActionCardDock';
 import ActionCardPlayOverlay from '@/components/board-brawl/ActionCardPlayOverlay';
 import FestivalSelectModal from '@/components/board-brawl/FestivalSelectModal';
 import DebtLiquidationModal from '@/components/board-brawl/DebtLiquidationModal';
+import EmojiReactionPicker from '@/components/board-brawl/EmojiReactionPicker';
+import EmojiReactionBubble from '@/components/board-brawl/EmojiReactionBubble';
 import {
   Users, Bot, Play, MessageSquare, Send, Sparkles, AlertCircle, Copy, CheckCheck,
   Volume2, VolumeX, Crown, ShieldAlert, X, ShoppingBag, Home, Settings
@@ -53,6 +55,7 @@ export default function BoardBrawlArenaPage() {
   const [showChatPanel, setShowChatPanel] = useState(false);
   const [showInGameShop, setShowInGameShop] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [playerReactions, setPlayerReactions] = useState({});
 
   // Sync background music state reactively
   useEffect(() => {
@@ -140,11 +143,25 @@ export default function BoardBrawlArenaPage() {
       else sounds.playDoublesSurge();
     };
 
+    const handlePlayerReaction = (data) => {
+      if (data?.playerId && data?.emoji) {
+        sounds.playBuild?.();
+        setPlayerReactions(prev => ({
+          ...prev,
+          [data.playerId]: {
+            emoji: data.emoji,
+            timestamp: data.timestamp || Date.now(),
+          },
+        }));
+      }
+    };
+
     // Attach listeners FIRST
     socket.on('game_state_update', handleStateUpdate);
     socket.on('tomato_impact_event', handleTomatoImpact);
     socket.on('action_card_played', (cardData) => setActionCardPlayEvent(cardData));
     socket.on('taunt_sound_event', handleTauntSound);
+    socket.on('player_reaction_event', handlePlayerReaction);
     socket.on('connect', joinRoom);
 
     // Initial join attempt once per room
@@ -169,6 +186,7 @@ export default function BoardBrawlArenaPage() {
       socket.off('tomato_impact_event', handleTomatoImpact);
       socket.off('action_card_played');
       socket.off('taunt_sound_event', handleTauntSound);
+      socket.off('player_reaction_event', handlePlayerReaction);
       socket.off('connect', joinRoom);
     };
   }, [socket, roomId, user?.id, loading, guestInitializing, modeQuery]);
@@ -402,6 +420,27 @@ export default function BoardBrawlArenaPage() {
     });
   };
 
+  const handleSendReaction = (targetPlayerId, emoji) => {
+    if (!socket || !user) return;
+    socket.emit('game_action', {
+      roomId,
+      action: 'send_reaction',
+      payload: {
+        playerId: targetPlayerId,
+        sender: user.username,
+        emoji,
+      }
+    });
+    sounds.playBuild?.();
+    setPlayerReactions(prev => ({
+      ...prev,
+      [targetPlayerId]: {
+        emoji,
+        timestamp: Date.now(),
+      }
+    }));
+  };
+
   const copyInviteLink = () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://nextgengames.gg';
     navigator.clipboard.writeText(`${origin}/game/board-brawl/${roomId}?mode=${modeQuery}`);
@@ -499,6 +538,8 @@ export default function BoardBrawlArenaPage() {
             equippedDiceSkin={myPlayerObj?.diceSkin || equippedDiceSkin}
             onCopyLink={copyInviteLink}
             copiedLink={copiedLink}
+            playerReactions={playerReactions}
+            onSendReaction={handleSendReaction}
           />
         )}
 
@@ -580,6 +621,8 @@ export default function BoardBrawlArenaPage() {
                 position="top-left"
                 onThrowTomato={handleThrowTomato}
                 canTomato={myPlayerObj?.freeTomatoes > 0}
+                activeReaction={playerReactions[gameState.players[0].id]}
+                onSendReaction={(emoji) => handleSendReaction(gameState.players[0].id, emoji)}
               />
             )}
 
@@ -595,6 +638,8 @@ export default function BoardBrawlArenaPage() {
                 position="top-right"
                 onThrowTomato={handleThrowTomato}
                 canTomato={myPlayerObj?.freeTomatoes > 0}
+                activeReaction={playerReactions[gameState.players[1].id]}
+                onSendReaction={(emoji) => handleSendReaction(gameState.players[1].id, emoji)}
               />
             )}
 
@@ -610,6 +655,8 @@ export default function BoardBrawlArenaPage() {
                 position="bottom-left"
                 onThrowTomato={handleThrowTomato}
                 canTomato={myPlayerObj?.freeTomatoes > 0}
+                activeReaction={playerReactions[gameState.players[2].id]}
+                onSendReaction={(emoji) => handleSendReaction(gameState.players[2].id, emoji)}
               />
             )}
 
@@ -625,6 +672,8 @@ export default function BoardBrawlArenaPage() {
                 position="bottom-right"
                 onThrowTomato={handleThrowTomato}
                 canTomato={myPlayerObj?.freeTomatoes > 0}
+                activeReaction={playerReactions[gameState.players[3].id]}
+                onSendReaction={(emoji) => handleSendReaction(gameState.players[3].id, emoji)}
               />
             )}
 
@@ -999,7 +1048,10 @@ function PlayerCornerCard({
   position,
   onThrowTomato,
   canTomato,
+  activeReaction,
+  onSendReaction,
 }) {
+  const [showPicker, setShowPicker] = useState(false);
   const isBankrupt = player.isBankrupt;
   const activeChar = CHARACTERS.find(c => c.id === player.avatarToken) || CHARACTERS[0];
   const playerColor = player.avatarColor || theme.headerBg;
@@ -1024,7 +1076,7 @@ function PlayerCornerCard({
         boxShadow: isCurrent
           ? '0 8px 30px rgba(245, 158, 11, 0.45), 0 0 0 2px #fde047'
           : `0 8px 24px rgba(0, 0, 0, 0.08), 0 0 12px ${playerColor}22`,
-        overflow: 'hidden',
+        overflow: 'visible',
         zIndex: 20,
         opacity: isBankrupt ? 0.45 : 1,
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -1038,6 +1090,8 @@ function PlayerCornerCard({
           background: 'rgba(0, 0, 0, 0.15)',
           position: 'relative',
           overflow: 'hidden',
+          borderTopLeftRadius: '14px',
+          borderTopRightRadius: '14px',
         }}>
           <div style={{
             height: '100%',
@@ -1057,6 +1111,8 @@ function PlayerCornerCard({
         alignItems: 'center',
         justifyContent: 'space-between',
         color: '#ffffff',
+        borderTopLeftRadius: isCurrent ? '0' : '14px',
+        borderTopRightRadius: isCurrent ? '0' : '14px',
       }}>
         <div style={{
           fontSize: '13px',
@@ -1094,24 +1150,51 @@ function PlayerCornerCard({
         alignItems: 'center',
         justifyContent: 'space-between',
         background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+        borderBottomLeftRadius: '14px',
+        borderBottomRightRadius: '14px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* Avatar with Laurel Gold Rim */}
-          <div style={{
-            position: 'relative',
-            width: '44px',
-            height: '44px',
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, #fbbf24 0%, #d97706 100%)',
-            border: '2px solid #fef08a',
-            boxShadow: '0 2px 8px rgba(217, 119, 6, 0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '22px',
-            flexShrink: 0,
-          }}>
-            {activeChar?.icon || '🎩'}
+          {/* Avatar with Laurel Gold Rim (Click to React) */}
+          <div
+            onClick={() => setShowPicker(prev => !prev)}
+            title="Click avatar to react with emoji"
+            style={{
+              position: 'relative',
+              width: '44px',
+              height: '44px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #fbbf24 0%, #d97706 100%)',
+              border: '2px solid #fef08a',
+              boxShadow: '0 2px 8px rgba(217, 119, 6, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '22px',
+              flexShrink: 0,
+              cursor: 'pointer',
+              transition: 'transform 0.15s ease',
+              overflow: 'hidden',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            {activeChar?.avatar ? (
+              <img src={activeChar.avatar} alt={activeChar.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              activeChar?.icon || '🎩'
+            )}
+
+            {/* Reaction Bubble Displayed Next to Avatar */}
+            <EmojiReactionBubble reaction={activeReaction} position={position} />
+
+            {/* Reaction Picker Popover */}
+            <EmojiReactionPicker
+              isOpen={showPicker}
+              onClose={() => setShowPicker(false)}
+              onSelectEmoji={onSendReaction}
+              position={position}
+              playerName={player.name}
+            />
           </div>
 
           <div>

@@ -767,10 +767,13 @@ export default function Board3D({
       const delta = clock.getDelta();
       const elapsed = clock.getElapsedTime();
 
-      // Idle Hover for Pawns
+      // Idle Hover & Real-time Avatar Animations for Pawns
       pawnMeshesRef.current.forEach(({ group, isMoving }) => {
         if (!isMoving && group) {
           group.position.y = 0.2 + Math.sin(elapsed * 3.5) * 0.12;
+        }
+        if (group && typeof group.userData?.update === 'function') {
+          group.userData.update(delta, elapsed, isMoving);
         }
       });
 

@@ -387,7 +387,11 @@ export default function CosmeticsShopModal({
                 marginBottom: '10px',
                 position: 'relative',
               }}>
-                {selectedItem.icon || '🎩'}
+                {isCharacterTab && selectedItem.avatar ? (
+                  <img src={selectedItem.avatar} alt={selectedItem.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '18px' }} />
+                ) : (
+                  selectedItem.icon || '🎩'
+                )}
 
                 {/* For dice skins: show pips preview */}
                 {!isCharacterTab && selectedItem.palette && (
@@ -575,8 +579,13 @@ export default function CosmeticsShopModal({
                       fontSize: '32px',
                       marginBottom: '10px',
                       boxShadow: '0 4px 10px rgba(0,0,0,0.08)',
+                      overflow: 'hidden',
                     }}>
-                      {item.icon || '🎩'}
+                      {isCharacterTab && item.avatar ? (
+                        <img src={item.avatar} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        item.icon || '🎩'
+                      )}
                     </div>
 
                     {/* Name */}

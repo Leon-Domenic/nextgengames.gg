@@ -234,6 +234,13 @@ app.prepare().then(() => {
           sender: payload.sender,
           tauntId: payload.tauntId,
         });
+      } else if (action === 'send_reaction') {
+        io.to(`game_${roomId}`).emit('player_reaction_event', {
+          playerId: payload.playerId,
+          sender: payload.sender,
+          emoji: payload.emoji,
+          timestamp: Date.now(),
+        });
       }
     });
 

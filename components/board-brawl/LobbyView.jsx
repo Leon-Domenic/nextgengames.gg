@@ -6,6 +6,8 @@ import { DICE_SKIN_MAP, DICE_SKINS } from '@/lib/board-brawl/diceSkins';
 import { sounds } from '@/lib/audio';
 import CosmeticsShopModal from '@/components/board-brawl/CosmeticsShopModal';
 import SettingsModal from '@/components/board-brawl/SettingsModal';
+import EmojiReactionPicker from '@/components/board-brawl/EmojiReactionPicker';
+import EmojiReactionBubble from '@/components/board-brawl/EmojiReactionBubble';
 import {
   Users, Bot, Play, Copy, CheckCheck, Settings, ShoppingCart, ListChecks, X, Home,
   ChevronLeft, ChevronRight, Volume2, VolumeX, Sparkles, Dices, ShoppingBag
@@ -35,6 +37,8 @@ export default function LobbyView({
   equippedDiceSkin = 'classic_red',
   onCopyLink,
   copiedLink,
+  playerReactions = {},
+  onSendReaction,
 }) {
   const isHost = players[0]?.id === user?.id || (players.length > 0 && !players[0]?.isBot);
   const myPlayer = players.find(p => p.id === user?.id) || players[0];
@@ -42,6 +46,7 @@ export default function LobbyView({
   const [currentCharIdx, setCurrentCharIdx] = useState(myCharIndex >= 0 ? myCharIndex : 0);
   const [showShop, setShowShop] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [activePickerSlot, setActivePickerSlot] = useState(null);
 
   const handlePrevChar = () => {
     const nextIdx = (currentCharIdx - 1 + CHARACTERS.length) % CHARACTERS.length;
@@ -571,20 +576,27 @@ export default function LobbyView({
                 gap: '10px',
                 borderBottom: '2px solid rgba(0, 0, 0, 0.1)',
               }}>
-                <div style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '10px',
-                  background: '#1e293b',
-                  border: '2px solid #ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '18px',
-                  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)',
-                  flexShrink: 0,
-                }}>
+                <div
+                  onClick={() => setActivePickerSlot(activePickerSlot === slotIdx ? null : slotIdx)}
+                  title="Click avatar to react with emoji"
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '10px',
+                    background: '#1e293b',
+                    border: '2px solid #ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)',
+                    flexShrink: 0,
+                    cursor: 'pointer',
+                    position: 'relative',
+                  }}
+                >
                   {activeChar?.icon || '🎩'}
+                  <EmojiReactionBubble reaction={playerReactions?.[player.id]} position="top-left" />
                 </div>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -678,21 +690,42 @@ export default function LobbyView({
                   marginBottom: '10px',
                   zIndex: 2,
                 }}>
-                  {/* Standee Character Avatar Big Icon */}
-                  <div style={{
-                    width: '100px',
-                    height: '100px',
-                    borderRadius: '24px',
-                    background: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)',
-                    border: `4px solid ${slotColor.hex}`,
-                    boxShadow: `0 8px 20px ${slotColor.hex}44`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '54px',
-                    marginBottom: '12px',
-                  }}>
+                  {/* Standee Character Avatar Big Icon (Click to React) */}
+                  <div
+                    onClick={() => setActivePickerSlot(activePickerSlot === slotIdx ? null : slotIdx)}
+                    title="Click avatar to react with emoji"
+                    style={{
+                      position: 'relative',
+                      width: '100px',
+                      height: '100px',
+                      borderRadius: '24px',
+                      background: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)',
+                      border: `4px solid ${slotColor.hex}`,
+                      boxShadow: `0 8px 20px ${slotColor.hex}44`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '54px',
+                      marginBottom: '12px',
+                      cursor: 'pointer',
+                      transition: 'transform 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.06)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                  >
                     {activeChar?.icon || '🎩'}
+
+                    {/* Reaction Bubble Displayed Next to Avatar */}
+                    <EmojiReactionBubble reaction={playerReactions?.[player.id]} position="pedestal" />
+
+                    {/* Reaction Picker Popover */}
+                    <EmojiReactionPicker
+                      isOpen={activePickerSlot === slotIdx}
+                      onClose={() => setActivePickerSlot(null)}
+                      onSelectEmoji={(emoji) => onSendReaction?.(player.id, emoji)}
+                      position="pedestal"
+                      playerName={player.name}
+                    />
                   </div>
 
                   {/* Character Name & Role Title */}
