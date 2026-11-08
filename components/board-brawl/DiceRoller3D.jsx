@@ -162,7 +162,7 @@ export default function DiceRoller3D({
                 letterSpacing: '0.04em',
               }}
             >
-              🌴 PAY 100 CR BAIL & ESCAPE
+              🌴 PAY 100,000 CR BAIL & ESCAPE
             </button>
           )}
         </div>

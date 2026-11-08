@@ -35,10 +35,10 @@ export function getTile3DPos(id, totalTiles = 48) {
   // Ensures card top (color header) points to the outside of the board,
   // and card bottom (price pill / track stripe) points to the inside (lawn).
   const sideRotations = [
-    (3 * Math.PI) / 4,   // Side 0 (South -> West): color ribbon faces outward (-X, +Z)
-    Math.PI / 4,         // Side 1 (West -> North): color ribbon faces outward (-X, -Z)
-    -Math.PI / 4,        // Side 2 (North -> East): color ribbon faces outward (+X, -Z)
-    (-3 * Math.PI) / 4,  // Side 3 (East -> South): color ribbon faces outward (+X, +Z)
+    -Math.PI / 4,        // Side 0 (South -> West): flipped 180 deg so color ribbon faces outward
+    (-3 * Math.PI) / 4,  // Side 1 (West -> North): flipped 180 deg so color ribbon faces outward
+    (3 * Math.PI) / 4,   // Side 2 (North -> East): flipped 180 deg so color ribbon faces outward
+    Math.PI / 4,         // Side 3 (East -> South): flipped 180 deg so color ribbon faces outward
   ];
 
   // Corner orientations: aligned with the diamond sides (45-degree angle) so edges are 100% flush!
@@ -51,10 +51,10 @@ export function getTile3DPos(id, totalTiles = 48) {
 
   // Canvas rotation so corner header / artwork faces outward toward its respective apex
   const cornerCanvasAngles = [
-    (3 * Math.PI) / 4,   // Corner 0 (South): 135 deg
-    (3 * Math.PI) / 4,   // Corner 1 (West): 135 deg
-    (3 * Math.PI) / 4,   // Corner 2 (North): 135 deg
-    (3 * Math.PI) / 4,   // Corner 3 (East): 135 deg
+    -Math.PI / 4,        // Corner 0 (South)
+    Math.PI / 4,         // Corner 1 (West)
+    (3 * Math.PI) / 4,   // Corner 2 (North)
+    (-3 * Math.PI) / 4,  // Corner 3 (East)
   ];
 
   const side = Math.floor(id / tilesPerSide) % 4;
@@ -192,17 +192,17 @@ export default function Board3D({
     renderer.shadowMap.enabled = initialQuality !== 'low';
     renderer.shadowMap.type = initialQuality === 'high' ? THREE.PCFSoftShadowMap : THREE.BasicShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.25;
+    renderer.toneMappingExposure = 1.0;
     rendererRef.current = renderer;
 
     mountRef.current.innerHTML = '';
     mountRef.current.appendChild(renderer.domElement);
 
-    // 4. Lighting Rig (Vibrant Sunny Tabletop Lighting)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.8);
+    // 4. Lighting Rig (Rich Cinematic Tabletop Lighting)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
     scene.add(ambientLight);
 
-    const mainSun = new THREE.DirectionalLight(0xfffbeb, 2.5);
+    const mainSun = new THREE.DirectionalLight(0xfffbeb, 1.35);
     mainSun.position.set(60, 130, 70);
     mainSun.castShadow = true;
     mainSun.shadow.mapSize.width = 2048;
@@ -210,7 +210,7 @@ export default function Board3D({
     mainSun.shadow.bias = -0.0004;
     scene.add(mainSun);
 
-    const blueSkyFill = new THREE.DirectionalLight(0xbae6fd, 1.3);
+    const blueSkyFill = new THREE.DirectionalLight(0xbae6fd, 0.55);
     blueSkyFill.position.set(-70, 90, -70);
     scene.add(blueSkyFill);
 
@@ -400,7 +400,7 @@ export default function Board3D({
 
           ctx.fillStyle = '#047857';
           ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText('COLLECT 250 CR', 0, 178);
+          ctx.fillText('COLLECT 200K CR', 0, 178);
 
           // Inner track asphalt curve
           ctx.fillStyle = '#334155';
@@ -444,7 +444,7 @@ export default function Board3D({
 
           ctx.fillStyle = '#b45309';
           ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText('BAIL: 100 CR', 0, 178);
+          ctx.fillText('BAIL: 100K CR', 0, 178);
 
           // Inner track asphalt curve
           ctx.fillStyle = '#334155';
@@ -573,7 +573,8 @@ export default function Board3D({
 
         ctx.fillStyle = '#0f172a';
         ctx.font = '900 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.fillText(`${tile.price}K CR`, 256, 400);
+        const displayPrice = tile.price >= 1000 ? `${Math.round(tile.price / 1000)}K CR` : `${tile.price} CR`;
+        ctx.fillText(displayPrice, 256, 400);
 
         // Asphalt track stripe at bottom (inner edge facing center lawn)
         ctx.fillStyle = '#334155';
@@ -582,16 +583,17 @@ export default function Board3D({
         ctx.fillRect(150, 468, 212, 8);
       } else {
         // Perimeter Event Squares (Chance, Armory, Tax) - FACES OUTSIDE OF BOARD
+        const taxSub = tile.amount ? `PAY ${Math.round(tile.amount / 1000)}K CR` : 'PAY TAX';
         const eventConfig = {
           chance: { color: '#ec4899', icon: '❓', title: 'CHANCE', sub: 'LUCKY DRAW', subColor: '#be185d' },
           armory: { color: '#ef4444', icon: '⚔️', title: 'ARMORY', sub: 'ACTION CARD', subColor: '#b91c1c' },
-          tax: { color: '#64748b', icon: '🏛️', title: 'CITY TAX', sub: 'PAY 150 CR', subColor: '#334155' },
+          tax: { color: '#64748b', icon: '🏛️', title: 'CITY TAX', sub: taxSub, subColor: '#334155' },
         };
         const cfg = eventConfig[tile.type] || {
           color: '#38bdf8',
           icon: tile.icon || '🎯',
           title: tile.name.toUpperCase(),
-          sub: tile.amount ? `PAY ${tile.amount} CR` : (tile.type || '').toUpperCase(),
+          sub: tile.amount ? `PAY ${Math.round(tile.amount / 1000)}K CR` : (tile.type || '').toUpperCase(),
           subColor: '#0284c7',
         };
 
@@ -642,8 +644,8 @@ export default function Board3D({
       });
       const topMat = new THREE.MeshStandardMaterial({
         map: texture,
-        roughness: 0.35,
-        metalness: 0.05,
+        roughness: 0.25,
+        metalness: 0.08,
       });
 
       // Box materials: +X, -X, +Y (TOP), -Y, +Z, -Z

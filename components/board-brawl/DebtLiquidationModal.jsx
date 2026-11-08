@@ -94,7 +94,7 @@ export default function DebtLiquidationModal({
         </h2>
 
         <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#cbd5e1', lineHeight: 1.4 }}>
-          You owe rent of <span style={{ color: '#ef4444', fontWeight: 900 }}>{debtAmount} Space Credits</span> to{' '}
+          You owe rent of <span style={{ color: '#ef4444', fontWeight: 900 }}>{debtAmount.toLocaleString()} Space Credits</span> to{' '}
           <span style={{ color: '#38bdf8', fontWeight: 800 }}>{creditor?.name || 'Landlord'}</span>. Your available balance is insufficient!
         </p>
 
@@ -114,7 +114,7 @@ export default function DebtLiquidationModal({
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
             <span style={{ color: '#94a3b8' }}>Total Rent Owed:</span>
-            <span style={{ color: '#ef4444', fontWeight: 900 }}>{debtAmount} CR</span>
+            <span style={{ color: '#ef4444', fontWeight: 900 }}>{debtAmount.toLocaleString()} CR</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
             <span style={{ color: '#94a3b8' }}>Available Space Credits:</span>
@@ -130,7 +130,7 @@ export default function DebtLiquidationModal({
             }}
           >
             <span style={{ color: '#cbd5e1', fontWeight: 700 }}>Uncovered Deficit:</span>
-            <span style={{ color: '#f87171', fontWeight: 900 }}>-{shortfall} CR</span>
+            <span style={{ color: '#f87171', fontWeight: 900 }}>-{shortfall.toLocaleString()} CR</span>
           </div>
         </div>
 

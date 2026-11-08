@@ -161,7 +161,7 @@ export default function FestivalSelectModal({
 
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '14px', fontWeight: 900, color: '#fef08a' }}>
-                      {currentRent * 2} CR
+                      {(currentRent * 2).toLocaleString()} CR
                     </div>
                     <div style={{ fontSize: '10px', color: '#a3e635' }}>2X RENT</div>
                   </div>

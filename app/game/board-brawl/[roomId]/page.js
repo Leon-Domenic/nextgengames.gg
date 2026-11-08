@@ -61,6 +61,7 @@ export default function BoardBrawlArenaPage() {
 
   // Sync background music state reactively
   useEffect(() => {
+    sounds.init();
     const syncMusic = () => {
       setMusicPlaying(!sounds.isMusicMuted());
     };
@@ -965,7 +966,7 @@ export default function BoardBrawlArenaPage() {
                   diceSkin={myPlayerObj?.diceSkin || equippedDiceSkin}
                   isInJail={myPlayerObj?.islandTurns > 0}
                   onPayBail={handlePayBail}
-                  canPayBail={(myPlayerObj?.cash || 0) >= 100}
+                  canPayBail={(myPlayerObj?.cash || 0) >= 100000}
                 />
               </div>
             )}

@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TILES } from '@/lib/board-brawl/types';
 import { sounds } from '@/lib/audio';
-import { Building2, Zap, ArrowRight, ShieldCheck, Crown, Landmark, Home, Trees, Coins, Sparkles } from 'lucide-react';
+import { Zap, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
 
 const LANDMARK_ICONS = {
   Egypt: '🏛️',
@@ -38,7 +38,26 @@ export default function ActionModal({
   turnTimer,
 }) {
   const tile = TILES[currentTileId];
-  if (!tile) return null;
+
+  // Defensive safety: If not a city tile, automatically complete turn action so human is never stuck!
+  useEffect(() => {
+    if (!tile || tile.type !== 'city') {
+      onEndTurn?.();
+    }
+  }, [tile, onEndTurn]);
+
+  // Handle Escape key to pass/end turn cleanly
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onEndTurn?.();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onEndTurn]);
+
+  if (!tile || tile.type !== 'city') return null;
 
   const prop = properties[currentTileId] || {};
   const isOwner = prop.ownerId === player?.id;
@@ -226,101 +245,99 @@ export default function ActionModal({
         </div>
 
         {/* 4 Upgrade Tier Slots (Plot, Cottage, Hotel, Golden Landmark) */}
-        {tile.type === 'city' && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: '8px',
-            marginBottom: '16px',
-          }}>
-            {/* Slot 1: Plot */}
-            <div
-              onClick={() => !prop.ownerId && setSelectedTier(1)}
-              style={{
-                background: selectedTier === 1 ? 'linear-gradient(180deg, #eff6ff, #dbeafe)' : '#f8fafc',
-                border: selectedTier === 1 ? '2px solid #2563eb' : '1px solid #e2e8f0',
-                borderRadius: '14px',
-                padding: '10px 4px',
-                textAlign: 'center',
-                cursor: !prop.ownerId ? 'pointer' : 'default',
-                transform: selectedTier === 1 ? 'scale(1.04)' : 'scale(1)',
-                transition: 'all 0.15s ease',
-                boxShadow: selectedTier === 1 ? '0 6px 14px rgba(37, 99, 235, 0.2)' : 'none',
-              }}
-            >
-              <div style={{ fontSize: '10px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Plot</div>
-              <div style={{ fontSize: '20px', margin: '4px 0' }}>🌱</div>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#0f172a' }}>{tile.price} CR</div>
-            </div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: '8px',
+          marginBottom: '16px',
+        }}>
+          {/* Slot 1: Plot */}
+          <div
+            onClick={() => !prop.ownerId && setSelectedTier(1)}
+            style={{
+              background: selectedTier === 1 ? 'linear-gradient(180deg, #eff6ff, #dbeafe)' : '#f8fafc',
+              border: selectedTier === 1 ? '2px solid #2563eb' : '1px solid #e2e8f0',
+              borderRadius: '14px',
+              padding: '10px 4px',
+              textAlign: 'center',
+              cursor: !prop.ownerId ? 'pointer' : 'default',
+              transform: selectedTier === 1 ? 'scale(1.04)' : 'scale(1)',
+              transition: 'all 0.15s ease',
+              boxShadow: selectedTier === 1 ? '0 6px 14px rgba(37, 99, 235, 0.2)' : 'none',
+            }}
+          >
+            <div style={{ fontSize: '10px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Plot</div>
+            <div style={{ fontSize: '20px', margin: '4px 0' }}>🌱</div>
+            <div style={{ fontSize: '11px', fontWeight: 900, color: '#0f172a' }}>{Math.round(tile.price / 1000)}K CR</div>
+          </div>
 
-            {/* Slot 2: Cottage */}
-            <div
-              onClick={() => (!prop.ownerId || isOwner) && setSelectedTier(2)}
-              style={{
-                background: selectedTier === 2 ? 'linear-gradient(180deg, #ecfdf5, #d1fae5)' : '#f8fafc',
-                border: selectedTier === 2 ? '2px solid #10b981' : '1px solid #e2e8f0',
-                borderRadius: '14px',
-                padding: '10px 4px',
-                textAlign: 'center',
-                cursor: (!prop.ownerId || isOwner) ? 'pointer' : 'default',
-                transform: selectedTier === 2 ? 'scale(1.04)' : 'scale(1)',
-                transition: 'all 0.15s ease',
-                boxShadow: selectedTier === 2 ? '0 6px 14px rgba(16, 185, 129, 0.2)' : 'none',
-              }}
-            >
-              <div style={{ fontSize: '10px', fontWeight: 800, color: '#059669', textTransform: 'uppercase' }}>Cottage</div>
-              <div style={{ fontSize: '20px', margin: '4px 0' }}>🏡</div>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#0f172a' }}>
-                {prop.ownerId ? tile.housePrice : tile.price + tile.housePrice} CR
-              </div>
-            </div>
-
-            {/* Slot 3: Hotel */}
-            <div
-              onClick={() => (!prop.ownerId || isOwner) && setSelectedTier(3)}
-              style={{
-                background: selectedTier === 3 ? 'linear-gradient(180deg, #fff7ed, #ffedd5)' : '#f8fafc',
-                border: selectedTier === 3 ? '2px solid #f97316' : '1px solid #e2e8f0',
-                borderRadius: '14px',
-                padding: '10px 4px',
-                textAlign: 'center',
-                cursor: (!prop.ownerId || isOwner) ? 'pointer' : 'default',
-                transform: selectedTier === 3 ? 'scale(1.04)' : 'scale(1)',
-                transition: 'all 0.15s ease',
-                boxShadow: selectedTier === 3 ? '0 6px 14px rgba(249, 115, 22, 0.2)' : 'none',
-              }}
-            >
-              <div style={{ fontSize: '10px', fontWeight: 800, color: '#ea580c', textTransform: 'uppercase' }}>Hotel</div>
-              <div style={{ fontSize: '20px', margin: '4px 0' }}>🏢</div>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#0f172a' }}>
-                {prop.ownerId ? tile.housePrice : tile.price + tile.housePrice * 2} CR
-              </div>
-            </div>
-
-            {/* Slot 4: Golden Landmark */}
-            <div
-              onClick={() => (!prop.ownerId || isOwner) && setSelectedTier(4)}
-              style={{
-                background: selectedTier === 4 ? 'linear-gradient(180deg, #fefce8, #fef08a)' : '#f8fafc',
-                border: selectedTier === 4 ? '2px solid #eab308' : '1px solid #e2e8f0',
-                borderRadius: '14px',
-                padding: '10px 4px',
-                textAlign: 'center',
-                cursor: (!prop.ownerId || isOwner) ? 'pointer' : 'default',
-                transform: selectedTier === 4 ? 'scale(1.04)' : 'scale(1)',
-                transition: 'all 0.15s ease',
-                boxShadow: selectedTier === 4 ? '0 6px 14px rgba(234, 179, 8, 0.25)' : 'none',
-                position: 'relative',
-              }}
-            >
-              <div style={{ fontSize: '9px', fontWeight: 900, color: '#ca8a04', textTransform: 'uppercase' }}>Landmark</div>
-              <div style={{ fontSize: '20px', margin: '4px 0' }}>👑</div>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#0f172a' }}>
-                {prop.ownerId ? tile.housePrice : tile.price + tile.housePrice * 3} CR
-              </div>
+          {/* Slot 2: Cottage */}
+          <div
+            onClick={() => (!prop.ownerId || isOwner) && setSelectedTier(2)}
+            style={{
+              background: selectedTier === 2 ? 'linear-gradient(180deg, #ecfdf5, #d1fae5)' : '#f8fafc',
+              border: selectedTier === 2 ? '2px solid #10b981' : '1px solid #e2e8f0',
+              borderRadius: '14px',
+              padding: '10px 4px',
+              textAlign: 'center',
+              cursor: (!prop.ownerId || isOwner) ? 'pointer' : 'default',
+              transform: selectedTier === 2 ? 'scale(1.04)' : 'scale(1)',
+              transition: 'all 0.15s ease',
+              boxShadow: selectedTier === 2 ? '0 6px 14px rgba(16, 185, 129, 0.2)' : 'none',
+            }}
+          >
+            <div style={{ fontSize: '10px', fontWeight: 800, color: '#059669', textTransform: 'uppercase' }}>Cottage</div>
+            <div style={{ fontSize: '20px', margin: '4px 0' }}>🏡</div>
+            <div style={{ fontSize: '11px', fontWeight: 900, color: '#0f172a' }}>
+              {Math.round((prop.ownerId ? tile.housePrice : tile.price + tile.housePrice) / 1000)}K CR
             </div>
           </div>
-        )}
+
+          {/* Slot 3: Hotel */}
+          <div
+            onClick={() => (!prop.ownerId || isOwner) && setSelectedTier(3)}
+            style={{
+              background: selectedTier === 3 ? 'linear-gradient(180deg, #fff7ed, #ffedd5)' : '#f8fafc',
+              border: selectedTier === 3 ? '2px solid #f97316' : '1px solid #e2e8f0',
+              borderRadius: '14px',
+              padding: '10px 4px',
+              textAlign: 'center',
+              cursor: (!prop.ownerId || isOwner) ? 'pointer' : 'default',
+              transform: selectedTier === 3 ? 'scale(1.04)' : 'scale(1)',
+              transition: 'all 0.15s ease',
+              boxShadow: selectedTier === 3 ? '0 6px 14px rgba(249, 115, 22, 0.2)' : 'none',
+            }}
+          >
+            <div style={{ fontSize: '10px', fontWeight: 800, color: '#ea580c', textTransform: 'uppercase' }}>Hotel</div>
+            <div style={{ fontSize: '20px', margin: '4px 0' }}>🏢</div>
+            <div style={{ fontSize: '11px', fontWeight: 900, color: '#0f172a' }}>
+              {Math.round((prop.ownerId ? tile.housePrice : tile.price + tile.housePrice * 2) / 1000)}K CR
+            </div>
+          </div>
+
+          {/* Slot 4: Golden Landmark */}
+          <div
+            onClick={() => (!prop.ownerId || isOwner) && setSelectedTier(4)}
+            style={{
+              background: selectedTier === 4 ? 'linear-gradient(180deg, #fefce8, #fef08a)' : '#f8fafc',
+              border: selectedTier === 4 ? '2px solid #eab308' : '1px solid #e2e8f0',
+              borderRadius: '14px',
+              padding: '10px 4px',
+              textAlign: 'center',
+              cursor: (!prop.ownerId || isOwner) ? 'pointer' : 'default',
+              transform: selectedTier === 4 ? 'scale(1.04)' : 'scale(1)',
+              transition: 'all 0.15s ease',
+              boxShadow: selectedTier === 4 ? '0 6px 14px rgba(234, 179, 8, 0.25)' : 'none',
+              position: 'relative',
+            }}
+          >
+            <div style={{ fontSize: '9px', fontWeight: 900, color: '#ca8a04', textTransform: 'uppercase' }}>Landmark</div>
+            <div style={{ fontSize: '20px', margin: '4px 0' }}>👑</div>
+            <div style={{ fontSize: '11px', fontWeight: 900, color: '#0f172a' }}>
+              {Math.round((prop.ownerId ? tile.housePrice : tile.price + tile.housePrice * 3) / 1000)}K CR
+            </div>
+          </div>
+        </div>
 
         {/* Landmark Protection Notice */}
         {selectedTier === 4 && (
@@ -358,7 +375,7 @@ export default function ActionModal({
             <span style={{ fontSize: '18px' }}>🪙</span>
             <div>
               <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase' }}>Rent Yield</div>
-              <div style={{ fontSize: '15px', fontWeight: 900, color: '#78350f' }}>{nextRent} CR</div>
+              <div style={{ fontSize: '15px', fontWeight: 900, color: '#78350f' }}>{nextRent.toLocaleString()} CR</div>
             </div>
           </div>
 
@@ -378,7 +395,7 @@ export default function ActionModal({
         {/* Action Controls */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {/* Case 1: Unowned -> Big Juicy Green Button */}
-          {!prop.ownerId && tile.type === 'city' && (
+          {!prop.ownerId && (
             <button
               onClick={() => { sounds.playBuild(); onBuy(tile.id, selectedTier); }}
               disabled={!canAfford}
@@ -390,7 +407,7 @@ export default function ActionModal({
                 borderRadius: '18px',
                 color: '#ffffff',
                 fontWeight: 900,
-                fontSize: '17px',
+                fontSize: '16px',
                 letterSpacing: '0.5px',
                 cursor: canAfford ? 'pointer' : 'not-allowed',
                 boxShadow: canAfford ? '0 10px 20px -5px rgba(22, 163, 74, 0.4), inset 0 2px 2px rgba(255,255,255,0.4)' : 'none',
@@ -401,12 +418,12 @@ export default function ActionModal({
                 transition: 'transform 0.1s ease',
               }}
             >
-              <span>BUY & UPGRADE ({costToBuild} Space Credits)</span>
+              <span>BUY & UPGRADE ({costToBuild.toLocaleString()} Space Credits)</span>
             </button>
           )}
 
           {/* Case 2: Owned by Player -> Upgrade Button */}
-          {isOwner && tile.type === 'city' && !prop.isLandmark && (
+          {isOwner && !prop.isLandmark && (
             <button
               onClick={() => { sounds.playBuild(); onUpgrade(tile.id); }}
               disabled={!canAfford}
@@ -418,17 +435,17 @@ export default function ActionModal({
                 borderRadius: '18px',
                 color: '#ffffff',
                 fontWeight: 900,
-                fontSize: '17px',
+                fontSize: '16px',
                 cursor: canAfford ? 'pointer' : 'not-allowed',
                 boxShadow: canAfford ? '0 10px 20px -5px rgba(37, 99, 235, 0.4)' : 'none',
               }}
             >
-              <span>UPGRADE LEVEL ({tile.housePrice} Space Credits)</span>
+              <span>UPGRADE LEVEL ({tile.housePrice.toLocaleString()} Space Credits)</span>
             </button>
           )}
 
           {/* Case 3: Owned by Rival -> 2X Hostile Buyout Button */}
-          {isRival && tile.type === 'city' && (
+          {isRival && (
             <>
               <div style={{
                 fontSize: '12px',
@@ -439,7 +456,7 @@ export default function ActionModal({
                 borderRadius: '10px',
                 textAlign: 'center',
               }}>
-                Owned by {rivalOwner?.name || 'Rival'}! Paid rent: {currentRent} Space Credits
+                Owned by {rivalOwner?.name || 'Rival'}! Paid rent: {currentRent.toLocaleString()} Space Credits
               </div>
 
               {!prop.isLandmark && (
@@ -454,7 +471,7 @@ export default function ActionModal({
                     borderRadius: '18px',
                     color: '#ffffff',
                     fontWeight: 900,
-                    fontSize: '16px',
+                    fontSize: '15px',
                     cursor: canBuyout ? 'pointer' : 'not-allowed',
                     boxShadow: canBuyout ? '0 10px 20px -5px rgba(217, 70, 239, 0.4)' : 'none',
                     display: 'flex',
@@ -464,7 +481,7 @@ export default function ActionModal({
                   }}
                 >
                   <Zap size={18} />
-                  <span>HOSTILE BUYOUT 2X ({buyoutCost} Space Credits)</span>
+                  <span>HOSTILE BUYOUT 2X ({buyoutCost.toLocaleString()} Space Credits)</span>
                 </button>
               )}
             </>
