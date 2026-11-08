@@ -23,12 +23,12 @@ export default function DiceRoller3D({
 
   const skin = DICE_SKIN_MAP[diceSkin] || DICE_SKINS[0];
 
-  // Whenever turn state resets to roll, ensure rolling lock is never stuck
+  // Whenever turn state resets to roll or turn timer ticks, ensure rolling lock is never stuck
   useEffect(() => {
     if (isMyTurn && canRoll) {
       setIsRolling(false);
     }
-  }, [isMyTurn, canRoll]);
+  }, [isMyTurn, canRoll, turnTimer]);
 
   useEffect(() => {
     // Only trigger rolling animation when a NEW unique roll ID arrives

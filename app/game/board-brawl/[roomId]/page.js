@@ -69,11 +69,12 @@ export default function BoardBrawlArenaPage() {
   const safetyArrivalTimerRef = useRef(null);
 
   const handlePawnMovementStart = useCallback((playerId, targetTileId) => {
+    // Only defer modals for the local player's pawn
     setMovementPendingArrival(true);
     if (safetyArrivalTimerRef.current) clearTimeout(safetyArrivalTimerRef.current);
     safetyArrivalTimerRef.current = setTimeout(() => {
       setMovementPendingArrival(false);
-    }, 8000);
+    }, 4500);
   }, []);
 
   const handlePawnMovementComplete = useCallback((playerId, targetTileId) => {
@@ -87,8 +88,16 @@ export default function BoardBrawlArenaPage() {
     // until the pawn has physically arrived and landed on the target tile (+ 400ms pause for visual landing impact)
     setTimeout(() => {
       setMovementPendingArrival(false);
-    }, 400);
+    }, 350);
   }, []);
+
+  // Ensure roll phase is never blocked by movement pending arrival
+  useEffect(() => {
+    if (gameState?.turnState === 'roll') {
+      setMovementPendingArrival(false);
+      if (safetyArrivalTimerRef.current) clearTimeout(safetyArrivalTimerRef.current);
+    }
+  }, [gameState?.turnState]);
 
   // Sync match timer with server state
   useEffect(() => {
@@ -196,25 +205,6 @@ export default function BoardBrawlArenaPage() {
 
     const handleStateUpdate = (newState) => {
       if (newState && newState.roomId === roomId) {
-        if (newState.players && landedPositionsRef.current) {
-          const isMoving = newState.players.some(p => {
-            const recorded = landedPositionsRef.current[p.id];
-            return recorded !== undefined && recorded !== p.position;
-          });
-          if (isMoving) {
-            setMovementPendingArrival(true);
-            if (safetyArrivalTimerRef.current) clearTimeout(safetyArrivalTimerRef.current);
-            safetyArrivalTimerRef.current = setTimeout(() => {
-              setMovementPendingArrival(false);
-            }, 8000);
-          } else {
-            newState.players.forEach(p => {
-              if (landedPositionsRef.current[p.id] === undefined) {
-                landedPositionsRef.current[p.id] = p.position;
-              }
-            });
-          }
-        }
         setGameState(newState);
       }
     };
@@ -422,6 +412,10 @@ export default function BoardBrawlArenaPage() {
   const handleRollDice = () => {
     if (!isMyTurn || !activePlayerId) return;
     setMovementPendingArrival(true);
+    if (safetyArrivalTimerRef.current) clearTimeout(safetyArrivalTimerRef.current);
+    safetyArrivalTimerRef.current = setTimeout(() => {
+      setMovementPendingArrival(false);
+    }, 4500);
     socket.emit('game_action', { roomId, action: 'roll_dice', payload: { playerId: activePlayerId } });
   };
 
@@ -1174,7 +1168,7 @@ export default function BoardBrawlArenaPage() {
             />
 
             {/* Floating In-Game Roll Control (Only on active player's roll turn) */}
-            {isMyTurn && gameState.turnState === 'roll' && !movementPendingArrival && (
+            {isMyTurn && gameState.turnState === 'roll' && (
               <div style={{
                 position: 'absolute',
                 bottom: '36px',
