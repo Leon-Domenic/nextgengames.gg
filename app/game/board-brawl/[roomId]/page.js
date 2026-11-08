@@ -19,6 +19,7 @@ import EventCardModal from '@/components/board-brawl/EventCardModal';
 import ActionCardDock from '@/components/board-brawl/ActionCardDock';
 import ActionCardPlayOverlay from '@/components/board-brawl/ActionCardPlayOverlay';
 import FestivalSelectModal from '@/components/board-brawl/FestivalSelectModal';
+import WorldTourSelectModal from '@/components/board-brawl/WorldTourSelectModal';
 import DebtLiquidationModal from '@/components/board-brawl/DebtLiquidationModal';
 import EmojiReactionPicker from '@/components/board-brawl/EmojiReactionPicker';
 import EmojiReactionBubble from '@/components/board-brawl/EmojiReactionBubble';
@@ -427,6 +428,27 @@ export default function BoardBrawlArenaPage() {
     });
   };
 
+  const handleSelectFlightDestination = (tileId) => {
+    if (!socket || !activePlayerId) return;
+    try {
+      sounds.playFlightTakeoff?.();
+    } catch (e) {}
+    socket.emit('game_action', {
+      roomId,
+      action: 'select_flight_destination',
+      payload: { playerId: activePlayerId, tileId }
+    });
+  };
+
+  const handleSkipFlight = () => {
+    if (!socket || !activePlayerId) return;
+    socket.emit('game_action', {
+      roomId,
+      action: 'skip_flight',
+      payload: { playerId: activePlayerId }
+    });
+  };
+
   const handlePayBail = () => {
     if (!socket || !activePlayerId) return;
     socket.emit('game_action', {
@@ -543,6 +565,17 @@ export default function BoardBrawlArenaPage() {
             myPlayer={myPlayerObj}
             onSelectFestival={handleSetFestival}
             onSkip={() => handleEndTurn(myPlayerObj?.id)}
+            turnTimer={gameState.turnTimerRemaining}
+          />
+        )}
+
+        {/* World Tour Flight Destination Select Modal */}
+        {isMyTurn && gameState.turnState === 'flight_select' && (
+          <WorldTourSelectModal
+            properties={gameState.properties}
+            myPlayer={myPlayerObj}
+            onSelectDestination={handleSelectFlightDestination}
+            onSkip={handleSkipFlight}
             turnTimer={gameState.turnTimerRemaining}
           />
         )}
@@ -684,7 +717,7 @@ export default function BoardBrawlArenaPage() {
                     position={pos}
                     isCompact={total > 4}
                     onThrowTomato={handleThrowTomato}
-                    canTomato={myPlayerObj?.freeTomatoes > 0}
+                    canTomato={myPlayerObj?.freeTomatoes > 0 || (myPlayerObj?.cash || 0) >= 50000}
                     activeReaction={playerReactions[player.id]}
                     onSendReaction={(emoji) => handleSendReaction(player.id, emoji)}
                   />
@@ -1367,20 +1400,22 @@ function PlayerCornerCard({
         {/* Right action button: Tomato Sabotage */}
         {!isMe && !isBankrupt && canTomato && (
           <button
-            onClick={() => onThrowTomato(player.id)}
-            title={`Throw tomato at ${player.name}!`}
+            onClick={() => {
+              try { onThrowTomato?.(player.id); } catch (e) {}
+            }}
+            title={`Throw tomato at ${player.name}! (Free or 50,000 CR)`}
             style={{
               width: '32px',
               height: '32px',
               borderRadius: '50%',
-              background: 'rgba(239, 68, 68, 0.12)',
+              background: 'rgba(239, 68, 68, 0.15)',
               border: '1.5px solid #ef4444',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: '16px',
               cursor: 'pointer',
-              boxShadow: '0 2px 6px rgba(239, 68, 68, 0.2)',
+              boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)',
               transition: 'transform 0.1s',
             }}
             onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.15)'}

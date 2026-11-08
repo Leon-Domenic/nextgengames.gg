@@ -217,6 +217,10 @@ app.prepare().then(() => {
         game.upgradeCity(payload.playerId, payload.tileId);
       } else if (action === 'set_festival') {
         game.setFestival(payload.playerId, payload.tileId);
+      } else if (action === 'select_flight_destination') {
+        game.selectFlightDestination(payload.playerId, payload.tileId);
+      } else if (action === 'skip_flight') {
+        game.skipFlight(payload.playerId);
       } else if (action === 'pay_bail') {
         game.payBail(payload.playerId);
       } else if (action === 'declare_bankruptcy') {

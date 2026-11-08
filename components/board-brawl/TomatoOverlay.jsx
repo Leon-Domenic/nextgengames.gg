@@ -3,20 +3,33 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { sounds } from '@/lib/audio';
 
-export default function TomatoOverlay({ splatEvent, isVictim }) {
+export default function TomatoOverlay({
+  splatEvent,
+  currentUserId,
+  players = [],
+  onVictimImpact,
+}) {
   const [splatOpacity, setSplatOpacity] = useState(0);
   const [wipePercent, setWipePercent] = useState(0); // 0 to 100%
-  const [flyingTomato, setFlyingTomato] = useState(null); // { from, to, progress }
+  const [flyingTomato, setFlyingTomato] = useState(null); // { active: boolean }
 
   const wipeCounterRef = useRef(0);
+
+  const isVictim = !!(
+    splatEvent &&
+    currentUserId &&
+    (splatEvent.targetPlayerId === currentUserId || splatEvent.targetId === currentUserId)
+  );
 
   // Trigger flight or splat
   useEffect(() => {
     if (!splatEvent) return;
 
-    sounds.playTomatoThrow();
+    try {
+      sounds.playTomatoThrow?.();
+    } catch (e) {}
 
-    // Flight animation
+    // Flight animation projectile
     setFlyingTomato({
       active: true,
       scale: 0.5,
@@ -25,7 +38,12 @@ export default function TomatoOverlay({ splatEvent, isVictim }) {
     const flightTimeout = setTimeout(() => {
       setFlyingTomato(null);
       if (isVictim) {
-        sounds.playTomatoSplat();
+        try {
+          sounds.playTomatoSplat?.();
+        } catch (e) {}
+        try {
+          onVictimImpact?.();
+        } catch (e) {}
         setSplatOpacity(1);
         setWipePercent(0);
         wipeCounterRef.current = 0;
@@ -33,7 +51,7 @@ export default function TomatoOverlay({ splatEvent, isVictim }) {
     }, 600);
 
     return () => clearTimeout(flightTimeout);
-  }, [splatEvent, isVictim]);
+  }, [splatEvent, isVictim, onVictimImpact]);
 
   // Splat auto-drip fadeout
   useEffect(() => {
@@ -56,7 +74,7 @@ export default function TomatoOverlay({ splatEvent, isVictim }) {
   }, [splatOpacity]);
 
   // Interactive wipe mechanic: dragging cursor across screen
-  const handleWipeInteraction = (e) => {
+  const handleWipeInteraction = () => {
     if (splatOpacity <= 0) return;
     wipeCounterRef.current += 1;
     const progress = Math.min(100, Math.floor(wipeCounterRef.current * 4));
@@ -78,7 +96,7 @@ export default function TomatoOverlay({ splatEvent, isVictim }) {
           transform: 'translate(-50%, -50%)',
           zIndex: 99998,
           pointerEvents: 'none',
-          animation: 'tomatoFlight 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards',
+          animation: 'tomatoFlightAnim 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards',
           fontSize: '90px',
         }}>
           🍅
@@ -162,7 +180,7 @@ export default function TomatoOverlay({ splatEvent, isVictim }) {
       )}
 
       <style jsx global>{`
-        @keyframes tomatoFlight {
+        @keyframes tomatoFlightAnim {
           0% {
             transform: translate(-50%, -50%) scale(0.2) rotate(0deg);
             opacity: 0.6;
