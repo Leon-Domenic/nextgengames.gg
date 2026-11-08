@@ -2,15 +2,22 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 import { useTheme } from './ThemeProvider';
 import { Users, LogIn, LogOut, UserPlus, Sparkles, Trophy, Sun, Moon } from 'lucide-react';
 import { TOKEN_ICONS } from '@/lib/board-brawl/characters.js';
 
 export default function Navbar() {
+  const pathname = usePathname();
   const { user, logout, playAsGuest, onlineUsers } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [guestLoading, setGuestLoading] = useState(false);
+
+  // Hide Navbar completely on Board Brawl game/lobby pages for immersive full-screen experience
+  if (pathname && pathname.startsWith('/game/board-brawl')) {
+    return null;
+  }
 
   const handleQuickGuest = async () => {
     try {

@@ -138,10 +138,11 @@ export default function Board3D({
 
   // Initialize Three.js Scene with Business Tour Diamond Table & Striped Lawn
   useEffect(() => {
-    if (!mountRef.current) return;
+    const mountNode = mountRef.current;
+    if (!mountNode) return;
 
-    const width = mountRef.current.clientWidth || (typeof window !== 'undefined' ? window.innerWidth : 1280);
-    const height = mountRef.current.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 800);
+    const width = mountNode.clientWidth || (typeof window !== 'undefined' ? window.innerWidth : 1280);
+    const height = mountNode.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 800);
 
     // 1. Scene
     const scene = new THREE.Scene();
@@ -745,7 +746,7 @@ export default function Board3D({
       if (resizeObserver) resizeObserver.disconnect();
       cancelAnimationFrame(animationFrameId);
       renderer.dispose();
-      if (mountRef.current) mountRef.current.innerHTML = '';
+      if (mountNode) mountNode.innerHTML = '';
     };
   }, []);
 

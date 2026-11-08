@@ -62,6 +62,20 @@ export default function BoardBrawlArenaPage() {
     syncMusic();
     return sounds.subscribe(syncMusic);
   }, []);
+
+  // Global Keybind Shortcuts (S for Settings, M for Mute)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target?.tagName)) return;
+      if (e.key === 's' || e.key === 'S') {
+        setShowSettingsModal(prev => !prev);
+      } else if (e.key === 'm' || e.key === 'M') {
+        if (sounds.toggleMute) sounds.toggleMute();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
   const [equippedDiceSkin, setEquippedDiceSkin] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('ngg_equipped_dice_skin') || 'classic_red';
@@ -75,15 +89,20 @@ export default function BoardBrawlArenaPage() {
   // Auto-init guest if visitor has no session
   useEffect(() => {
     if (!loading && !user && !guestInitializing) {
-      setGuestInitializing(true);
-      playAsGuest().catch(() => {}).finally(() => setGuestInitializing(false));
+      let isMounted = true;
+      playAsGuest().catch(() => {}).finally(() => {
+        if (isMounted) setGuestInitializing(false);
+      });
+      return () => { isMounted = false; };
     }
   }, [loading, user, guestInitializing, playAsGuest]);
 
   // Join Room & Real-time State Sync (Defensively debounced to prevent socket storms)
   const hasJoinedRef = useRef(false);
   const gameStateRef = useRef(null);
-  gameStateRef.current = gameState;
+  useEffect(() => {
+    gameStateRef.current = gameState;
+  }, [gameState]);
 
   useEffect(() => {
     if (!socket || loading || guestInitializing) return;
@@ -886,6 +905,7 @@ export default function BoardBrawlArenaPage() {
             <SettingsModal
               isOpen={showSettingsModal}
               onClose={() => setShowSettingsModal(false)}
+              onOpenCosmetics={() => setShowInGameShop(true)}
             />
 
             {/* The Steady 45-Degree Diamond 3D Arena */}

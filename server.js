@@ -222,7 +222,7 @@ app.prepare().then(() => {
       } else if (action === 'throw_tomato') {
         game.throwTomato(payload.fromPlayerId, payload.targetPlayerId);
       } else if (action === 'end_turn') {
-        game.endTurn(payload.playerId);
+        game.completeTurnAction(payload.playerId);
       } else if (action === 'send_chat') {
         game.addChatMessage({
           sender: payload.sender,
