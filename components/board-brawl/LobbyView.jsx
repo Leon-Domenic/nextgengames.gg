@@ -557,7 +557,7 @@ export default function LobbyView({
                 background: '#ffffff',
                 border: isMe ? '3px solid #0284c7' : '2px solid #e2e8f0',
                 borderRadius: '20px',
-                overflow: 'hidden',
+                overflow: 'visible',
                 display: 'flex',
                 flexDirection: 'column',
                 minHeight: '430px',
@@ -575,6 +575,8 @@ export default function LobbyView({
                 alignItems: 'center',
                 gap: '10px',
                 borderBottom: '2px solid rgba(0, 0, 0, 0.1)',
+                borderTopLeftRadius: '17px',
+                borderTopRightRadius: '17px',
               }}>
                 <div
                   onClick={() => setActivePickerSlot(activePickerSlot === slotIdx ? null : slotIdx)}
@@ -642,6 +644,8 @@ export default function LobbyView({
                 alignItems: 'center',
                 justifyContent: 'center',
                 padding: '16px',
+                borderBottomLeftRadius: '17px',
+                borderBottomRightRadius: '17px',
               }}>
                 {/* Standee Shadow Pedestal */}
                 <div style={{

@@ -6,30 +6,26 @@ export default function EmojiReactionBubble({
   reaction,
   position = 'top-left',
 }) {
-  const [active, setActive] = useState(() => {
-    if (!reaction?.emoji || !reaction?.timestamp) return null;
-    return (Date.now() - reaction.timestamp < 3500) ? reaction : null;
-  });
+  const [ticker, setTicker] = useState(0);
 
   useEffect(() => {
-    if (!reaction?.emoji || !reaction?.timestamp) {
-      setActive(null);
-      return;
-    }
-
+    if (!reaction?.emoji || !reaction?.timestamp) return;
     const elapsed = Date.now() - reaction.timestamp;
     if (elapsed < 3500) {
-      setActive(reaction);
       const timer = setTimeout(() => {
-        setActive(null);
+        setTicker((t) => t + 1);
       }, 3500 - elapsed);
       return () => clearTimeout(timer);
-    } else {
-      setActive(null);
     }
   }, [reaction?.emoji, reaction?.timestamp]);
 
-  if (!active?.emoji) return null;
+  const isVisible = Boolean(
+    reaction?.emoji &&
+    reaction?.timestamp &&
+    Date.now() - reaction.timestamp < 3500
+  );
+
+  if (!isVisible) return null;
 
   // Placement next to the avatar box
   const placementStyle = {
@@ -77,7 +73,7 @@ export default function EmojiReactionBubble({
           filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))',
         }}
       >
-        <span>{active.emoji}</span>
+        <span>{reaction.emoji}</span>
       </div>
     </div>
   );
