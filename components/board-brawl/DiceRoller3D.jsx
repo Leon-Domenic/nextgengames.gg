@@ -23,6 +23,13 @@ export default function DiceRoller3D({
 
   const skin = DICE_SKIN_MAP[diceSkin] || DICE_SKINS[0];
 
+  // Whenever turn state resets to roll, ensure rolling lock is never stuck
+  useEffect(() => {
+    if (isMyTurn && canRoll) {
+      setIsRolling(false);
+    }
+  }, [isMyTurn, canRoll]);
+
   useEffect(() => {
     // Only trigger rolling animation when a NEW unique roll ID arrives
     if (!lastResult || !lastResult.id || lastResult.id === lastRollIdRef.current) return;
@@ -45,6 +52,14 @@ export default function DiceRoller3D({
 
     return () => clearTimeout(rollTimeout);
   }, [lastResult]);
+
+  const handleRollClick = () => {
+    if (isRolling) return;
+    setIsRolling(true);
+    // Failsafe timeout to prevent button ever sticking
+    setTimeout(() => setIsRolling(false), 1200);
+    onRoll?.();
+  };
 
   return (
     <div style={{
@@ -101,7 +116,7 @@ export default function DiceRoller3D({
       {isMyTurn && canRoll ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
           <button
-            onClick={onRoll}
+            onClick={handleRollClick}
             disabled={isRolling}
             style={{
               display: 'flex',

@@ -98,6 +98,7 @@ export default function BoardBrawlArenaPage() {
   // Auto-init guest if visitor has no session
   useEffect(() => {
     if (!loading && !user && !guestInitializing) {
+      setGuestInitializing(true);
       let isMounted = true;
       playAsGuest().catch(() => {}).finally(() => {
         if (isMounted) setGuestInitializing(false);
@@ -108,18 +109,21 @@ export default function BoardBrawlArenaPage() {
 
   // Join Room & Real-time State Sync (Defensively debounced to prevent socket storms)
   const hasJoinedRef = useRef(false);
+  const localPlayerIdRef = useRef(null);
   const gameStateRef = useRef(null);
   useEffect(() => {
     gameStateRef.current = gameState;
   }, [gameState]);
 
   useEffect(() => {
-    if (!socket || loading || guestInitializing) return;
+    // Wait until user authentication is fully resolved to prevent temporary anon ID mismatches
+    if (!socket || loading || guestInitializing || !user) return;
 
     const joinRoom = () => {
+      localPlayerIdRef.current = user.id;
       socket.emit('join_game_room', {
         roomId,
-        user: user || { id: `anon_${Date.now()}`, username: 'Guest Tycoon', is_guest: true },
+        user,
         isSpectator: false,
         mode: modeQuery,
       });
@@ -282,9 +286,13 @@ export default function BoardBrawlArenaPage() {
     );
   }
 
+  const nonBots = gameState.players.filter(p => !p.isBot);
+  const myPlayerObj = gameState.players.find(p => p.id === user?.id)
+    || gameState.players.find(p => p.id === localPlayerIdRef.current)
+    || (nonBots.length === 1 ? nonBots[0] : null);
   const currentPlayer = gameState.players[gameState.activePlayerIndex];
-  const isMyTurn = currentPlayer?.id === user?.id;
-  const myPlayerObj = gameState.players.find(p => p.id === user?.id);
+  const isMyTurn = Boolean(currentPlayer && myPlayerObj && currentPlayer.id === myPlayerObj.id);
+  const activePlayerId = myPlayerObj?.id || user?.id;
 
   // Actions
   const handleStartGame = () => {
@@ -296,21 +304,21 @@ export default function BoardBrawlArenaPage() {
   };
 
   const handleSelectCharacter = (charId) => {
-    if (!user) return;
+    if (!activePlayerId) return;
     socket.emit('game_action', {
       roomId,
       action: 'select_character',
-      payload: { playerId: user.id, token: charId }
+      payload: { playerId: activePlayerId, token: charId }
     });
   };
 
   const handleSelectColor = (colorHex) => {
-    if (!user) return;
+    if (!activePlayerId) return;
     sounds.playBuy();
     socket.emit('game_action', {
       roomId,
       action: 'select_character',
-      payload: { playerId: user.id, color: colorHex }
+      payload: { playerId: activePlayerId, color: colorHex }
     });
   };
 
@@ -319,87 +327,87 @@ export default function BoardBrawlArenaPage() {
     if (typeof window !== 'undefined') {
       localStorage.setItem('ngg_equipped_dice_skin', skinId);
     }
-    if (user) {
+    if (activePlayerId) {
       socket.emit('game_action', {
         roomId,
         action: 'select_dice_skin',
-        payload: { playerId: user.id, skinId }
+        payload: { playerId: activePlayerId, skinId }
       });
     }
   };
 
   const handleRollDice = () => {
-    if (!isMyTurn) return;
-    socket.emit('game_action', { roomId, action: 'roll_dice', payload: { playerId: user.id } });
+    if (!isMyTurn || !activePlayerId) return;
+    socket.emit('game_action', { roomId, action: 'roll_dice', payload: { playerId: activePlayerId } });
   };
 
   const handleBuyCity = (tileId, level) => {
-    socket.emit('game_action', { roomId, action: 'buy_city', payload: { playerId: user.id, tileId, level } });
+    socket.emit('game_action', { roomId, action: 'buy_city', payload: { playerId: activePlayerId, tileId, level } });
   };
 
   const handleBuyoutCity = (tileId) => {
-    socket.emit('game_action', { roomId, action: 'buyout_city', payload: { playerId: user.id, tileId } });
+    socket.emit('game_action', { roomId, action: 'buyout_city', payload: { playerId: activePlayerId, tileId } });
   };
 
   const handleUpgradeCity = (tileId) => {
-    socket.emit('game_action', { roomId, action: 'upgrade_city', payload: { playerId: user.id, tileId } });
+    socket.emit('game_action', { roomId, action: 'upgrade_city', payload: { playerId: activePlayerId, tileId } });
   };
 
   const handleEndTurn = () => {
-    socket.emit('game_action', { roomId, action: 'end_turn', payload: { playerId: user.id } });
+    socket.emit('game_action', { roomId, action: 'end_turn', payload: { playerId: activePlayerId } });
   };
 
   const handleThrowTomato = (targetPlayerId) => {
-    if (!user || user.id === targetPlayerId) return;
+    if (!activePlayerId || activePlayerId === targetPlayerId) return;
     socket.emit('game_action', {
       roomId,
       action: 'throw_tomato',
-      payload: { fromPlayerId: user.id, targetPlayerId }
+      payload: { fromPlayerId: activePlayerId, targetPlayerId }
     });
   };
 
   const handlePlayActionCard = (cardId, target) => {
-    if (!socket || !user) return;
+    if (!socket || !activePlayerId) return;
     socket.emit('game_action', {
       roomId,
       action: 'play_action_card',
-      payload: { playerId: user.id, cardId, target }
+      payload: { playerId: activePlayerId, cardId, target }
     });
   };
 
   const handleDismissEventCard = () => {
-    if (!socket || !user) return;
+    if (!socket || !activePlayerId) return;
     socket.emit('game_action', {
       roomId,
       action: 'dismiss_event_card',
-      payload: { playerId: user.id }
+      payload: { playerId: activePlayerId }
     });
   };
 
   const handleSetFestival = (tileId) => {
-    if (!socket || !user) return;
+    if (!socket || !activePlayerId) return;
     socket.emit('game_action', {
       roomId,
       action: 'set_festival',
-      payload: { playerId: user.id, tileId }
+      payload: { playerId: activePlayerId, tileId }
     });
   };
 
   const handlePayBail = () => {
-    if (!socket || !user) return;
+    if (!socket || !activePlayerId) return;
     socket.emit('game_action', {
       roomId,
       action: 'pay_bail',
-      payload: { playerId: user.id }
+      payload: { playerId: activePlayerId }
     });
   };
 
   const handleDeclareBankruptcy = () => {
-    if (!socket || !user) return;
+    if (!socket || !activePlayerId) return;
     socket.emit('game_action', {
       roomId,
       action: 'declare_bankruptcy',
-      payload: { playerId: user.id }
+      payload: { playerId: activePlayerId }
     });
   };
 
