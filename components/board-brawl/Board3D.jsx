@@ -62,12 +62,11 @@ export function getTile3DPos(index) {
 }
 
 export default function Board3D({
-  roomId,
-  game,
-  players = [],
-  currentTileId = 0,
   properties = {},
-  isMyTurn = false,
+  players = [],
+  activeTileId = 0,
+  lastDiceResult = null,
+  centerContent = null,
   onRollDice,
   onBuyCity,
   onBuyoutCity,
@@ -523,15 +522,76 @@ export default function Board3D({
   }, []);
 
   useEffect(() => {
-    if (game?.lastDiceResult) {
-      triggerDiceRoll(game.lastDiceResult[0], game.lastDiceResult[1]);
+    if (lastDiceResult) {
+      triggerDiceRoll(lastDiceResult.d1 || 1, lastDiceResult.d2 || 1);
     }
-  }, [game?.lastDiceResult, triggerDiceRoll]);
+  }, [lastDiceResult, triggerDiceRoll]);
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
+    <div style={{
+      position: 'relative',
+      width: '840px',
+      height: '840px',
+      maxWidth: '96vw',
+      maxHeight: '96vw',
+      borderRadius: '20px',
+      overflow: 'hidden',
+      background: 'radial-gradient(circle at center, #101624 0%, #07090e 100%)',
+      border: '3px solid rgba(56, 189, 248, 0.3)',
+      boxShadow: '0 0 60px rgba(0, 0, 0, 0.6), inset 0 0 50px rgba(0, 240, 255, 0.05)',
+      userSelect: 'none',
+    }}>
       {/* 3D WebGL Canvas */}
-      <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
+      <div ref={mountRef} style={{ width: '100%', height: '100%', cursor: 'default' }} />
+
+      {/* Active Dice Floating Badge */}
+      {lastDiceResult && (
+        <div style={{
+          position: 'absolute',
+          bottom: '24px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 10,
+          padding: '8px 20px',
+          borderRadius: '24px',
+          background: lastDiceResult.isDoubles
+            ? 'linear-gradient(135deg, rgba(0, 240, 255, 0.9), rgba(168, 85, 247, 0.9))'
+            : 'rgba(16, 22, 34, 0.9)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          color: lastDiceResult.isDoubles ? '#060709' : '#fff',
+          fontSize: '13px',
+          fontWeight: 900,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+          pointerEvents: 'none',
+        }}>
+          <span>🎲 {lastDiceResult.d1} + {lastDiceResult.d2} = {lastDiceResult.sum}</span>
+          {lastDiceResult.isDoubles && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Sparkles size={14} /> DOUBLES!
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Interactive Center HTML Stage (Lobby controls & Turn Action Prompts) */}
+      {centerContent && (
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '460px',
+          maxWidth: '85%',
+          zIndex: 8,
+          pointerEvents: 'auto',
+        }}>
+          {centerContent}
+        </div>
+      )}
     </div>
   );
 }
