@@ -32,6 +32,7 @@ export default function BoardBrawlArenaPage() {
   const [isVictim, setIsVictim] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
+  const [musicPlaying, setMusicPlaying] = useState(false);
 
   const socket = getSocket();
   const chatBottomRef = useRef(null);
@@ -322,6 +323,29 @@ export default function BoardBrawlArenaPage() {
             >
               {copiedLink ? <CheckCheck size={12} /> : <Copy size={12} />}
               {copiedLink ? 'Copied' : 'Invite'}
+            </button>
+            <button
+              onClick={() => {
+                const isPlaying = sounds.toggleMusic();
+                setMusicPlaying(isPlaying);
+              }}
+              title={musicPlaying ? "Mute Background Music" : "Play Background Music"}
+              style={{
+                background: musicPlaying ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                color: musicPlaying ? '#38bdf8' : '#94a3b8',
+                border: musicPlaying ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '6px',
+                padding: '6px 10px',
+                fontSize: '11px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                marginLeft: '4px',
+              }}
+            >
+              {musicPlaying ? '🔊 Music' : '🔈 Music'}
             </button>
           </div>
         </div>

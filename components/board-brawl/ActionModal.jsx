@@ -39,161 +39,167 @@ export default function ActionModal({
     <div style={{
       width: '100%',
       maxWidth: '440px',
-      background: 'rgba(16, 20, 29, 0.95)',
-      border: '2px solid rgba(0, 240, 255, 0.4)',
-      boxShadow: '0 0 30px rgba(0, 240, 255, 0.25)',
-      borderRadius: '16px',
-      padding: '20px',
+      background: 'rgba(15, 23, 42, 0.94)',
+      border: '2px solid rgba(56, 189, 248, 0.5)',
+      boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.8), 0 0 25px rgba(56, 189, 248, 0.25)',
+      borderRadius: '20px',
+      padding: '24px',
       textAlign: 'center',
-      backdropFilter: 'blur(12px)',
+      backdropFilter: 'blur(16px)',
+      color: '#f8fafc',
     }}>
       {/* City Banner */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '6px' }}>
-        <span style={{ fontSize: '24px' }}>{tile.flag || tile.icon}</span>
-        <h3 style={{ fontSize: '20px', fontWeight: 900, margin: 0, color: '#fff' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '8px' }}>
+        <span style={{ fontSize: '28px' }}>{tile.flag || tile.icon}</span>
+        <h3 style={{ fontSize: '22px', fontWeight: 900, margin: 0, color: '#ffffff', letterSpacing: '0.5px' }}>
           {tile.name}
         </h3>
       </div>
-      <p style={{ fontSize: '13px', color: '#94a3b8', margin: '0 0 16px 0' }}>
-        {tile.country ? `${tile.country} • ${tile.colorGroup?.toUpperCase()} Group` : tile.description}
+      <p style={{ fontSize: '13px', color: '#94a3b8', margin: '0 0 18px 0', fontWeight: 600 }}>
+        {tile.country ? `${tile.country} • ${tile.colorGroup?.toUpperCase()} DISTRICT` : tile.description}
       </p>
 
       {/* Case 1: Unowned City Purchase */}
       {!prop.ownerId && tile.type === 'city' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <button
-            onClick={() => { sounds.playCash(); onBuy(tile.id, 1); }}
+            onClick={() => { sounds.playBuild(); onBuy(tile.id, 1); }}
             disabled={!canBuyLand}
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '12px 16px',
-              background: canBuyLand ? 'rgba(0, 240, 255, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-              border: canBuyLand ? '1px solid #00f0ff' : '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '8px',
-              color: canBuyLand ? '#00f0ff' : '#64748b',
+              background: canBuyLand ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+              border: canBuyLand ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '10px',
+              color: canBuyLand ? '#38bdf8' : '#64748b',
               fontWeight: 800,
-              fontSize: '13px',
+              fontSize: '14px',
               cursor: canBuyLand ? 'pointer' : 'not-allowed',
             }}
           >
-            <span>🏗️ Buy Land Only</span>
+            <span>Buy Land</span>
             <span>${tile.price}</span>
           </button>
 
           <button
-            onClick={() => { sounds.playCash(); onBuy(tile.id, 2); }}
+            onClick={() => { sounds.playBuild(); onBuy(tile.id, 2); }}
             disabled={!canBuyWithHouse}
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '12px 16px',
-              background: canBuyWithHouse ? 'linear-gradient(135deg, #00f0ff, #0ea5e9)' : 'rgba(255, 255, 255, 0.05)',
-              color: canBuyWithHouse ? '#060709' : '#64748b',
-              border: 'none',
-              borderRadius: '8px',
-              fontWeight: 900,
+              background: canBuyWithHouse ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(16, 185, 129, 0.25))' : 'rgba(255, 255, 255, 0.05)',
+              border: canBuyWithHouse ? '1px solid #22c55e' : '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '10px',
+              color: canBuyWithHouse ? '#4ade80' : '#64748b',
+              fontWeight: 800,
               fontSize: '14px',
               cursor: canBuyWithHouse ? 'pointer' : 'not-allowed',
-              boxShadow: canBuyWithHouse ? '0 0 15px rgba(0, 240, 255, 0.3)' : 'none',
             }}
           >
-            <span>🏡 Buy Land + 1 House</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Building2 size={16} />
+              <span>Buy + 1st House</span>
+            </div>
             <span>${tile.price + tile.housePrice}</span>
           </button>
         </div>
       )}
 
-      {/* Case 2: Rival City - 2x Buyout Option */}
-      {isRival && !prop.isLandmark && (
+      {/* Case 2: Owned by Player (Upgrade to 2/3 Houses or Hotel) */}
+      {isOwner && tile.type === 'city' && !prop.isLandmark && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{
-            background: 'rgba(255, 51, 68, 0.12)',
-            border: '1px solid rgba(255, 51, 68, 0.3)',
-            borderRadius: '8px',
-            padding: '10px',
-            fontSize: '13px',
-            color: '#ff99aa',
-          }}>
-            Owned by <strong>{rivalOwner?.name}</strong>. You can execute a <strong>2x Buyout</strong> to steal it!
+          <div style={{ padding: '10px', background: 'rgba(56, 189, 248, 0.1)', borderRadius: '8px', fontSize: '13px', color: '#38bdf8', fontWeight: 700 }}>
+            You own {tile.name}! Current Level: {prop.level >= 5 ? 'Luxury Hotel' : `${prop.level - 1} House(s)`}
           </div>
 
           <button
-            onClick={() => { sounds.playBuyout(); onBuyout(tile.id); }}
-            disabled={!canBuyout}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '14px 18px',
-              background: canBuyout ? 'linear-gradient(135deg, #ff3344, #f97316)' : 'rgba(255, 255, 255, 0.05)',
-              color: canBuyout ? '#fff' : '#64748b',
-              border: 'none',
-              borderRadius: '8px',
-              fontWeight: 900,
-              fontSize: '14px',
-              cursor: canBuyout ? 'pointer' : 'not-allowed',
-              boxShadow: canBuyout ? '0 0 20px rgba(255, 51, 68, 0.4)' : 'none',
-            }}
-          >
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Zap size={16} />
-              BUY OUT & STEAL CITY (2x)
-            </span>
-            <span>${buyoutCost}</span>
-          </button>
-        </div>
-      )}
-
-      {/* Case 3: Own City - Upgrade Houses / Landmark */}
-      {isOwner && !prop.isLandmark && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <button
-            onClick={() => { sounds.playCash(); onUpgrade(tile.id); }}
+            onClick={() => { sounds.playBuild(); onUpgrade(tile.id); }}
             disabled={!canUpgrade}
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '14px 18px',
-              background: canUpgrade ? 'linear-gradient(135deg, #00ff88, #10b981)' : 'rgba(255, 255, 255, 0.05)',
-              color: canUpgrade ? '#060709' : '#64748b',
-              border: 'none',
-              borderRadius: '8px',
-              fontWeight: 900,
+              padding: '12px 16px',
+              background: canUpgrade ? 'linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(245, 158, 11, 0.25))' : 'rgba(255, 255, 255, 0.05)',
+              border: canUpgrade ? '1px solid #eab308' : '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '10px',
+              color: canUpgrade ? '#facc15' : '#64748b',
+              fontWeight: 800,
               fontSize: '14px',
               cursor: canUpgrade ? 'pointer' : 'not-allowed',
-              boxShadow: canUpgrade ? '0 0 20px rgba(0, 255, 136, 0.3)' : 'none',
             }}
           >
-            <span>
-              {prop.level >= 4 ? '👑 Upgrade to LANDMARK (Permanent Immunity)' : `🏡 Upgrade to Level ${prop.level + 1}`}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Building2 size={16} />
+              <span>{prop.level >= 4 ? 'Upgrade to Luxury Hotel' : 'Build Next House'}</span>
+            </div>
             <span>${tile.housePrice}</span>
           </button>
         </div>
       )}
 
-      {/* Skip / End Turn Button */}
-      <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'center' }}>
-        <button
-          onClick={onEndTurn}
-          style={{
-            padding: '10px 24px',
-            background: 'transparent',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            borderRadius: '8px',
-            color: '#94a3b8',
-            fontSize: '13px',
-            fontWeight: 700,
-            cursor: 'pointer',
-          }}
-        >
-          Skip / End Turn ({turnTimer}s)
-        </button>
-      </div>
+      {/* Case 3: Owned by Rival (Sabotage 2x Buyout option) */}
+      {isRival && tile.type === 'city' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ padding: '10px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', fontSize: '13px', color: '#f87171', fontWeight: 700 }}>
+            Owned by {rivalOwner?.name || 'Rival'}! Rent paid.
+          </div>
+
+          {!prop.isLandmark && (
+            <button
+              onClick={() => { sounds.playBuyout(); onBuyout(tile.id); }}
+              disabled={!canBuyout}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 16px',
+                background: canBuyout ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.25))' : 'rgba(255, 255, 255, 0.05)',
+                border: canBuyout ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '10px',
+                color: canBuyout ? '#f87171' : '#64748b',
+                fontWeight: 800,
+                fontSize: '14px',
+                cursor: canBuyout ? 'pointer' : 'not-allowed',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Zap size={16} />
+                <span>Hostile Buyout (2x)</span>
+              </div>
+              <span>${buyoutCost}</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Pass / End Turn Button */}
+      <button
+        onClick={onEndTurn}
+        style={{
+          marginTop: '16px',
+          width: '100%',
+          padding: '12px',
+          background: 'rgba(255, 255, 255, 0.08)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          borderRadius: '10px',
+          color: '#e2e8f0',
+          fontWeight: 700,
+          fontSize: '13px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px',
+        }}
+      >
+        <span>Pass & End Turn</span>
+        <ArrowRight size={15} />
+      </button>
     </div>
   );
 }

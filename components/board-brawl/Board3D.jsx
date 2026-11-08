@@ -5,333 +5,332 @@ import * as THREE from 'three';
 import { TILES } from '@/lib/board-brawl/types';
 import { sounds } from '@/lib/audio';
 import {
-  parseLegacyJsonToBufferObject,
   createProceduralPawn,
   generateDiceMaterials,
+  create3DHouse,
+  create3DHotel,
+  createOwnerCrest,
 } from '@/lib/board-brawl/pawnModels3D';
 import { Sparkles } from 'lucide-react';
 
-const BOARD_HALF = 35; // Extents from -35 to +35
-const TILE_STEP = (BOARD_HALF * 2) / 8; // 8.75 units per tile
+const BOARD_HALF = 54; // 108 x 108 Tabletop footprint for 48 tiles
+const TILES_PER_SIDE = 12;
+const TILE_STEP = (BOARD_HALF * 2) / TILES_PER_SIDE; // 9.0 units per tile
 
-// Maps 0..31 tile index to world coordinates around the 80x80 board perimeter
+// Maps 0..47 tile index to world coordinates around the 48-tile tabletop perimeter
 export function getTile3DPos(index) {
   const S = BOARD_HALF;
   const step = TILE_STEP;
   const half = step / 2;
 
-  if (index >= 0 && index < 8) {
-    // Bottom side: 0 to 7 (left to right)
+  if (index >= 0 && index < 12) {
+    // Bottom side: 0 to 11 (left to right)
     return {
       x: -S + index * step + half,
       y: 0.1,
       z: S,
       rotationY: 0,
     };
-  } else if (index >= 8 && index < 16) {
-    // Right side: 8 to 15 (bottom to top)
-    const k = index - 8;
+  } else if (index >= 12 && index < 24) {
+    // Left side: 12 to 23 (bottom to top)
+    const k = index - 12;
     return {
-      x: S,
+      x: -S,
       y: 0.1,
       z: S - k * step - half,
-      rotationY: -Math.PI / 2,
+      rotationY: Math.PI / 2,
     };
-  } else if (index >= 16 && index < 24) {
-    // Top side: 16 to 23 (right to left)
-    const k = index - 16;
+  } else if (index >= 24 && index < 36) {
+    // Top side: 24 to 35 (left to right)
+    const k = index - 24;
     return {
-      x: S - k * step - half,
+      x: -S + k * step + half,
       y: 0.1,
       z: -S,
       rotationY: Math.PI,
     };
   } else {
-    // Left side: 24 to 31 (top to bottom)
-    const k = index - 24;
+    // Right side: 36 to 47 (top to bottom)
+    const k = index - 36;
     return {
-      x: -S,
+      x: S,
       y: 0.1,
       z: -S + k * step + half,
-      rotationY: Math.PI / 2,
+      rotationY: -Math.PI / 2,
     };
   }
 }
 
-// Maps die value 1-6 to Euler rotation so face points straight UP (+Y)
-function getDieTargetRotation(val, randomAngleY = 0) {
-  const euler = new THREE.Euler(0, 0, 0, 'YXZ');
-  switch (val) {
-    case 1: euler.set(0, randomAngleY, Math.PI / 2, 'YXZ'); break;
-    case 2: euler.set(0, randomAngleY, -Math.PI / 2, 'YXZ'); break;
-    case 3: euler.set(0, randomAngleY, 0, 'YXZ'); break;
-    case 4: euler.set(Math.PI, randomAngleY, 0, 'YXZ'); break;
-    case 5: euler.set(-Math.PI / 2, randomAngleY, 0, 'YXZ'); break;
-    case 6: euler.set(Math.PI / 2, randomAngleY, 0, 'YXZ'); break;
-    default: euler.set(0, randomAngleY, 0, 'YXZ'); break;
-  }
-  return euler;
-}
-
 export default function Board3D({
-  properties = {},
+  roomId,
+  game,
   players = [],
-  activeTileId,
-  onTileClick,
-  centerContent,
-  lastDiceResult,
+  currentTileId = 0,
+  properties = {},
+  isMyTurn = false,
+  onRollDice,
+  onBuyCity,
+  onBuyoutCity,
+  onUpgradeCity,
+  onSetFestival,
+  onThrowTomato,
+  onEndTurn,
 }) {
-  const containerRef = useRef(null);
+  const mountRef = useRef(null);
   const sceneRef = useRef(null);
   const rendererRef = useRef(null);
   const cameraRef = useRef(null);
-  const controlsRef = useRef(null);
 
-  // Model caches
-  const houseModelJsonRef = useRef(null);
-  const hotelModelJsonRef = useRef(null);
-  const propertyMeshesRef = useRef(new Map()); // tileId -> Mesh
-  const pawnMeshesRef = useRef(new Map()); // playerId -> { group, targetPos, currentPos, isMoving }
+  // Mesh & Model Refs
+  const pawnMeshesRef = useRef(new Map());
+  const buildingsGroupRef = useRef(null);
   const diceGroupRef = useRef(null);
-  const diceSimRef = useRef({ active: false, d1: 1, d2: 1, progress: 1, startRot1: null, startRot2: null });
-  const shockwaveMeshRef = useRef(null);
+  const diceMeshesRef = useRef([]);
+  const diceSimRef = useRef({ active: false, progress: 0, fromPos: null, targetRotation1: null, targetRotation2: null });
 
-  const [diceRolling, setDiceRolling] = useState(false);
+  const [sceneReady, setSceneReady] = useState(false);
+  const [selectedTile, setSelectedTile] = useState(null);
 
-  // 1. Preload 3D Model JSONs (house, hotel)
+  // Initialize Three.js Scene with Steady Tabletop Perspective
   useEffect(() => {
-    fetch('/3d_assets/house/model.json')
-      .then(res => res.json())
-      .then(json => { houseModelJsonRef.current = json; })
-      .catch(() => {});
+    if (!mountRef.current) return;
 
-    fetch('/3d_assets/hotel/model.json')
-      .then(res => res.json())
-      .then(json => { hotelModelJsonRef.current = json; })
-      .catch(() => {});
-  }, []);
+    const width = mountRef.current.clientWidth || window.innerWidth;
+    const height = mountRef.current.clientHeight || window.innerHeight;
 
-  // 2. Initialize Three.js WebGL Scene
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const width = container.clientWidth || 840;
-    const height = container.clientHeight || 840;
-
-    // Scene
+    // 1. Scene
     const scene = new THREE.Scene();
     sceneRef.current = scene;
+    scene.background = new THREE.Color(0x060911);
+    scene.fog = new THREE.FogExp2(0x060911, 0.0035);
 
-    // Camera: Rock-Steady Tabletop Isometric Angle (Fixed perspective, no OrbitControls rotation)
-    const camera = new THREE.PerspectiveCamera(28, width / height, 1, 1000);
-    camera.position.set(0, 105, 115);
-    camera.lookAt(0, -2, 0);
+    // 2. Camera (Fixed steady tabletop isometric angle - Zero drag / orbit)
+    const camera = new THREE.PerspectiveCamera(26, width / height, 1, 1000);
+    camera.position.set(0, 138, 148);
+    camera.lookAt(0, -3, 0);
     cameraRef.current = camera;
 
-    // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    // 3. Renderer with contact shadow support
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
-    container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    // Controls: Locked down (no user dragging/rotating/panning the board)
-    controlsRef.current = null;
+    mountRef.current.innerHTML = '';
+    mountRef.current.appendChild(renderer.domElement);
 
-    // Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+    // 4. Lighting Rig
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
     scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xfff7ed, 1.8);
-    dirLight.position.set(45, 95, 55);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
-    dirLight.shadow.bias = -0.0005;
-    scene.add(dirLight);
+    const mainSun = new THREE.DirectionalLight(0xfff7ed, 2.0);
+    mainSun.position.set(55, 120, 65);
+    mainSun.castShadow = true;
+    mainSun.shadow.mapSize.width = 2048;
+    mainSun.shadow.mapSize.height = 2048;
+    mainSun.shadow.bias = -0.0004;
+    scene.add(mainSun);
 
-    const pointLight = new THREE.PointLight(0x00f0ff, 1.0, 100);
-    pointLight.position.set(0, 15, 0);
-    scene.add(pointLight);
+    const blueRim = new THREE.DirectionalLight(0x38bdf8, 1.2);
+    blueRim.position.set(-60, 80, -60);
+    scene.add(blueRim);
 
-    // Ground Plane & Shadow
-    const groundGeom = new THREE.PlaneGeometry(160, 160);
+    // 5. Ground Plane Shadow
+    const groundGeom = new THREE.PlaneGeometry(240, 240);
     const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x07090e,
-      roughness: 0.9,
-      metalness: 0.1,
+      color: 0x05070c,
+      roughness: 0.95,
+      metalness: 0.05,
     });
     const ground = new THREE.Mesh(groundGeom, groundMat);
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -1.6;
+    ground.position.y = -2.2;
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // Elevated Board Base (Beveled luxury table)
-    const boardGroup = new THREE.Group();
-    const tableGeom = new THREE.BoxGeometry(78, 2.5, 78);
+    // 6. Luxury Beveled Table Base (Dark Mahogany / Titanium Composite)
+    const tableGroup = new THREE.Group();
+    const tableGeom = new THREE.BoxGeometry(118, 3.2, 118);
     const tableMat = new THREE.MeshStandardMaterial({
-      color: 0x0b0f19,
+      color: 0x0d121f,
       roughness: 0.35,
-      metalness: 0.65,
+      metalness: 0.5,
     });
     const tableMesh = new THREE.Mesh(tableGeom, tableMat);
-    tableMesh.position.y = -1.25;
+    tableMesh.position.y = -1.6;
     tableMesh.receiveShadow = true;
-    boardGroup.add(tableMesh);
+    tableGroup.add(tableMesh);
 
-    // Golden Board Rim Trim
-    const trimGeom = new THREE.BoxGeometry(80.5, 0.4, 80.5);
+    // Golden Brass Rim Trim
+    const trimGeom = new THREE.BoxGeometry(120.5, 0.5, 120.5);
     const trimMat = new THREE.MeshStandardMaterial({
-      color: 0xf59e0b,
+      color: 0xd97706,
       roughness: 0.2,
       metalness: 0.85,
     });
     const trimMesh = new THREE.Mesh(trimGeom, trimMat);
     trimMesh.position.y = -0.15;
-    boardGroup.add(trimMesh);
+    tableGroup.add(trimMesh);
 
     // Center Felt Playfield Surface
-    const centerGeom = new THREE.PlaneGeometry(59, 59);
-    const centerMat = new THREE.MeshStandardMaterial({
-      color: 0x090d16,
-      roughness: 0.7,
+    const feltGeom = new THREE.PlaneGeometry(88, 88);
+    const feltMat = new THREE.MeshStandardMaterial({
+      color: 0x080c16,
+      roughness: 0.75,
       metalness: 0.1,
     });
-    const centerMesh = new THREE.Mesh(centerGeom, centerMat);
-    centerMesh.rotation.x = -Math.PI / 2;
-    centerMesh.position.y = 0.02;
-    centerMesh.receiveShadow = true;
-    boardGroup.add(centerMesh);
+    const feltMesh = new THREE.Mesh(feltGeom, feltMat);
+    feltMesh.rotation.x = -Math.PI / 2;
+    feltMesh.position.y = 0.02;
+    feltMesh.receiveShadow = true;
+    tableGroup.add(feltMesh);
 
-    scene.add(boardGroup);
+    scene.add(tableGroup);
 
-    // 32 Perimeter 3D Tiles
+    // 7. 48 Perimeter 3D Tiles
     const tileGroup = new THREE.Group();
     TILES.forEach((tile) => {
       const p = getTile3DPos(tile.id);
-      const isCorner = [0, 8, 16, 24].includes(tile.id);
-      const tileWidth = isCorner ? 8.5 : 8.2;
-      const tileLength = isCorner ? 8.5 : 8.2;
+      const isCorner = [0, 12, 24, 36].includes(tile.id);
+      const tileWidth = isCorner ? 8.8 : 8.5;
+      const tileLength = isCorner ? 8.8 : 8.5;
 
-      // Dynamic High-Res Tile Texture via Canvas
+      // Dynamic High-Res Tile Texture
       const canvas = document.createElement('canvas');
       canvas.width = 512;
       canvas.height = 512;
       const ctx = canvas.getContext('2d');
 
-      // Surface
-      ctx.fillStyle = '#0f172a';
+      // Base background
+      ctx.fillStyle = '#111827';
       ctx.fillRect(0, 0, 512, 512);
 
-      // Inset Bevel Frame
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 12;
-      ctx.strokeRect(6, 6, 500, 500);
+      // Card border
+      ctx.lineWidth = 14;
+      ctx.strokeStyle = '#1e293b';
+      ctx.strokeRect(7, 7, 498, 498);
 
-      // City Color Banner at Top
       if (tile.type === 'city') {
+        // District color bar
         ctx.fillStyle = tile.color || '#3b82f6';
-        ctx.fillRect(12, 12, 488, 110);
+        ctx.fillRect(14, 14, 484, 120);
 
+        // Country flag and district group
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 36px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(tile.country?.toUpperCase() || 'CITY', 256, 80);
+        ctx.fillText(`${tile.flag || ''} ${tile.country || ''}`, 256, 75);
+
+        // City name
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = '900 48px sans-serif';
+        ctx.fillText(tile.name.toUpperCase(), 256, 260);
+
+        // Price tag pill
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.roundRect(100, 360, 312, 90, 20);
+        ctx.fill();
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 44px monospace';
+        ctx.fillText(`$${tile.price}`, 256, 422);
       } else {
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(12, 12, 488, 110);
-      }
+        // Special Corners / Tactical squares
+        const cornerColors = {
+          start: '#10b981',
+          jail: '#f59e0b',
+          casino: '#a855f7',
+          go_to_jail: '#ef4444',
+          chance: '#38bdf8',
+          armory: '#ef4444',
+          airport: '#06b6d4',
+          festival: '#f59e0b',
+          tax: '#64748b',
+        };
+        const bannerColor = cornerColors[tile.type] || '#38bdf8';
+        ctx.fillStyle = bannerColor;
+        ctx.fillRect(14, 14, 484, 90);
 
-      // Icon / Flag
-      ctx.font = isCorner ? '90px sans-serif' : '72px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(tile.flag || tile.icon || '📍', 256, 260);
+        // Large tactical icon
+        ctx.font = '90px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(tile.icon || '🎯', 256, 240);
 
-      // Name
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 42px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(tile.name, 256, 350);
+        // Name
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 44px sans-serif';
+        ctx.fillText(tile.name.toUpperCase(), 256, 360);
 
-      // Price / Rent
-      if (tile.price) {
-        ctx.fillStyle = '#00ff88';
-        ctx.font = 'bold 36px sans-serif';
-        ctx.fillText(`$${tile.price}`, 256, 440);
-      } else if (tile.amount) {
-        ctx.fillStyle = '#ff3344';
-        ctx.font = 'bold 36px sans-serif';
-        ctx.fillText(`-$${tile.amount}`, 256, 440);
+        // Subtitle
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'bold 28px sans-serif';
+        if (tile.amount) {
+          ctx.fillText(`PAY $${tile.amount}`, 256, 430);
+        } else if (tile.type === 'start') {
+          ctx.fillText('COLLECT $250', 256, 430);
+        } else {
+          ctx.fillText(tile.type.toUpperCase(), 256, 430);
+        }
       }
 
       const texture = new THREE.CanvasTexture(canvas);
-      texture.generateMipmaps = true;
+      texture.anisotropy = 4;
 
+      const tileGeom = new THREE.BoxGeometry(tileWidth, 0.25, tileLength);
       const tileMat = new THREE.MeshStandardMaterial({
         map: texture,
         roughness: 0.4,
         metalness: 0.1,
       });
-
-      const tileMesh = new THREE.Mesh(new THREE.PlaneGeometry(tileWidth, tileLength), tileMat);
-      tileMesh.rotation.x = -Math.PI / 2;
-      tileMesh.position.set(p.x, 0.05, p.z);
+      const tileMesh = new THREE.Mesh(tileGeom, tileMat);
+      tileMesh.position.set(p.x, 0.12, p.z);
+      tileMesh.rotation.y = p.rotationY;
       tileMesh.receiveShadow = true;
       tileMesh.userData = { tileId: tile.id };
       tileGroup.add(tileMesh);
     });
     scene.add(tileGroup);
 
-    // 3D Physics Dice Group
+    // 8. Buildings Group (3D Houses, Skyscraper Hotels, Owner Crests)
+    const buildingsGroup = new THREE.Group();
+    buildingsGroupRef.current = buildingsGroup;
+    scene.add(buildingsGroup);
+
+    // 9. 3D Tumbling Physics Dice Pair
     const diceGroup = new THREE.Group();
-    const diceMaterials = generateDiceMaterials();
-    const dieGeom = new THREE.BoxGeometry(2.8, 2.8, 2.8);
-
-    const die1 = new THREE.Mesh(dieGeom, diceMaterials);
-    die1.castShadow = true;
-    die1.position.set(-2.5, 1.4, 0);
-
-    const die2 = new THREE.Mesh(dieGeom, diceMaterials);
-    die2.castShadow = true;
-    die2.position.set(2.5, 1.4, 0);
-
-    diceGroup.add(die1, die2);
-    diceGroup.position.set(0, 0, 0);
-    scene.add(diceGroup);
     diceGroupRef.current = diceGroup;
+    const dGeom = new THREE.BoxGeometry(3.2, 3.2, 3.2);
+    const dMats = generateDiceMaterials();
 
-    // Doubles Shockwave Particle Mesh
-    const shockGeom = new THREE.RingGeometry(0.5, 1.5, 32);
-    const shockMat = new THREE.MeshBasicMaterial({
-      color: 0x00f0ff,
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0,
-    });
-    const shockMesh = new THREE.Mesh(shockGeom, shockMat);
-    shockMesh.rotation.x = -Math.PI / 2;
-    shockMesh.position.y = 0.15;
-    scene.add(shockMesh);
-    shockwaveMeshRef.current = shockMesh;
+    const d1 = new THREE.Mesh(dGeom, dMats);
+    d1.position.set(-2.6, 1.6, 0);
+    d1.castShadow = true;
+    diceGroup.add(d1);
 
-    // Window Resize Handler
+    const d2 = new THREE.Mesh(dGeom, dMats);
+    d2.position.set(2.6, 1.6, 0);
+    d2.castShadow = true;
+    diceGroup.add(d2);
+
+    diceMeshesRef.current = [d1, d2];
+    scene.add(diceGroup);
+
+    // Resize Handler
     const handleResize = () => {
-      if (!container) return;
-      const w = container.clientWidth;
-      const h = container.clientHeight;
+      if (!mountRef.current || !renderer || !camera) return;
+      const w = mountRef.current.clientWidth || window.innerWidth;
+      const h = mountRef.current.clientHeight || window.innerHeight;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
     };
     window.addEventListener('resize', handleResize);
 
-    // Render & Animation Loop
+    // Render Loop
     let animationFrameId;
     let clock = new THREE.Clock();
 
@@ -339,8 +338,6 @@ export default function Board3D({
       animationFrameId = requestAnimationFrame(animate);
       const delta = clock.getDelta();
       const elapsed = clock.getElapsedTime();
-
-      
 
       // Idle Hover for Pawns
       pawnMeshesRef.current.forEach(({ group, isMoving }) => {
@@ -352,293 +349,189 @@ export default function Board3D({
       // 3D Physics Dice Simulation
       const sim = diceSimRef.current;
       if (sim.active && diceGroupRef.current) {
-        sim.progress += delta * 1.35; // ~0.75 second total tumble
-        const t = Math.min(sim.progress, 1);
+        sim.progress += delta * 1.35;
+        const p = Math.min(sim.progress, 1.0);
 
-        // Toss & Bounce Arc
-        const bounceHeight = Math.max(0, Math.sin(t * Math.PI) * 16 * (1 - t * 0.7));
-        const currentY = 1.4 + bounceHeight;
+        // Vertical bounce
+        const bounce = Math.sin(p * Math.PI) * 12.0 * (1.0 - p * 0.6);
+        diceGroupRef.current.position.y = bounce;
 
-        const dMesh1 = diceGroupRef.current.children[0];
-        const dMesh2 = diceGroupRef.current.children[1];
-
-        dMesh1.position.y = currentY;
-        dMesh2.position.y = currentY;
-
-        // Spread apart slightly as they bounce
-        dMesh1.position.x = -2.5 - (1 - t) * Math.sin(t * 10) * 1.5;
-        dMesh2.position.x = 2.5 + (1 - t) * Math.sin(t * 10) * 1.5;
-
-        // Rapid Angular Tumble smoothly settling to Target Quaternions
-        const targetQ1 = new THREE.Quaternion().setFromEuler(getDieTargetRotation(sim.d1, 0.4));
-        const targetQ2 = new THREE.Quaternion().setFromEuler(getDieTargetRotation(sim.d2, -0.6));
-
-        if (t < 0.65) {
-          dMesh1.rotation.x += delta * 24;
-          dMesh1.rotation.y += delta * 18;
-          dMesh1.rotation.z += delta * 20;
-
-          dMesh2.rotation.x -= delta * 22;
-          dMesh2.rotation.y += delta * 26;
-          dMesh2.rotation.z -= delta * 19;
-        } else {
-          // Slerp into exact authoritative face orientation
-          const settleT = (t - 0.65) / 0.35;
-          dMesh1.quaternion.slerp(targetQ1, settleT);
-          dMesh2.quaternion.slerp(targetQ2, settleT);
-        }
-
-        // Settled
-        if (t >= 1) {
+        if (p >= 1.0) {
           sim.active = false;
-          dMesh1.quaternion.copy(targetQ1);
-          dMesh2.quaternion.copy(targetQ2);
-          dMesh1.position.y = 1.4;
-          dMesh2.position.y = 1.4;
-
-          setDiceRolling(false);
-          sounds.playCash();
-
-          // If doubles, trigger shockwave pulse
-          if (sim.d1 === sim.d2 && shockwaveMeshRef.current) {
-            sounds.playDoublesSurge();
-            shockwaveMeshRef.current.position.set(0, 0.15, 0);
-            shockwaveMeshRef.current.scale.set(1, 1, 1);
-            shockwaveMeshRef.current.material.opacity = 0.9;
+          diceGroupRef.current.position.y = 0;
+          if (sim.targetRotation1 && diceMeshesRef.current[0]) {
+            diceMeshesRef.current[0].rotation.copy(sim.targetRotation1);
           }
+          if (sim.targetRotation2 && diceMeshesRef.current[1]) {
+            diceMeshesRef.current[1].rotation.copy(sim.targetRotation2);
+          }
+        } else {
+          // Tumble spin
+          diceMeshesRef.current.forEach((d) => {
+            d.rotation.x += delta * 18.0;
+            d.rotation.y += delta * 14.0;
+            d.rotation.z += delta * 12.0;
+          });
         }
-      }
-
-      // Expand Shockwave Aura
-      if (shockwaveMeshRef.current && shockwaveMeshRef.current.material.opacity > 0.01) {
-        shockwaveMeshRef.current.scale.addScalar(delta * 22);
-        shockwaveMeshRef.current.material.opacity = Math.max(0, shockwaveMeshRef.current.material.opacity - delta * 1.8);
       }
 
       renderer.render(scene, camera);
     };
-
     animate();
+    setSceneReady(true);
 
     return () => {
       window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(animationFrameId);
-      if (container && renderer.domElement) {
-        container.removeChild(renderer.domElement);
-      }
       renderer.dispose();
+      if (mountRef.current) mountRef.current.innerHTML = '';
     };
   }, []);
 
-  // 3. Sync Players & Animate Stepping Pawns
+  // Update Dynamic 3D Buildings (Green Houses, Red Hotels, Owner Crests)
   useEffect(() => {
-    const scene = sceneRef.current;
-    if (!scene) return;
+    if (!sceneReady || !buildingsGroupRef.current) return;
+    const group = buildingsGroupRef.current;
 
-    players.forEach((p, idx) => {
-      let entry = pawnMeshesRef.current.get(p.id);
+    // Clear previous buildings
+    while (group.children.length > 0) {
+      group.remove(group.children[0]);
+    }
 
-      // Create 3D Pawn if not yet exists
-      if (!entry) {
-        const pawnGroup = createProceduralPawn(p.avatarToken, p.avatarColor);
-        scene.add(pawnGroup);
-
-        const initialPos = getTile3DPos(p.position || 0);
-        pawnGroup.position.set(initialPos.x, 0.2, initialPos.z);
-
-        entry = {
-          group: pawnGroup,
-          currentTile: p.position || 0,
-          isMoving: false,
-        };
-        pawnMeshesRef.current.set(p.id, entry);
-      }
-
-      // If position advanced, trigger tile-by-tile hopping animation
-      if (entry.currentTile !== p.position && !entry.isMoving) {
-        const startTile = entry.currentTile;
-        const targetTile = p.position;
-        entry.isMoving = true;
-
-        let cur = startTile;
-        const stepInterval = setInterval(() => {
-          cur = (cur + 1) % 32;
-          const pos = getTile3DPos(cur);
-
-          // Smooth hop arc
-          if (entry.group) {
-            entry.group.position.set(pos.x, 1.8, pos.z);
-            setTimeout(() => {
-              if (entry.group) entry.group.position.y = 0.2;
-            }, 120);
-          }
-
-          if (cur === targetTile) {
-            clearInterval(stepInterval);
-            entry.currentTile = targetTile;
-            entry.isMoving = false;
-          }
-        }, 160);
-      }
-    });
-
-    // Clean up removed players
-    pawnMeshesRef.current.forEach((val, pId) => {
-      if (!players.some(p => p.id === pId)) {
-        scene.remove(val.group);
-        pawnMeshesRef.current.delete(pId);
-      }
-    });
-  }, [players]);
-
-  // 4. Sync 3D Buildings (Houses & Landmarks)
-  useEffect(() => {
-    const scene = sceneRef.current;
-    if (!scene) return;
-
+    // Populate for every owned property
     Object.entries(properties).forEach(([tileIdStr, prop]) => {
       const tileId = parseInt(tileIdStr, 10);
-      const existing = propertyMeshesRef.current.get(tileId);
+      if (!prop || !prop.ownerId) return;
 
-      if (prop.isLandmark) {
-        // Landmark skyscraper
-        if (!existing || existing.userData.type !== 'landmark') {
-          if (existing) scene.remove(existing);
+      const p = getTile3DPos(tileId);
+      const owner = players.find((u) => u.id === prop.ownerId);
+      const ownerColor = owner?.avatarColor || '#00f0ff';
 
-          let landmarkMesh;
-          if (hotelModelJsonRef.current) {
-            landmarkMesh = parseLegacyJsonToBufferObject(hotelModelJsonRef.current, 0xf59e0b);
-            landmarkMesh.scale.set(0.0035, 0.0035, 0.0035);
-          } else {
-            // High-finish golden procedural skyscraper
-            const towerGeom = new THREE.BoxGeometry(2.5, 9.0, 2.5);
-            const towerMat = new THREE.MeshStandardMaterial({
-              color: 0xf59e0b,
-              roughness: 0.15,
-              metalness: 0.85,
-            });
-            landmarkMesh = new THREE.Mesh(towerGeom, towerMat);
-            landmarkMesh.position.y = 4.5;
-          }
+      // 1. Owner Crest on the Ground
+      const crest = createOwnerCrest(ownerColor);
+      crest.position.set(p.x, 0.28, p.z);
+      crest.rotation.y = p.rotationY;
+      group.add(crest);
 
-          const pos = getTile3DPos(tileId);
-          landmarkMesh.position.set(pos.x, 0.2, pos.z);
-          landmarkMesh.userData = { type: 'landmark' };
-          scene.add(landmarkMesh);
-          propertyMeshesRef.current.set(tileId, landmarkMesh);
-        }
-      } else if (prop.houses > 0) {
-        // 1-3 Houses
-        if (!existing || existing.userData.houses !== prop.houses) {
-          if (existing) scene.remove(existing);
+      // 2. 3D Miniature Green Houses (Levels 2, 3, 4 = 1, 2, 3 Houses)
+      if (prop.level >= 2 && prop.level <= 4) {
+        const houseCount = prop.level - 1;
+        const offsets = houseCount === 1 ? [0] : houseCount === 2 ? [-1.3, 1.3] : [-2.2, 0, 2.2];
 
-          const houseGroup = new THREE.Group();
-          for (let h = 0; h < prop.houses; h++) {
-            let houseMesh;
-            if (houseModelJsonRef.current) {
-              houseMesh = parseLegacyJsonToBufferObject(houseModelJsonRef.current, 0xffffff);
-              houseMesh.scale.set(0.016, 0.016, 0.016);
-            } else {
-              const bGeom = new THREE.BoxGeometry(1.4, 1.4, 1.4);
-              const bMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
-              houseMesh = new THREE.Mesh(bGeom, bMat);
-              houseMesh.position.y = 0.7;
-            }
-            houseMesh.position.x = (h - (prop.houses - 1) / 2) * 1.8;
-            houseGroup.add(houseMesh);
-          }
+        offsets.forEach((offsetX) => {
+          const house = create3DHouse();
+          // Orient along tile frontage
+          const localOffset = new THREE.Vector3(offsetX, 0.26, -1.8);
+          localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
+          house.position.set(p.x + localOffset.x, 0.26, p.z + localOffset.z);
+          house.rotation.y = p.rotationY;
+          group.add(house);
+        });
+      }
 
-          const pos = getTile3DPos(tileId);
-          houseGroup.position.set(pos.x, 0.1, pos.z);
-          houseGroup.userData = { type: 'houses', houses: prop.houses };
-          scene.add(houseGroup);
-          propertyMeshesRef.current.set(tileId, houseGroup);
-        }
-      } else if (existing) {
-        scene.remove(existing);
-        propertyMeshesRef.current.delete(tileId);
+      // 3. 3D Red Luxury Hotel / Skyscraper (Level 5)
+      if (prop.level >= 5) {
+        const hotel = create3DHotel();
+        const localOffset = new THREE.Vector3(0, 0.26, -1.6);
+        localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
+        hotel.position.set(p.x + localOffset.x, 0.26, p.z + localOffset.z);
+        hotel.rotation.y = p.rotationY;
+        group.add(hotel);
       }
     });
-  }, [properties]);
+  }, [properties, players, sceneReady]);
 
-  // 5. Trigger Real 3D Dice Tumble on dice result
+  // Synchronize Player Pawns with Tile-by-Tile Hop Animations
   useEffect(() => {
-    if (!lastDiceResult || !diceGroupRef.current) return;
+    if (!sceneReady || !sceneRef.current) return;
+    const scene = sceneRef.current;
+    const pawnMap = pawnMeshesRef.current;
 
-    setDiceRolling(true);
+    players.forEach((player, idx) => {
+      let entry = pawnMap.get(player.id);
+      if (!entry) {
+        const meshGroup = createProceduralPawn(player.avatarToken || 'hat', player.avatarColor || '#00f0ff');
+        const pos = getTile3DPos(player.position || 0);
+        // Stagger pawns on same tile
+        const angle = (idx / 6) * Math.PI * 2;
+        meshGroup.position.set(pos.x + Math.cos(angle) * 1.8, 0.3, pos.z + Math.sin(angle) * 1.8);
+        scene.add(meshGroup);
+        entry = { group: meshGroup, currentPos: player.position || 0, isMoving: false };
+        pawnMap.set(player.id, entry);
+      }
+
+      // If position changed, animate tile-by-tile hop
+      if (entry.currentPos !== player.position && !entry.isMoving) {
+        entry.isMoving = true;
+        const startPos = entry.currentPos;
+        const targetPos = player.position;
+        const totalSteps = (targetPos - startPos + 48) % 48;
+
+        let currentStep = 0;
+        const stepInterval = setInterval(() => {
+          currentStep += 1;
+          const intermediateTile = (startPos + currentStep) % 48;
+          const p = getTile3DPos(intermediateTile);
+          const angle = (idx / 6) * Math.PI * 2;
+
+          entry.group.position.x = p.x + Math.cos(angle) * 1.8;
+          entry.group.position.z = p.z + Math.sin(angle) * 1.8;
+          sounds.playPawnStep();
+
+          if (currentStep >= totalSteps) {
+            clearInterval(stepInterval);
+            entry.currentPos = targetPos;
+            entry.isMoving = false;
+          }
+        }, 120); // crisp 120ms hop per square
+      }
+    });
+
+    // Cleanup disconnected players
+    const activeIds = new Set(players.map((p) => p.id));
+    pawnMap.forEach((entry, id) => {
+      if (!activeIds.has(id)) {
+        scene.remove(entry.group);
+        pawnMap.delete(id);
+      }
+    });
+  }, [players, sceneReady]);
+
+  // Trigger 3D Dice Simulation on Roll
+  const triggerDiceRoll = useCallback((val1, val2) => {
+    if (!diceGroupRef.current) return;
+    sounds.playDiceRoll();
+
+    const getRot = (val) => {
+      switch (val) {
+        case 1: return new THREE.Euler(0, 0, 0);
+        case 6: return new THREE.Euler(Math.PI, 0, 0);
+        case 2: return new THREE.Euler(-Math.PI / 2, 0, 0);
+        case 5: return new THREE.Euler(Math.PI / 2, 0, 0);
+        case 3: return new THREE.Euler(0, 0, -Math.PI / 2);
+        case 4: return new THREE.Euler(0, 0, Math.PI / 2);
+        default: return new THREE.Euler(0, 0, 0);
+      }
+    };
+
     diceSimRef.current = {
       active: true,
-      d1: lastDiceResult.d1 || 1,
-      d2: lastDiceResult.d2 || 1,
       progress: 0,
+      targetRotation1: getRot(val1),
+      targetRotation2: getRot(val2),
     };
-  }, [lastDiceResult]);
+  }, []);
+
+  useEffect(() => {
+    if (game?.lastDiceResult) {
+      triggerDiceRoll(game.lastDiceResult[0], game.lastDiceResult[1]);
+    }
+  }, [game?.lastDiceResult, triggerDiceRoll]);
 
   return (
-    <div style={{
-      position: 'relative',
-      width: '840px',
-      height: '840px',
-      maxWidth: '96vw',
-      maxHeight: '96vw',
-      borderRadius: '20px',
-      overflow: 'hidden',
-      background: 'radial-gradient(circle at center, #101624 0%, #07090e 100%)',
-      border: '3px solid var(--border-medium)',
-      boxShadow: '0 0 60px rgba(0, 0, 0, 0.6), inset 0 0 50px rgba(0, 240, 255, 0.05)',
-      userSelect: 'none',
-    }}>
-      {/* Three.js Canvas Container (Fixed Tabletop View) */}
-      <div ref={containerRef} style={{ width: '100%', height: '100%', cursor: 'default' }} />
-
-      {/* Active Dice Floating Badge */}
-      {lastDiceResult && (
-        <div style={{
-          position: 'absolute',
-          bottom: '24px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 10,
-          padding: '8px 20px',
-          borderRadius: '24px',
-          background: lastDiceResult.isDoubles
-            ? 'linear-gradient(135deg, rgba(0, 240, 255, 0.9), rgba(168, 85, 247, 0.9))'
-            : 'rgba(16, 22, 34, 0.9)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          color: lastDiceResult.isDoubles ? '#060709' : '#fff',
-          fontSize: '13px',
-          fontWeight: 900,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
-          pointerEvents: 'none',
-        }}>
-          <span>🎲 {lastDiceResult.d1} + {lastDiceResult.d2} = {lastDiceResult.sum}</span>
-          {lastDiceResult.isDoubles && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Sparkles size={14} /> DOUBLES!
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Interactive Center HTML Stage (Lobby controls & Turn Action Prompts) */}
-      {centerContent && (
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: '460px',
-          maxWidth: '85%',
-          zIndex: 8,
-          pointerEvents: 'auto',
-        }}>
-          {centerContent}
-        </div>
-      )}
+    <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
+      {/* 3D WebGL Canvas */}
+      <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
     </div>
   );
 }
