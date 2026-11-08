@@ -31,14 +31,17 @@ export default function DiceRoller3D({
     setIsRolling(true);
     sounds.playDiceRoll();
 
+    const isFast = typeof window !== 'undefined' && localStorage.getItem('ngg_fast_dice_enabled') === 'true';
+    const rollDuration = isFast ? 320 : 750;
+
     const rollTimeout = setTimeout(() => {
       setIsRolling(false);
       if (lastResult.isDoubles) {
         sounds.playDoublesSurge();
         setShowDoublesCelebration(true);
-        setTimeout(() => setShowDoublesCelebration(false), 2400);
+        setTimeout(() => setShowDoublesCelebration(false), isFast ? 1400 : 2400);
       }
-    }, 750);
+    }, rollDuration);
 
     return () => clearTimeout(rollTimeout);
   }, [lastResult]);
