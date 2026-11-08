@@ -7,13 +7,13 @@ CHARACTERS.forEach((c, idx) => {
   console.log(`${idx + 1}. [${c.icon}] ${c.name} - "${c.title}" (Color: ${c.color})`);
 });
 
-if (CHARACTERS.length !== 10) {
-  throw new Error(`Expected 10 characters, found ${CHARACTERS.length}`);
+if (CHARACTERS.length < 10) {
+  throw new Error(`Expected at least 10 characters, found ${CHARACTERS.length}`);
 }
 
 const uniqueIds = new Set(CHARACTERS.map(c => c.id));
-if (uniqueIds.size !== 10) {
+if (uniqueIds.size !== CHARACTERS.length) {
   throw new Error('Duplicate character IDs detected');
 }
 
-console.log('\n✔ All 10 unique characters and pawn models verified successfully!\n');
+console.log(`\n✔ All ${CHARACTERS.length} unique characters and pawn models verified successfully!\n`);

@@ -78,22 +78,28 @@ export default function TileInfoModal({
   const owner = prop.ownerId ? players.find((p) => p.id === prop.ownerId) : null;
   const currentLevel = prop.level || 0;
   const isCity = tile.type === 'city';
+  const isResort = tile.type === 'resort';
   const hasFestival = !!prop.festival;
 
+  const RESORT_IDS = [6, 12, 20, 28];
+  const ownerResortsCount = isResort && owner ? RESORT_IDS.filter(id => properties[id]?.ownerId === owner.id).length : 0;
+  const resortMultiplier = Math.pow(2, Math.max(0, ownerResortsCount - 1));
+
   // Financial calculations
-  const totalVal = isCity
-    ? tile.price + Math.max(0, currentLevel - 1) * (tile.housePrice || 0)
-    : 0;
+  const totalVal = isResort
+    ? tile.price
+    : (isCity ? tile.price + Math.max(0, currentLevel - 1) * (tile.housePrice || 0) : 0);
   const buyoutCost = totalVal * 2;
-  const rawBaseRent = isCity && tile.rent
-    ? (tile.rent[Math.max(0, currentLevel - 1)] || tile.rent[0])
-    : 0;
+  const rawBaseRent = isResort
+    ? (tile.baseRent * (owner ? resortMultiplier : 1))
+    : (isCity && tile.rent ? (tile.rent[Math.max(0, currentLevel - 1)] || tile.rent[0]) : 0);
   const activeRent = hasFestival ? rawBaseRent * 2 : rawBaseRent;
 
   const ribbonColor = tile.color || (
     tile.type === 'start' ? '#10b981' :
     tile.type === 'jail' ? '#f59e0b' :
     tile.type === 'world_tour' ? '#06b6d4' :
+    tile.type === 'resort' ? '#06b6d4' :
     tile.type === 'festival' ? '#8b5cf6' :
     tile.type === 'armory' ? '#ef4444' :
     tile.type === 'tax' ? '#64748b' : '#ec4899'
@@ -364,8 +370,9 @@ export default function TileInfoModal({
                   {tile.type === 'jail' && 'Resort Island Prison'}
                   {tile.type === 'world_tour' && 'World Tour Supersonic Terminal'}
                   {tile.type === 'festival' && 'World Fair Championship Arena'}
+                  {tile.type === 'resort' && 'Line Coastal Resort (Rent doubles per resort owned, 4 Resorts = Instant Victory)'}
                   {tile.type === 'armory' && 'Tactical Armory Depot'}
-                  {tile.type === 'tax' && 'Galactic Revenue Assessment'}
+                  {tile.type === 'tax' && 'Municipal Revenue Assessment'}
                   {tile.type === 'chance' && 'Chance Tactical Mystery Deck'}
                 </div>
               </div>
@@ -569,6 +576,116 @@ export default function TileInfoModal({
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Section: Rent Progression Breakdown Table (Only for Resorts) */}
+          {isResort && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0 4px',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 900,
+                    color: '#06b6d4',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <span>🏖️</span>
+                  <span>4 Resorts Monopoly System</span>
+                </div>
+                <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                  Base: ₩{(tile.baseRent || 0).toLocaleString()} CR
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: 'rgba(15, 23, 42, 0.65)',
+                  border: '1px solid rgba(148, 163, 184, 0.15)',
+                  borderRadius: '16px',
+                  overflow: 'hidden',
+                }}
+              >
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        borderBottom: '1px solid rgba(148, 163, 184, 0.15)',
+                        color: '#94a3b8',
+                        fontSize: '11px',
+                        textTransform: 'uppercase',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <th style={{ padding: '10px 14px' }}>Resorts Owned</th>
+                      <th style={{ padding: '10px 14px', textAlign: 'right' }}>Multiplier</th>
+                      <th style={{ padding: '10px 14px', textAlign: 'right' }}>Rent Yield</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { count: 1, mult: '1x', rent: (tile.baseRent || 0) * 1 },
+                      { count: 2, mult: '2x', rent: (tile.baseRent || 0) * 2 },
+                      { count: 3, mult: '4x', rent: (tile.baseRent || 0) * 4 },
+                      { count: 4, mult: '8x + WIN', rent: (tile.baseRent || 0) * 8, win: true },
+                    ].map((row, idx) => {
+                      const isCurrent = ownerResortsCount === row.count;
+                      return (
+                        <tr
+                          key={row.count}
+                          style={{
+                            background: isCurrent
+                              ? 'rgba(6, 182, 212, 0.18)'
+                              : idx % 2 === 0
+                              ? 'transparent'
+                              : 'rgba(255, 255, 255, 0.02)',
+                            borderBottom: idx < 3 ? '1px solid rgba(148, 163, 184, 0.1)' : 'none',
+                            color: isCurrent ? '#ffffff' : '#cbd5e1',
+                          }}
+                        >
+                          <td style={{ padding: '10px 14px', fontWeight: isCurrent ? 800 : 600 }}>
+                            {row.count} Resort{row.count > 1 ? 's' : ''}
+                            {isCurrent && (
+                              <span
+                                style={{
+                                  marginLeft: '6px',
+                                  background: '#06b6d4',
+                                  color: '#ffffff',
+                                  fontSize: '9px',
+                                  fontWeight: 900,
+                                  padding: '1px 5px',
+                                  borderRadius: '4px',
+                                }}
+                              >
+                                ACTIVE
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: row.win ? '#34d399' : '#38bdf8' }}>
+                            {row.mult}
+                          </td>
+                          <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: row.win ? '#34d399' : '#e2e8f0' }}>
+                            ₩{row.rent.toLocaleString()} CR
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 

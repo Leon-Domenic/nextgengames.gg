@@ -24,9 +24,9 @@ export default function WorldTourSelectModal({
   const currentPos = userPlayer.position ?? 16;
   const flightTicketCost = 50000;
 
-  // Filter ONLY neutral city tiles or own owned city tiles (NO chance, tax, airport, etc.)
+  // Filter ONLY neutral city/resort tiles or own owned tiles (NO chance, tax, airport, etc.)
   const eligibleTiles = TILES.filter((tile) => {
-    if (tile.type !== 'city') return false;
+    if (tile.type !== 'city' && tile.type !== 'resort') return false;
     const prop = properties[tile.id];
     return !prop?.ownerId || prop?.ownerId === userPlayer.id;
   });

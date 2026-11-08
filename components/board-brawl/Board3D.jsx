@@ -8,6 +8,7 @@ import { Sparkles } from 'lucide-react';
 import {
   create3DHouse,
   create3DHotel,
+  create3DResortAccent,
   createOwnerCrest,
   createProceduralPawn,
   generateDiceMaterials,
@@ -724,111 +725,164 @@ export default function Board3D({
         }
 
         ctx.restore();
-      } else if (tile.type === 'city') {
-        // District color ribbon (top 132px) - FACES OUTSIDE OF BOARD
-        ctx.fillStyle = tile.color || '#3b82f6';
-        ctx.fillRect(18, 18, 476, 126);
-
-        // Subtle gloss gradient
-        const gloss = ctx.createLinearGradient(0, 18, 0, 80);
-        gloss.addColorStop(0, 'rgba(255, 255, 255, 0.35)');
-        gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        ctx.fillStyle = gloss;
-        ctx.fillRect(18, 18, 476, 62);
-
-        // Divider line below header
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(18, 142, 476, 4);
-
-        // Country flag and district name in bold white
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '900 42px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${tile.flag || ''} ${tile.country || ''}`, 256, 88);
-
-        // City name in ultra-bold dark slate
-        ctx.fillStyle = '#0f172a';
-        const name = tile.name.toUpperCase();
-        const fontSize = name.length > 9 ? 48 : name.length > 7 ? 54 : 64;
-        ctx.font = `900 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-        ctx.fillText(name, 256, 246);
-
-        // Ultra high-contrast bold price pill
-        ctx.fillStyle = '#f8fafc';
-        ctx.strokeStyle = '#0f172a';
-        ctx.lineWidth = 5;
-        ctx.beginPath();
-        ctx.roundRect(50, 325, 412, 94, 24);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = '#0f172a';
-        ctx.font = '900 54px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        const displayPrice = tile.price >= 1000000
-          ? `₩${(tile.price / 1000000).toFixed(1)}M`
-          : `₩${Math.round(tile.price / 1000)}K`;
-        ctx.fillText(displayPrice, 256, 392);
-
-        // Asphalt track stripe at inner edge
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(18, 444, 476, 50);
-        ctx.fillStyle = '#38bdf8';
-        ctx.fillRect(150, 466, 212, 6);
       } else {
-        // Perimeter Event Squares (Chance, Armory, Tax) - FACES OUTSIDE OF BOARD
-        const taxSub = tile.amount ? `PAY ₩${Math.round(tile.amount / 1000)}K` : 'PAY TAX';
-        const eventConfig = {
-          chance: { color: '#ec4899', icon: '❓', title: 'CHANCE', sub: 'LUCKY DRAW', subColor: '#be185d' },
-          armory: { color: '#ef4444', icon: '🍅', title: 'ARMORY', sub: '+2 TOMATOES', subColor: '#b91c1c' },
-          tax: { color: '#475569', icon: '💸', title: tile.name.toUpperCase(), sub: taxSub, subColor: '#b91c1c' },
+        // Helper function to draw text rotated by Math.PI (180 deg) so it points outwards
+        // away from the center of the board, allowing players viewing from outside to read cleanly!
+        const drawOutwardText = (text, cx, cy, font, fillStyle, maxW = null) => {
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(Math.PI);
+          ctx.fillStyle = fillStyle;
+          ctx.font = font;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          if (maxW) {
+            ctx.fillText(text, 0, 0, maxW);
+          } else {
+            ctx.fillText(text, 0, 0);
+          }
+          ctx.restore();
         };
-        const cfg = eventConfig[tile.type] || {
-          color: '#0284c7',
-          icon: tile.icon || '🎯',
-          title: tile.name.toUpperCase(),
-          sub: tile.amount ? `PAY ₩${Math.round(tile.amount / 1000)}K` : (tile.type || '').toUpperCase(),
-          subColor: '#0369a1',
-        };
 
-        ctx.fillStyle = cfg.color;
-        ctx.fillRect(18, 18, 476, 126);
+        if (tile.type === 'resort') {
+          // Vibrant Cyan / Tropical Resort Field (Outward-facing header, beach icon, and price pill)
+          ctx.fillStyle = '#06b6d4';
+          ctx.fillRect(18, 18, 476, 126);
 
-        // Subtle gloss gradient
-        const gloss = ctx.createLinearGradient(0, 18, 0, 80);
-        gloss.addColorStop(0, 'rgba(255, 255, 255, 0.35)');
-        gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        ctx.fillStyle = gloss;
-        ctx.fillRect(18, 18, 476, 62);
+          // Subtle gloss gradient
+          const gloss = ctx.createLinearGradient(0, 18, 0, 80);
+          gloss.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+          gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
+          ctx.fillStyle = gloss;
+          ctx.fillRect(18, 18, 476, 62);
 
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(18, 142, 476, 4);
+          // Dark divider line below header
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(18, 142, 476, 4);
 
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '900 42px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(cfg.title, 256, 90);
+          // Country flag and district name in bold white pointing outwards
+          drawOutwardText(`${tile.flag || '🏖️'} ${tile.country || 'RESORT'}`, 256, 81, '900 40px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#ffffff');
 
-        ctx.font = '96px sans-serif';
-        ctx.fillText(cfg.icon, 256, 256);
+          // Resort palm tree icon
+          drawOutwardText('🏖️', 256, 205, '76px sans-serif', '#0891b2');
 
-        // Pill box
-        ctx.fillStyle = '#f8fafc';
-        ctx.strokeStyle = '#0f172a';
-        ctx.lineWidth = 5;
-        ctx.beginPath();
-        ctx.roundRect(50, 325, 412, 94, 24);
-        ctx.fill();
-        ctx.stroke();
+          // Resort name in bold dark slate pointing outwards
+          const rName = tile.name.toUpperCase();
+          const rFontSize = rName.length > 13 ? 38 : rName.length > 10 ? 44 : 50;
+          drawOutwardText(rName, 256, 275, `900 ${rFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`, '#0f172a', 440);
 
-        ctx.fillStyle = cfg.subColor;
-        ctx.font = '900 46px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.fillText(cfg.sub, 256, 390);
+          // Ultra high-contrast bold price pill
+          ctx.fillStyle = '#f8fafc';
+          ctx.strokeStyle = '#06b6d4';
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.roundRect(50, 325, 412, 94, 24);
+          ctx.fill();
+          ctx.stroke();
 
-        // Asphalt track stripe at inner edge
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(18, 444, 476, 50);
-        ctx.fillStyle = '#38bdf8';
-        ctx.fillRect(150, 466, 212, 6);
+          const rPrice = tile.price >= 1000000
+            ? `₩${(tile.price / 1000000).toFixed(1)}M`
+            : `₩${Math.round(tile.price / 1000)}K`;
+          drawOutwardText(`${rPrice} • RESORT`, 256, 372, '900 42px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0891b2');
+
+          // Asphalt track stripe at inner edge
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(18, 444, 476, 50);
+          ctx.fillStyle = '#06b6d4';
+          ctx.fillRect(150, 466, 212, 6);
+        } else if (tile.type === 'city') {
+          // District color ribbon (top 132px) - FACES OUTSIDE OF BOARD
+          ctx.fillStyle = tile.color || '#3b82f6';
+          ctx.fillRect(18, 18, 476, 126);
+
+          // Subtle gloss gradient
+          const gloss = ctx.createLinearGradient(0, 18, 0, 80);
+          gloss.addColorStop(0, 'rgba(255, 255, 255, 0.35)');
+          gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
+          ctx.fillStyle = gloss;
+          ctx.fillRect(18, 18, 476, 62);
+
+          // Divider line below header
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(18, 142, 476, 4);
+
+          // Country flag and district name in bold white pointing outwards
+          drawOutwardText(`${tile.flag || ''} ${tile.country || ''}`, 256, 81, '900 42px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#ffffff');
+
+          // City name in ultra-bold dark slate pointing outwards
+          const name = tile.name.toUpperCase();
+          const fontSize = name.length > 9 ? 46 : name.length > 7 ? 52 : 62;
+          drawOutwardText(name, 256, 246, `900 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`, '#0f172a', 440);
+
+          // Ultra high-contrast bold price pill
+          ctx.fillStyle = '#f8fafc';
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.roundRect(50, 325, 412, 94, 24);
+          ctx.fill();
+          ctx.stroke();
+
+          const displayPrice = tile.price >= 1000000
+            ? `₩${(tile.price / 1000000).toFixed(1)}M`
+            : `₩${Math.round(tile.price / 1000)}K`;
+          drawOutwardText(displayPrice, 256, 372, '900 54px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a');
+
+          // Asphalt track stripe at inner edge
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(18, 444, 476, 50);
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(150, 466, 212, 6);
+        } else {
+          // Perimeter Event Squares (Chance, Armory, Tax, Festival) - FACES OUTSIDE OF BOARD
+          const taxSub = tile.amount ? `PAY ₩${Math.round(tile.amount / 1000)}K` : 'PAY TAX';
+          const eventConfig = {
+            chance: { color: '#ec4899', icon: '❓', title: 'CHANCE', sub: 'LUCKY DRAW', subColor: '#be185d' },
+            armory: { color: '#ef4444', icon: '🍅', title: 'ARMORY', sub: '+2 TOMATOES', subColor: '#b91c1c' },
+            tax: { color: '#475569', icon: '💸', title: tile.name.toUpperCase(), sub: taxSub, subColor: '#b91c1c' },
+            festival: { color: '#7c3aed', icon: '🎪', title: 'WORLD FAIR', sub: '2X RENT HOST', subColor: '#6d28d9' },
+          };
+          const cfg = eventConfig[tile.type] || {
+            color: '#0284c7',
+            icon: tile.icon || '🎯',
+            title: tile.name.toUpperCase(),
+            sub: tile.amount ? `PAY ₩${Math.round(tile.amount / 1000)}K` : (tile.type || '').toUpperCase(),
+            subColor: '#0369a1',
+          };
+
+          ctx.fillStyle = cfg.color;
+          ctx.fillRect(18, 18, 476, 126);
+
+          // Subtle gloss gradient
+          const gloss = ctx.createLinearGradient(0, 18, 0, 80);
+          gloss.addColorStop(0, 'rgba(255, 255, 255, 0.35)');
+          gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
+          ctx.fillStyle = gloss;
+          ctx.fillRect(18, 18, 476, 62);
+
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(18, 142, 476, 4);
+
+          drawOutwardText(cfg.title, 256, 81, '900 42px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#ffffff');
+          drawOutwardText(cfg.icon, 256, 246, '92px sans-serif', '#0f172a');
+
+          // Pill box
+          ctx.fillStyle = '#f8fafc';
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.roundRect(50, 325, 412, 94, 24);
+          ctx.fill();
+          ctx.stroke();
+
+          drawOutwardText(cfg.sub, 256, 372, '900 44px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', cfg.subColor);
+
+          // Asphalt track stripe at inner edge
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(18, 444, 476, 50);
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(150, 466, 212, 6);
+        }
       }
 
       const texture = new THREE.CanvasTexture(canvas);
@@ -1185,7 +1239,23 @@ export default function Board3D({
       });
       group.add(crest);
 
-      // 2. 3D Miniature Houses (Levels 2-4) on the Elevated Outer Terrace Curb
+      // 2. 3D Miniature Tropical Beach Resort Accent on the Elevated Outer Terrace Curb for Resorts
+      const tile = TILES.find((t) => t.id === tileId) || TILES[tileId];
+      if (tile?.type === 'resort') {
+        const resort = create3DResortAccent(ownerColor);
+        const localOffset = new THREE.Vector3(0, 0, -5.1);
+        localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
+        resort.position.set(p.x + localOffset.x, 0.45, p.z + localOffset.z);
+        resort.rotation.y = p.rotationY;
+
+        resort.traverse((obj) => {
+          obj.userData = { tileId, isTile: true };
+        });
+        group.add(resort);
+        return; // Skip house/hotel logic for resorts
+      }
+
+      // 3. 3D Miniature Houses (Levels 2-4) on the Elevated Outer Terrace Curb
       // Relocated to outer perimeter terrace behind the color header (localOffset.z = -5.1)
       if (prop.level >= 2 && prop.level <= 4) {
         const houseCount = prop.level - 1;
