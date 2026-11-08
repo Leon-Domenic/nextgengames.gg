@@ -35,26 +35,26 @@ export function getTile3DPos(id, totalTiles = 48) {
   // Ensures card top (color header) points to the outside of the board,
   // and card bottom (price pill / track stripe) points to the inside (lawn).
   const sideRotations = [
-    (3 * Math.PI) / 4,   // Side 0 (South -> West): outward normal is (-1/√2, 1/√2)
-    Math.PI / 4,         // Side 1 (West -> North): outward normal is (-1/√2, -1/√2)
-    -Math.PI / 4,        // Side 2 (North -> East): outward normal is (1/√2, -1/√2)
-    (-3 * Math.PI) / 4,  // Side 3 (East -> South): outward normal is (1/√2, 1/√2)
+    -Math.PI / 4,        // Side 0 (South -> West)
+    (-3 * Math.PI) / 4,  // Side 1 (West -> North)
+    (3 * Math.PI) / 4,   // Side 2 (North -> East)
+    Math.PI / 4,         // Side 3 (East -> South)
   ];
 
   // Corner orientations: aligned with the diamond sides (45-degree angle) so edges are 100% flush!
   const cornerRotations = [
-    Math.PI / 4,         // Corner 0 (South)
-    -Math.PI / 4,        // Corner 1 (West)
-    Math.PI / 4,         // Corner 2 (North)
-    -Math.PI / 4,        // Corner 3 (East)
+    -Math.PI / 4,        // Corner 0 (South)
+    Math.PI / 4,         // Corner 1 (West)
+    -Math.PI / 4,        // Corner 2 (North)
+    Math.PI / 4,         // Corner 3 (East)
   ];
 
   // Canvas rotation so corner header / artwork faces outward toward its respective apex
   const cornerCanvasAngles = [
-    Math.PI * 1.25,      // Corner 0 (South): 225 deg
-    Math.PI * 1.25,      // Corner 1 (West): 225 deg
-    Math.PI * 0.25,      // Corner 2 (North): 45 deg
-    Math.PI * 0.25,      // Corner 3 (East): 45 deg
+    Math.PI * 0.25,      // Corner 0 (South): 45 deg
+    Math.PI * 0.25,      // Corner 1 (West): 45 deg
+    Math.PI * 1.25,      // Corner 2 (North): 225 deg
+    Math.PI * 1.25,      // Corner 3 (East): 225 deg
   ];
 
   const side = Math.floor(id / tilesPerSide) % 4;
@@ -791,7 +791,7 @@ export default function Board3D({
 
         offsets.forEach((offsetX) => {
           const house = create3DHouse(ownerColor);
-          const localOffset = new THREE.Vector3(offsetX, 0.26, -2.0);
+          const localOffset = new THREE.Vector3(offsetX, 0.26, 2.0);
           localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
           house.position.set(p.x + localOffset.x, 0.26, p.z + localOffset.z);
           house.rotation.y = p.rotationY;
@@ -802,7 +802,7 @@ export default function Board3D({
       // 3. 3D Luxury Hotel / Skyscraper (Level 5) in Player's Custom Color
       if (prop.level >= 5) {
         const hotel = create3DHotel(ownerColor);
-        const localOffset = new THREE.Vector3(0, 0.26, -1.8);
+        const localOffset = new THREE.Vector3(0, 0.26, 1.8);
         localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
         hotel.position.set(p.x + localOffset.x, 0.26, p.z + localOffset.z);
         hotel.rotation.y = p.rotationY;
