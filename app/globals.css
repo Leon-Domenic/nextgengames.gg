@@ -51,6 +51,73 @@
 }
 
 /* ==========================================================================
+   LIGHT MODE DESIGN TOKENS & OVERRIDES
+   ========================================================================== */
+[data-theme='light'] {
+  --bg-deep: #f1f5f9;
+  --bg-dark: #ffffff;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #e2e8f0;
+  --bg-glass: rgba(255, 255, 255, 0.92);
+  --bg-glass-heavy: rgba(248, 250, 252, 0.98);
+
+  --armada-cyan: #0284c7;
+  --armada-blue: #0369a1;
+  --armada-glow: rgba(2, 132, 199, 0.25);
+
+  --cortex-red: #dc2626;
+  --cortex-orange: #ea580c;
+  --cortex-glow: rgba(220, 38, 38, 0.25);
+
+  --legion-green: #059669;
+  --legion-acid: #10b981;
+  --legion-glow: rgba(16, 185, 129, 0.25);
+
+  --white: #0f172a;
+  --text-main: #0f172a;
+  --text-dim: #475569;
+  --text-muted: #64748b;
+  --border-dim: rgba(0, 0, 0, 0.1);
+  --border-medium: rgba(0, 0, 0, 0.18);
+  --border-cyan: rgba(2, 132, 199, 0.4);
+  --border-red: rgba(220, 38, 38, 0.4);
+}
+
+[data-theme='light'] body {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+[data-theme='light'] nav {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme='light'] nav a,
+[data-theme='light'] nav span {
+  color: #0f172a;
+}
+
+[data-theme='light'] input {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+[data-theme='light'] h1, 
+[data-theme='light'] h2, 
+[data-theme='light'] h3, 
+[data-theme='light'] h4,
+[data-theme='light'] h5 {
+  color: #0f172a !important;
+}
+
+[data-theme='light'] p {
+  color: #475569;
+}
+
+/* ==========================================================================
    RESET & GLOBAL BASE
    ========================================================================== */
 *, *::before, *::after {

@@ -3,11 +3,13 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from './AuthProvider';
-import { Users, LogIn, LogOut, UserPlus, Sparkles, Trophy } from 'lucide-react';
+import { useTheme } from './ThemeProvider';
+import { Users, LogIn, LogOut, UserPlus, Sparkles, Trophy, Sun, Moon } from 'lucide-react';
 import { TOKEN_ICONS } from '@/lib/board-brawl/characters.js';
 
 export default function Navbar() {
   const { user, logout, playAsGuest, onlineUsers } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [guestLoading, setGuestLoading] = useState(false);
 
   const handleQuickGuest = async () => {
@@ -106,8 +108,33 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Right Side / Auth Status */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+      {/* Right Side / Auth Status & Theme Toggle */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Light / Dark Mode Toggle Switch */}
+        <button
+          onClick={toggleTheme}
+          title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+          aria-label="Toggle Theme"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            padding: '7px 12px',
+            background: theme === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
+            border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid #cbd5e1',
+            borderRadius: '20px',
+            color: theme === 'dark' ? '#fbbf24' : '#0f172a',
+            fontSize: '12px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          {theme === 'dark' ? <Sun size={15} color="#fbbf24" /> : <Moon size={15} color="#0f172a" />}
+          <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
+        </button>
+
         {user ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             {/* User Badge */}
