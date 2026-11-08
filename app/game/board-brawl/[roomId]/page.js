@@ -73,6 +73,7 @@ export default function BoardBrawlArenaPage() {
   const [movementPendingArrival, setMovementPendingArrival] = useState(false);
   const landedPositionsRef = useRef({});
   const safetyArrivalTimerRef = useRef(null);
+  const lastTomatoThrowRef = useRef(0);
 
   const handlePawnMovementStart = useCallback((playerId, targetTileId) => {
     // Only defer modals for the local player's pawn
@@ -472,7 +473,6 @@ export default function BoardBrawlArenaPage() {
     socket.emit('game_action', { roomId, action: 'end_turn', payload: { playerId: activePlayerId } });
   };
 
-  const lastTomatoThrowRef = useRef(0);
   const handleThrowTomato = (targetPlayerId) => {
     if (!activePlayerId || activePlayerId === targetPlayerId) return;
     const now = Date.now();
