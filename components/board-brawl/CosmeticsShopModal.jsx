@@ -24,6 +24,21 @@ export default function CosmeticsShopModal({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Lock body scroll and listen for Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    const origOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = origOverflow;
+    };
+  }, [isOpen, onClose]);
   const [activeTab, setActiveTab] = useState('characters'); // 'characters' | 'dice'
   const [selectedItem, setSelectedItem] = useState(
     CHARACTERS.find(c => c.id === equippedCharacter) || CHARACTERS[0]

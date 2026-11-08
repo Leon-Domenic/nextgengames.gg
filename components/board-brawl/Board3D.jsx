@@ -35,26 +35,26 @@ export function getTile3DPos(id, totalTiles = 48) {
   // Ensures card top (color header) points to the outside of the board,
   // and card bottom (price pill / track stripe) points to the inside (lawn).
   const sideRotations = [
-    -Math.PI / 4,        // Side 0 (South -> West)
-    (-3 * Math.PI) / 4,  // Side 1 (West -> North)
-    (3 * Math.PI) / 4,   // Side 2 (North -> East)
-    Math.PI / 4,         // Side 3 (East -> South)
+    (3 * Math.PI) / 4,   // Side 0 (South -> West): color ribbon faces outward (-X, +Z)
+    Math.PI / 4,         // Side 1 (West -> North): color ribbon faces outward (-X, -Z)
+    -Math.PI / 4,        // Side 2 (North -> East): color ribbon faces outward (+X, -Z)
+    (-3 * Math.PI) / 4,  // Side 3 (East -> South): color ribbon faces outward (+X, +Z)
   ];
 
   // Corner orientations: aligned with the diamond sides (45-degree angle) so edges are 100% flush!
   const cornerRotations = [
     -Math.PI / 4,        // Corner 0 (South)
-    Math.PI / 4,         // Corner 1 (West)
-    -Math.PI / 4,        // Corner 2 (North)
+    (-3 * Math.PI) / 4,  // Corner 1 (West)
+    (3 * Math.PI) / 4,   // Corner 2 (North)
     Math.PI / 4,         // Corner 3 (East)
   ];
 
   // Canvas rotation so corner header / artwork faces outward toward its respective apex
   const cornerCanvasAngles = [
-    Math.PI * 0.25,      // Corner 0 (South): 45 deg
-    Math.PI * 0.25,      // Corner 1 (West): 45 deg
-    Math.PI * 1.25,      // Corner 2 (North): 225 deg
-    Math.PI * 1.25,      // Corner 3 (East): 225 deg
+    (3 * Math.PI) / 4,   // Corner 0 (South): 135 deg
+    (3 * Math.PI) / 4,   // Corner 1 (West): 135 deg
+    (3 * Math.PI) / 4,   // Corner 2 (North): 135 deg
+    (3 * Math.PI) / 4,   // Corner 3 (East): 135 deg
   ];
 
   const side = Math.floor(id / tilesPerSide) % 4;
@@ -344,136 +344,204 @@ export default function Board3D({
       ctx.strokeRect(7, 7, 498, 498);
 
       if (p.isCorner) {
-        // Authentic Monopoly Corner Field (Rotated Canvas so title/icons face directly OUTWARD)
+        // Authentic Monopoly Corner Field (Pristine square slab, centered emblem & outward-facing header)
         ctx.save();
         ctx.translate(256, 256);
         ctx.rotate(p.canvasAngle);
-        ctx.translate(-256, -256);
-
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, 512, 512);
-
-        ctx.lineWidth = 14;
-        ctx.strokeStyle = '#cbd5e1';
-        ctx.strokeRect(7, 7, 498, 498);
 
         const cornerType = tile.type || (p.side === 0 ? 'start' : p.side === 1 ? 'jail' : p.side === 2 ? 'festival' : 'airport');
 
         if (cornerType === 'start' || p.side === 0) {
           // START / GO (South Corner): Emerald ribbon, forward chevron arrow, salary pill
+          // Outer header ribbon (pointing to outer apex)
           ctx.fillStyle = '#10b981';
-          ctx.fillRect(14, 14, 484, 130);
+          ctx.beginPath();
+          ctx.roundRect(-160, -220, 320, 72, 18);
+          ctx.fill();
 
           ctx.fillStyle = '#ffffff';
-          ctx.font = '900 56px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.font = '900 46px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('START', 256, 96);
+          ctx.fillText('START', 0, -170);
 
-          ctx.font = '84px sans-serif';
-          ctx.fillText('🏁', 256, 235);
+          // Center circular emblem with 🏁
+          ctx.beginPath();
+          ctx.arc(0, -10, 72, 0, Math.PI * 2);
+          ctx.fillStyle = '#ecfdf5';
+          ctx.fill();
+          ctx.lineWidth = 6;
+          ctx.strokeStyle = '#10b981';
+          ctx.stroke();
 
-          // Directional arrow turning into track
+          ctx.font = '76px sans-serif';
+          ctx.fillText('🏁', 0, 16);
+
+          // Directional arrow turning along track from incoming to outgoing
           ctx.fillStyle = '#059669';
           ctx.beginPath();
-          ctx.moveTo(180, 275);
-          ctx.lineTo(290, 275);
-          ctx.lineTo(290, 255);
-          ctx.lineTo(340, 285);
-          ctx.lineTo(290, 315);
-          ctx.lineTo(290, 295);
-          ctx.lineTo(180, 295);
+          ctx.moveTo(60, 75);
+          ctx.lineTo(-40, 75);
+          ctx.lineTo(-40, 60);
+          ctx.lineTo(-80, 85);
+          ctx.lineTo(-40, 110);
+          ctx.lineTo(-40, 95);
+          ctx.lineTo(60, 95);
           ctx.closePath();
           ctx.fill();
 
-          // Salary pill
+          // Salary pill (pointing to inner lawn)
           ctx.fillStyle = '#ecfdf5';
           ctx.strokeStyle = '#10b981';
           ctx.lineWidth = 4;
           ctx.beginPath();
-          ctx.roundRect(40, 345, 432, 90, 22);
+          ctx.roundRect(-155, 135, 310, 64, 18);
           ctx.fill();
           ctx.stroke();
 
           ctx.fillStyle = '#047857';
-          ctx.font = '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText('COLLECT 250 CR', 256, 404);
+          ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.fillText('COLLECT 250 CR', 0, 178);
+
+          // Inner track asphalt curve
+          ctx.fillStyle = '#334155';
+          ctx.beginPath();
+          ctx.roundRect(-90, 222, 180, 28, 14);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(-35, 234, 70, 4);
         } else if (cornerType === 'jail' || p.side === 1) {
           // LOST ISLAND / PRISON (West Corner): Tropical island cell & bail
           ctx.fillStyle = '#f59e0b';
-          ctx.fillRect(14, 14, 484, 130);
+          ctx.beginPath();
+          ctx.roundRect(-165, -220, 330, 72, 18);
+          ctx.fill();
 
           ctx.fillStyle = '#ffffff';
-          ctx.font = '900 46px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.font = '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('LOST ISLAND', 256, 94);
+          ctx.fillText('LOST ISLAND', 0, -170);
 
-          ctx.font = '86px sans-serif';
-          ctx.fillText('🌴', 256, 245);
+          // Center circular emblem
+          ctx.beginPath();
+          ctx.arc(0, -10, 72, 0, Math.PI * 2);
+          ctx.fillStyle = '#fffbeb';
+          ctx.fill();
+          ctx.lineWidth = 6;
+          ctx.strokeStyle = '#f59e0b';
+          ctx.stroke();
 
+          ctx.font = '78px sans-serif';
+          ctx.fillText('🌴', 0, 16);
+
+          // Bail pill
           ctx.fillStyle = '#fffbeb';
           ctx.strokeStyle = '#f59e0b';
           ctx.lineWidth = 4;
           ctx.beginPath();
-          ctx.roundRect(50, 345, 412, 90, 22);
+          ctx.roundRect(-150, 135, 300, 64, 18);
           ctx.fill();
           ctx.stroke();
 
           ctx.fillStyle = '#b45309';
-          ctx.font = '900 40px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText('BAIL: 100 CR', 256, 405);
+          ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.fillText('BAIL: 100 CR', 0, 178);
+
+          // Inner track asphalt curve
+          ctx.fillStyle = '#334155';
+          ctx.beginPath();
+          ctx.roundRect(-90, 222, 180, 28, 14);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(-35, 234, 70, 4);
         } else if (cornerType === 'festival' || p.side === 2) {
           // CHAMPIONSHIPS / FESTIVAL (North Corner): Trophy & 2X Rent Host
           ctx.fillStyle = '#8b5cf6';
-          ctx.fillRect(14, 14, 484, 130);
+          ctx.beginPath();
+          ctx.roundRect(-170, -220, 340, 72, 18);
+          ctx.fill();
 
           ctx.fillStyle = '#ffffff';
-          ctx.font = '900 42px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('CHAMPIONSHIPS', 256, 94);
+          ctx.fillText('CHAMPIONSHIPS', 0, -170);
 
-          ctx.font = '86px sans-serif';
-          ctx.fillText('🏆', 256, 245);
+          // Center circular emblem
+          ctx.beginPath();
+          ctx.arc(0, -10, 72, 0, Math.PI * 2);
+          ctx.fillStyle = '#f5f3ff';
+          ctx.fill();
+          ctx.lineWidth = 6;
+          ctx.strokeStyle = '#8b5cf6';
+          ctx.stroke();
 
+          ctx.font = '78px sans-serif';
+          ctx.fillText('🏆', 0, 16);
+
+          // 2X Rent Host pill
           ctx.fillStyle = '#f5f3ff';
           ctx.strokeStyle = '#8b5cf6';
           ctx.lineWidth = 4;
           ctx.beginPath();
-          ctx.roundRect(50, 345, 412, 90, 22);
+          ctx.roundRect(-155, 135, 310, 64, 18);
           ctx.fill();
           ctx.stroke();
 
           ctx.fillStyle = '#6d28d9';
-          ctx.font = '900 40px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText('2X RENT HOST', 256, 405);
+          ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.fillText('2X RENT HOST', 0, 178);
+
+          // Inner track asphalt curve
+          ctx.fillStyle = '#334155';
+          ctx.beginPath();
+          ctx.roundRect(-90, 222, 180, 28, 14);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(-35, 234, 70, 4);
         } else {
           // WORLD TOUR / AIRPORT (East Corner): Supersonic airliner & fly anywhere
           ctx.fillStyle = '#06b6d4';
-          ctx.fillRect(14, 14, 484, 130);
+          ctx.beginPath();
+          ctx.roundRect(-165, -220, 330, 72, 18);
+          ctx.fill();
 
           ctx.fillStyle = '#ffffff';
-          ctx.font = '900 46px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.font = '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('WORLD TOUR', 256, 94);
+          ctx.fillText('WORLD TOUR', 0, -170);
 
-          ctx.font = '86px sans-serif';
-          ctx.fillText('✈️', 256, 245);
+          // Center circular emblem
+          ctx.beginPath();
+          ctx.arc(0, -10, 72, 0, Math.PI * 2);
+          ctx.fillStyle = '#ecfeff';
+          ctx.fill();
+          ctx.lineWidth = 6;
+          ctx.strokeStyle = '#06b6d4';
+          ctx.stroke();
 
+          ctx.font = '78px sans-serif';
+          ctx.fillText('✈️', 0, 16);
+
+          // Fly Anywhere pill
           ctx.fillStyle = '#ecfeff';
           ctx.strokeStyle = '#06b6d4';
           ctx.lineWidth = 4;
           ctx.beginPath();
-          ctx.roundRect(50, 345, 412, 90, 22);
+          ctx.roundRect(-155, 135, 310, 64, 18);
           ctx.fill();
           ctx.stroke();
 
           ctx.fillStyle = '#0e7490';
-          ctx.font = '900 40px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText('FLY ANYWHERE', 256, 405);
-        }
+          ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.fillText('FLY ANYWHERE', 0, 178);
 
-        // Inner track border
-        ctx.fillStyle = '#334155';
-        ctx.fillRect(14, 448, 484, 50);
+          // Inner track asphalt curve
+          ctx.fillStyle = '#334155';
+          ctx.beginPath();
+          ctx.roundRect(-90, 222, 180, 28, 14);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(-35, 234, 70, 4);
+        }
 
         ctx.restore();
       } else if (tile.type === 'city') {
@@ -791,7 +859,7 @@ export default function Board3D({
 
         offsets.forEach((offsetX) => {
           const house = create3DHouse(ownerColor);
-          const localOffset = new THREE.Vector3(offsetX, 0.26, 2.0);
+          const localOffset = new THREE.Vector3(offsetX, 0.26, -2.0);
           localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
           house.position.set(p.x + localOffset.x, 0.26, p.z + localOffset.z);
           house.rotation.y = p.rotationY;
@@ -802,7 +870,7 @@ export default function Board3D({
       // 3. 3D Luxury Hotel / Skyscraper (Level 5) in Player's Custom Color
       if (prop.level >= 5) {
         const hotel = create3DHotel(ownerColor);
-        const localOffset = new THREE.Vector3(0, 0.26, 1.8);
+        const localOffset = new THREE.Vector3(0, 0.26, -1.8);
         localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
         hotel.position.set(p.x + localOffset.x, 0.26, p.z + localOffset.z);
         hotel.rotation.y = p.rotationY;
