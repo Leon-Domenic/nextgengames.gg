@@ -24,7 +24,7 @@ import EmojiReactionPicker from '@/components/board-brawl/EmojiReactionPicker';
 import EmojiReactionBubble from '@/components/board-brawl/EmojiReactionBubble';
 import {
   Users, Bot, Play, MessageSquare, Send, Sparkles, AlertCircle, Copy, CheckCheck,
-  Volume2, VolumeX, Crown, ShieldAlert, X, ShoppingBag, Home, Settings
+  Volume2, VolumeX, Crown, ShieldAlert, X, ShoppingBag, Home, Settings, Clock
 } from 'lucide-react';
 import { TOKEN_ICONS, CHARACTERS } from '@/lib/board-brawl/characters.js';
 
@@ -58,6 +58,40 @@ export default function BoardBrawlArenaPage() {
   const [showInGameShop, setShowInGameShop] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [playerReactions, setPlayerReactions] = useState({});
+  const [localMatchTimeRemaining, setLocalMatchTimeRemaining] = useState(1200);
+
+  // Sync match timer with server state
+  useEffect(() => {
+    if (gameState?.matchTimeRemaining != null) {
+      setLocalMatchTimeRemaining(gameState.matchTimeRemaining);
+    }
+  }, [gameState?.matchTimeRemaining]);
+
+  // Smooth local 1-second countdown ticker
+  useEffect(() => {
+    if (gameState?.status !== 'playing') return;
+    const timer = setInterval(() => {
+      setLocalMatchTimeRemaining(prev => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [gameState?.status]);
+
+  const formatMatchTime = (seconds) => {
+    if (seconds == null || isNaN(seconds)) return '20:00';
+    const total = Math.max(0, Math.floor(seconds));
+    const mins = Math.floor(total / 60);
+    const secs = total % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleChangeMode = (newMode) => {
+    sounds.playBuy();
+    socket?.emit('game_action', {
+      roomId,
+      action: 'set_game_mode',
+      payload: { mode: newMode },
+    });
+  };
 
   // Sync background music state reactively
   useEffect(() => {
@@ -531,7 +565,12 @@ export default function BoardBrawlArenaPage() {
             winner={gameState.winner}
             winReason={gameState.winReason}
             players={gameState.players}
+            mode={gameState.mode}
             onReturnToHub={() => router.push('/games')}
+            onPlayAgain={() => {
+              sounds.playBuy();
+              socket?.emit('game_action', { roomId, action: 'start_game' });
+            }}
           />
         )}
 
@@ -542,6 +581,7 @@ export default function BoardBrawlArenaPage() {
             user={user}
             roomId={roomId}
             mode={gameState.mode}
+            onChangeMode={handleChangeMode}
             onAddBot={handleAddBot}
             onStartGame={handleStartGame}
             onChangeCharacter={handleSelectCharacter}
@@ -652,66 +692,128 @@ export default function BoardBrawlArenaPage() {
               });
             })()}
 
-            {/* Top-Center Global Active Player & Turn Timer Pill */}
-            {currentPlayer && !currentPlayer.isBankrupt && (
+            {/* Top-Middle Game Match Timer & Active Turn Dashboard */}
+            <div style={{
+              position: 'absolute',
+              top: '14px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 35,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+            }}>
+              {/* 1. Overall Match Countdown Timer (Top Middle Side of Board) */}
               <div style={{
-                position: 'absolute',
-                top: '16px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                zIndex: 30,
-                background: 'rgba(15, 23, 42, 0.88)',
-                backdropFilter: 'blur(12px)',
-                border: '1.5px solid rgba(56, 189, 248, 0.4)',
+                background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.94) 0%, rgba(10, 15, 29, 0.98) 100%)',
+                backdropFilter: 'blur(16px)',
+                border: localMatchTimeRemaining <= 120 
+                  ? '1.5px solid #ef4444' 
+                  : '1.5px solid rgba(56, 189, 248, 0.45)',
                 borderRadius: '16px',
-                padding: '8px 18px',
-                boxShadow: '0 8px 25px rgba(0, 0, 0, 0.35)',
+                padding: '7px 16px',
+                boxShadow: localMatchTimeRemaining <= 120 
+                  ? '0 0 20px rgba(239, 68, 68, 0.4), 0 8px 25px rgba(0, 0, 0, 0.45)' 
+                  : '0 0 15px rgba(2, 132, 199, 0.25), 0 8px 25px rgba(0, 0, 0, 0.35)',
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
-                gap: '5px',
-                minWidth: '220px',
+                gap: '10px',
               }}>
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px',
-                  fontSize: '12px',
-                  fontWeight: 900,
-                  color: '#f8fafc',
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
+                  gap: '5px',
+                  background: gameState.mode === 'normal' 
+                    ? 'rgba(245, 158, 11, 0.2)' 
+                    : 'rgba(2, 132, 199, 0.25)',
+                  border: gameState.mode === 'normal' 
+                    ? '1px solid rgba(245, 158, 11, 0.4)' 
+                    : '1px solid rgba(56, 189, 248, 0.4)',
+                  padding: '3px 8px',
+                  borderRadius: '6px',
                 }}>
-                  <span style={{ color: '#38bdf8' }}>{currentPlayer.name}{isMyTurn ? ' (YOU)' : ''}</span>
-                  <span style={{ color: '#64748b' }}>•</span>
+                  <Clock size={13} color={gameState.mode === 'normal' ? '#f59e0b' : '#38bdf8'} />
                   <span style={{
-                    color: (gameState.turnTimerRemaining || 0) <= 3 ? '#ef4444' : '#f59e0b',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
+                    fontSize: '10px',
+                    fontWeight: 900,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    color: gameState.mode === 'normal' ? '#f59e0b' : '#38bdf8',
                   }}>
-                    ⏱️ {gameState.turnTimerRemaining}s
+                    {gameState.mode === 'normal' ? 'NORMAL 60M' : 'BLITZ 20M'}
                   </span>
                 </div>
 
-                {/* Draining Timer Bar */}
                 <div style={{
-                  width: '100%',
-                  height: '4px',
-                  background: 'rgba(255, 255, 255, 0.12)',
-                  borderRadius: '999px',
-                  overflow: 'hidden',
+                  fontSize: '18px',
+                  fontWeight: 900,
+                  fontFamily: 'monospace',
+                  letterSpacing: '0.06em',
+                  color: localMatchTimeRemaining <= 120 ? '#ef4444' : '#ffffff',
+                  textShadow: localMatchTimeRemaining <= 120 
+                    ? '0 0 10px rgba(239, 68, 68, 0.6)' 
+                    : '0 0 10px rgba(56, 189, 248, 0.4)',
                 }}>
-                  <div style={{
-                    height: '100%',
-                    width: `${Math.min(100, Math.max(0, ((gameState.turnTimerRemaining || 0) / (gameState.turnDuration || 15)) * 100))}%`,
-                    background: (gameState.turnTimerRemaining || 0) > 6 ? '#22c55e' : (gameState.turnTimerRemaining || 0) > 3 ? '#f59e0b' : '#ef4444',
-                    transition: 'width 0.9s linear, background-color 0.3s ease',
-                    boxShadow: (gameState.turnTimerRemaining || 0) <= 3 ? '0 0 8px #ef4444' : 'none',
-                  }} />
+                  {formatMatchTime(localMatchTimeRemaining)}
                 </div>
               </div>
-            )}
+
+              {/* 2. Active Player & Turn Timer Pill */}
+              {currentPlayer && !currentPlayer.isBankrupt && (
+                <div style={{
+                  background: 'rgba(15, 23, 42, 0.88)',
+                  backdropFilter: 'blur(12px)',
+                  border: '1.5px solid rgba(56, 189, 248, 0.35)',
+                  borderRadius: '16px',
+                  padding: '7px 16px',
+                  boxShadow: '0 8px 25px rgba(0, 0, 0, 0.35)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '4px',
+                  minWidth: '190px',
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '11px',
+                    fontWeight: 900,
+                    color: '#f8fafc',
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                  }}>
+                    <span style={{ color: '#38bdf8' }}>{currentPlayer.name}{isMyTurn ? ' (YOU)' : ''}</span>
+                    <span style={{ color: '#64748b' }}>•</span>
+                    <span style={{
+                      color: (gameState.turnTimerRemaining || 0) <= 3 ? '#ef4444' : '#f59e0b',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}>
+                      ⏱️ {gameState.turnTimerRemaining}s
+                    </span>
+                  </div>
+
+                  {/* Draining Timer Bar */}
+                  <div style={{
+                    width: '100%',
+                    height: '4px',
+                    background: 'rgba(255, 255, 255, 0.12)',
+                    borderRadius: '999px',
+                    overflow: 'hidden',
+                  }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${Math.min(100, Math.max(0, ((gameState.turnTimerRemaining || 0) / (gameState.turnDuration || 25)) * 100))}%`,
+                      background: (gameState.turnTimerRemaining || 0) > 6 ? '#22c55e' : (gameState.turnTimerRemaining || 0) > 3 ? '#f59e0b' : '#ef4444',
+                      transition: 'width 0.9s linear, background-color 0.3s ease',
+                      boxShadow: (gameState.turnTimerRemaining || 0) <= 3 ? '0 0 8px #ef4444' : 'none',
+                    }} />
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Right Side Floating Utility Bar (Chat toggle, Music toggle) */}
             <div style={{

@@ -179,6 +179,8 @@ app.prepare().then(() => {
 
       if (action === 'start_game') {
         game.startGame();
+      } else if (action === 'set_game_mode') {
+        game.setGameMode(payload?.mode);
       } else if (action === 'add_bot') {
         const botCount = game.players.filter(p => p.isBot).length + 1;
         const botNames = ['BaronVonCash', 'Apex-9', 'AxelNitro', 'CaptainMonaco', 'AstroVance', 'LordQuackers', 'HodlKing', 'QueenVictoria', 'Knuckles', 'MadameSolana'];

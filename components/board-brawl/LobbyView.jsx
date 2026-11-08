@@ -29,6 +29,7 @@ export default function LobbyView({
   user,
   roomId,
   mode = 'blitz',
+  onChangeMode,
   onAddBot,
   onStartGame,
   onChangeCharacter,
@@ -360,8 +361,74 @@ export default function LobbyView({
           </div>
         </div>
 
-        {/* Mode Selector Tabs */}
+        {/* Mode Selector Tabs (Blitz 20m vs Normal 60m) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: 'rgba(255, 255, 255, 0.9)',
+            border: '2px solid #bae6fd',
+            borderRadius: '10px',
+            padding: '3px',
+            gap: '4px',
+            boxShadow: '0 2px 8px rgba(2, 132, 199, 0.15)',
+          }}>
+            <button
+              onClick={() => {
+                if (isHost && onChangeMode) {
+                  sounds.playBuy();
+                  onChangeMode('blitz');
+                }
+              }}
+              title={isHost ? "Switch to 20-Minute Blitz Mode" : "Blitz Mode: 20 Minutes (Host controls)"}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '7px',
+                background: mode === 'blitz' ? 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)' : 'transparent',
+                color: mode === 'blitz' ? '#ffffff' : '#64748b',
+                border: 'none',
+                fontSize: '11px',
+                fontWeight: 900,
+                textTransform: 'uppercase',
+                cursor: isHost ? 'pointer' : 'default',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                boxShadow: mode === 'blitz' ? '0 2px 8px rgba(2, 132, 199, 0.35)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              ⚡ BLITZ (20M)
+            </button>
+            <button
+              onClick={() => {
+                if (isHost && onChangeMode) {
+                  sounds.playBuy();
+                  onChangeMode('normal');
+                }
+              }}
+              title={isHost ? "Switch to 60-Minute Normal Mode" : "Normal Mode: 60 Minutes (Host controls)"}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '7px',
+                background: mode === 'normal' ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : 'transparent',
+                color: mode === 'normal' ? '#ffffff' : '#64748b',
+                border: 'none',
+                fontSize: '11px',
+                fontWeight: 900,
+                textTransform: 'uppercase',
+                cursor: isHost ? 'pointer' : 'default',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                boxShadow: mode === 'normal' ? '0 2px 8px rgba(245, 158, 11, 0.35)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              🏆 NORMAL (60M)
+            </button>
+          </div>
+
           <button
             onClick={() => {
               sounds.playBuild();
@@ -371,32 +438,18 @@ export default function LobbyView({
             style={{
               padding: '6px 14px',
               borderRadius: '8px',
-              background: mode === 'blitz' ? '#0284c7' : 'rgba(255, 255, 255, 0.7)',
-              color: mode === 'blitz' ? '#ffffff' : '#475569',
-              border: 'none',
+              background: 'rgba(255, 255, 255, 0.85)',
+              color: '#475569',
+              border: '1.5px solid #cbd5e1',
               fontSize: '12px',
               fontWeight: 900,
               textTransform: 'uppercase',
               cursor: 'pointer',
-              boxShadow: mode === 'blitz' ? '0 2px 8px rgba(2, 132, 199, 0.3)' : 'none',
               transition: 'transform 0.1s ease',
             }}
           >
-            QUICK SETTINGS
+            SETTINGS
           </button>
-          <div style={{
-            padding: '6px 14px',
-            borderRadius: '8px',
-            background: 'rgba(255, 255, 255, 0.9)',
-            color: '#0284c7',
-            border: '2px solid #38bdf8',
-            fontSize: '12px',
-            fontWeight: 900,
-            textTransform: 'uppercase',
-            boxShadow: '0 2px 8px rgba(2, 132, 199, 0.2)',
-          }}>
-            BUSINESS TOUR 48
-          </div>
           <button
             onClick={() => {
               setShowSettings(false);
