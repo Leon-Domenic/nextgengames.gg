@@ -155,16 +155,17 @@ export default function Board3D({
       const aspect = w / h;
       cam.aspect = aspect;
 
-      // Board has diamond radius R = 56 (span = 112).
-      // Pitch angle ~43 degrees gives authentic Business Tour elevated view.
-      const pitchRad = (43 * Math.PI) / 180;
+      // Check camera mode setting: 'topdown' (76 deg) vs 'isometric'/'follow' (43 deg)
+      const camMode = typeof window !== 'undefined' ? (localStorage.getItem('ngg_camera_mode') || 'follow') : 'follow';
+      const pitchDeg = camMode === 'topdown' ? 76 : 43;
+      const pitchRad = (pitchDeg * Math.PI) / 180;
 
       // Distance dynamically tuned:
       // On widescreen (aspect >= 1.55), fills ~82% of height leaving room for HUD.
       // On narrower screens, zooms out so width fits cleanly.
-      let dist = 140;
+      let dist = camMode === 'topdown' ? 120 : 140;
       if (aspect < 1.55) {
-        dist = 140 * (1.55 / Math.max(aspect, 0.7));
+        dist = (camMode === 'topdown' ? 120 : 140) * (1.55 / Math.max(aspect, 0.7));
       }
 
       const posY = dist * Math.sin(pitchRad);
@@ -178,16 +179,17 @@ export default function Board3D({
     updateCameraFraming(camera, width, height);
 
     // 3. Renderer with transparent alpha and contact shadow support
+    const initialQuality = typeof window !== 'undefined' ? (localStorage.getItem('ngg_graphics_quality') || 'high') : 'high';
     const renderer = new THREE.WebGLRenderer({
-      antialias: true,
+      antialias: initialQuality !== 'low',
       alpha: true,
       powerPreference: 'high-performance',
     });
     renderer.setClearColor(0x000000, 0); // 100% transparent canvas so sky gradient shines through
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.setPixelRatio(initialQuality === 'low' ? 1 : Math.min(window.devicePixelRatio || 1, initialQuality === 'medium' ? 1.5 : 2));
+    renderer.shadowMap.enabled = initialQuality !== 'low';
+    renderer.shadowMap.type = initialQuality === 'high' ? THREE.PCFSoftShadowMap : THREE.BasicShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.25;
     rendererRef.current = renderer;
@@ -671,6 +673,22 @@ export default function Board3D({
       resizeObserver.observe(mountRef.current);
     }
 
+    // Listen for live setting changes
+    const handleSettingsUpdate = () => {
+      const q = typeof window !== 'undefined' ? (localStorage.getItem('ngg_graphics_quality') || 'high') : 'high';
+      if (renderer) {
+        renderer.setPixelRatio(q === 'low' ? 1 : Math.min(window.devicePixelRatio || 1, q === 'medium' ? 1.5 : 2));
+        renderer.shadowMap.enabled = q !== 'low';
+        renderer.shadowMap.type = q === 'high' ? THREE.PCFSoftShadowMap : THREE.BasicShadowMap;
+      }
+      if (camera && mountRef.current) {
+        const w = mountRef.current.clientWidth || (typeof window !== 'undefined' ? window.innerWidth : 1280);
+        const h = mountRef.current.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 800);
+        updateCameraFraming(camera, w, h);
+      }
+    };
+    window.addEventListener('ngg_settings_changed', handleSettingsUpdate);
+
     // Render Loop
     let animationFrameId;
     let clock = new THREE.Clock();
@@ -723,6 +741,7 @@ export default function Board3D({
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('ngg_settings_changed', handleSettingsUpdate);
       if (resizeObserver) resizeObserver.disconnect();
       cancelAnimationFrame(animationFrameId);
       renderer.dispose();
