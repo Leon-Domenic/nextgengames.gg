@@ -332,12 +332,12 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
         position: 'fixed',
         inset: 0,
         zIndex: 99999,
-        background: 'rgba(15, 23, 42, 0.82)',
+        background: 'rgba(15, 23, 42, 0.85)',
         backdropFilter: 'blur(14px)',
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
-        padding: '24px 16px',
+        padding: '50px 16px 40px 16px',
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         overflowY: 'auto',
       }}
@@ -349,8 +349,8 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
         style={{
           width: '740px',
           maxWidth: '100%',
-          maxHeight: 'calc(100vh - 48px)',
-          margin: 'auto',
+          maxHeight: 'calc(100vh - 90px)',
+          margin: '0 auto',
           background: '#ffffff',
           borderRadius: '24px',
           border: '3px solid #38bdf8',
@@ -359,13 +359,13 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
           flexDirection: 'column',
           overflow: 'hidden',
           position: 'relative',
-          animation: 'settingsModalPop 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Gradient Ribbon Header */}
         <div
           style={{
+            flexShrink: 0,
             background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 60%, #0f172a 100%)',
             padding: '18px 24px',
             display: 'flex',
@@ -450,6 +450,7 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
         {/* 5-Tab Segmented Navigation */}
         <div
           style={{
+            flexShrink: 0,
             background: '#f8fafc',
             borderBottom: '1px solid #e2e8f0',
             padding: '10px 20px',
@@ -505,6 +506,7 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
             padding: '24px',
             overflowY: 'auto',
             flex: 1,
+            minHeight: 0,
             display: 'flex',
             flexDirection: 'column',
             gap: '20px',
@@ -1776,6 +1778,7 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
         {/* Modal Footer (Reset & Done) */}
         <div
           style={{
+            flexShrink: 0,
             background: '#f8fafc',
             borderTop: '1px solid #e2e8f0',
             padding: '16px 24px',
