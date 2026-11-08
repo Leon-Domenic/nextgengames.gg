@@ -19,9 +19,19 @@ export default function TomatoOverlay({
   const cardSplatTimerRef = useRef(null);
   const screenSplatTimerRef = useRef(null);
   const trailPositionsRef = useRef([]);
+  const seenEventsRef = useRef(new Set());
 
   useEffect(() => {
     if (!splatEvent || !splatEvent.fromPlayerId || !splatEvent.targetPlayerId) return;
+
+    // Deduplicate splat events by unique eventId so re-renders never re-trigger trajectory or duplicate splats
+    const eventId = splatEvent.id || `${splatEvent.fromPlayerId}_${splatEvent.targetPlayerId}_${splatEvent.timestamp || ''}`;
+    if (seenEventsRef.current.has(eventId)) return;
+    seenEventsRef.current.add(eventId);
+    if (seenEventsRef.current.size > 200) {
+      const it = seenEventsRef.current.values();
+      for (let i = 0; i < 50; i++) seenEventsRef.current.delete(it.next().value);
+    }
 
     // Check if the local client is the target/victim
     const isVictim = Boolean(
@@ -147,7 +157,7 @@ export default function TomatoOverlay({
           setWipePercent(0);
           wipeCounterRef.current = 0;
 
-          // Lasts 2.3 seconds, then ketchup slides down and fades out
+          // Lasts 3.5 seconds, then ketchup slides down and fades out
           if (screenSplatTimerRef.current) clearTimeout(screenSplatTimerRef.current);
           screenSplatTimerRef.current = setTimeout(() => {
             setScreenSplat(prev => prev ? { ...prev, slidingDown: true } : null);
@@ -157,7 +167,7 @@ export default function TomatoOverlay({
                 setScreenSplat(null);
               }, 700);
             }, 600);
-          }, 2400);
+          }, 3500);
         } else {
           // Wobble the target player card on impact
           if (targetCard) {
@@ -341,8 +351,8 @@ export default function TomatoOverlay({
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            background: `radial-gradient(circle at 50% 50%, rgba(185, 28, 28, ${0.85 * (1 - wipePercent / 100)}) 0%, rgba(127, 29, 29, ${0.65 * (1 - wipePercent / 100)}) 55%, transparent 90%)`,
-            backdropFilter: `blur(${Math.max(0, (1 - wipePercent / 100) * 8)}px)`,
+            background: `radial-gradient(circle at 50% 50%, rgba(185, 28, 28, ${0.92 * (1 - wipePercent / 100)}) 0%, rgba(127, 29, 29, ${0.78 * (1 - wipePercent / 100)}) 55%, rgba(0, 0, 0, ${0.65 * (1 - wipePercent / 100)}) 90%)`,
+            backdropFilter: `blur(${Math.max(0, (1 - wipePercent / 100) * 12)}px)`,
             cursor: 'grab',
             userSelect: 'none',
             pointerEvents: 'auto',
@@ -351,14 +361,14 @@ export default function TomatoOverlay({
             transition: 'transform 0.8s ease-in, opacity 0.7s ease-out',
           }}
         >
-          {/* Massive Screen-Covering Juicy Splat SVG with Running Ketchup Drips */}
+          {/* Massive Screen-Covering Juicy Splat SVG with Running Ketchup Drips covering 85-90% of screen */}
           <div
             style={{
               position: 'relative',
-              width: '92vw',
-              maxWidth: '920px',
-              height: '70vh',
-              maxHeight: '620px',
+              width: '94vw',
+              maxWidth: '1280px',
+              height: '84vh',
+              maxHeight: '850px',
               pointerEvents: 'none',
               animation: 'massiveSplatImpact 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards',
             }}

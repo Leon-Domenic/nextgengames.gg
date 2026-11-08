@@ -68,6 +68,7 @@ export default function BoardBrawlArenaPage() {
   const [localMatchTimeRemaining, setLocalMatchTimeRemaining] = useState(1200);
   const [tradeTargetPlayer, setTradeTargetPlayer] = useState(null);
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
+  const [isThrowingTomato, setIsThrowingTomato] = useState(false);
 
   // Pawn Movement Arrival & Modal Deferral State
   const [movementPendingArrival, setMovementPendingArrival] = useState(false);
@@ -474,11 +475,13 @@ export default function BoardBrawlArenaPage() {
   };
 
   const handleThrowTomato = (targetPlayerId) => {
-    if (!activePlayerId || activePlayerId === targetPlayerId) return;
+    if (!activePlayerId || activePlayerId === targetPlayerId || isThrowingTomato) return;
     const now = Date.now();
-    // Strict 800ms click debounce to prevent runaway streams or rapid-fire loops
-    if (now - lastTomatoThrowRef.current < 800) return;
+    // Strict 2500ms click debounce & lock to guarantee exactly 1 tomato per throw
+    if (now - lastTomatoThrowRef.current < 2500) return;
     lastTomatoThrowRef.current = now;
+    setIsThrowingTomato(true);
+    setTimeout(() => setIsThrowingTomato(false), 2500);
 
     socket.emit('game_action', {
       roomId,
@@ -674,7 +677,7 @@ export default function BoardBrawlArenaPage() {
         {/* Tomato Sabotage Overlay with Trajectory Flight & Screen Splat */}
         <TomatoOverlay
           splatEvent={splatEvent}
-          currentUserId={user?.id}
+          currentUserId={myPlayerObj?.id || user?.id}
           players={gameState.players}
           onVictimImpact={() => setShakeTrigger(prev => prev + 1)}
         />
@@ -895,13 +898,14 @@ export default function BoardBrawlArenaPage() {
                     key={player.id || `player-${idx}`}
                     player={player}
                     isCurrent={gameState.activePlayerIndex === idx}
-                    isMe={player.id === user?.id}
+                    isMe={player.id === myPlayerObj?.id}
                     timer={gameState.turnTimerRemaining}
                     turnDuration={gameState.turnDuration || (gameState.mode === 'blitz' ? 15 : 30)}
                     theme={theme}
                     position={pos}
                     isCompact={total > 4}
                     onThrowTomato={handleThrowTomato}
+                    isThrowingTomato={isThrowingTomato}
                     canTomato={myPlayerObj?.freeTomatoes > 0 || (myPlayerObj?.cash || 0) >= 50000}
                     myBucketCount={myPlayerObj?.freeTomatoes || 0}
                     activeReaction={playerReactions[player.id]}
@@ -1037,7 +1041,7 @@ export default function BoardBrawlArenaPage() {
               {/* 3. Tomato Bucket HUD Capsule */}
               {myPlayerObj && (
                 <div
-                  title={`Tomato Bucket: ${myPlayerObj.freeTomatoes || 0} Free ${(myPlayerObj.cash || 0) >= 50000 ? '(Extra throws: 50,000 CR)' : '(50,000 CR needed for extras)'}`}
+                  title={`Tomato Bucket: ${(myPlayerObj.freeTomatoes || 0) > 0 ? `${myPlayerObj.freeTomatoes} Free in Bucket` : 'Bucket Empty'} ${(myPlayerObj.cash || 0) >= 50000 ? '(Extra throws: 50,000 CR)' : '(50,000 CR needed for extras)'}`}
                   style={{
                     background: 'rgba(15, 23, 42, 0.88)',
                     backdropFilter: 'blur(12px)',
@@ -1059,7 +1063,7 @@ export default function BoardBrawlArenaPage() {
                       letterSpacing: '0.04em',
                       lineHeight: 1.1,
                     }}>
-                      {(myPlayerObj.freeTomatoes || 0) > 0 ? `${myPlayerObj.freeTomatoes} FREE` : '50K CR'}
+                      {(myPlayerObj.freeTomatoes || 0) > 0 ? `${myPlayerObj.freeTomatoes} FREE` : 'EMPTY (50k CR)'}
                     </span>
                     <span style={{ fontSize: '9px', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       BUCKET
@@ -1450,6 +1454,7 @@ function PlayerCornerCard({
   position,
   isCompact = false,
   onThrowTomato,
+  isThrowingTomato = false,
   canTomato,
   myBucketCount = 0,
   activeReaction,
@@ -1690,15 +1695,15 @@ function PlayerCornerCard({
               )}
               {isMe && (
                 <span style={{
-                  background: (player.freeTomatoes || 0) > 0 ? '#ef4444' : '#0284c7',
+                  background: (player.freeTomatoes || 0) > 0 ? '#ef4444' : '#475569',
                   color: '#ffffff',
                   fontSize: '9px',
                   fontWeight: 900,
-                  padding: '1px 5px',
+                  padding: '1px 6px',
                   borderRadius: '6px',
-                  boxShadow: '0 0 6px rgba(239, 68, 68, 0.4)',
+                  boxShadow: (player.freeTomatoes || 0) > 0 ? '0 0 6px rgba(239, 68, 68, 0.4)' : 'none',
                 }}>
-                  🍅 BUCKET: {player.freeTomatoes || 0} FREE
+                  🍅 BUCKET: {(player.freeTomatoes || 0) > 0 ? `${player.freeTomatoes} FREE` : 'EMPTY (50k CR)'}
                 </span>
               )}
             </div>
@@ -1737,34 +1742,40 @@ function PlayerCornerCard({
             {/* Tomato Sabotage */}
             {canTomato && (
               <button
-                onClick={() => {
-                  try { onThrowTomato?.(player.id); } catch (e) {}
+                disabled={isThrowingTomato}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  if (isThrowingTomato) return;
+                  try { onThrowTomato?.(player.id); } catch (err) {}
                 }}
-                title={`Throw tomato at ${player.name}! (${myBucketCount > 0 ? `${myBucketCount} Free in Bucket` : 'Cost: 50,000 CR'})`}
+                title={isThrowingTomato ? 'Reloading tomato...' : `🍅 Throw Tomato at ${player.name} (${myBucketCount > 0 ? `${myBucketCount} in Bucket` : '50k CR'})`}
                 style={{
                   position: 'relative',
                   width: '32px',
                   height: '32px',
                   borderRadius: '50%',
-                  background: 'rgba(239, 68, 68, 0.15)',
-                  border: '1.5px solid #ef4444',
+                  background: isThrowingTomato ? 'rgba(100, 116, 139, 0.2)' : 'rgba(239, 68, 68, 0.15)',
+                  border: isThrowingTomato ? '1.5px solid #64748b' : '1.5px solid #ef4444',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '15px',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)',
-                  transition: 'transform 0.1s',
+                  cursor: isThrowingTomato ? 'not-allowed' : 'pointer',
+                  opacity: isThrowingTomato ? 0.45 : 1,
+                  boxShadow: isThrowingTomato ? 'none' : '0 2px 8px rgba(239, 68, 68, 0.3)',
+                  transition: 'all 0.15s ease',
+                  transform: 'scale(1)',
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.15)'}
-                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                onMouseEnter={(e) => { if (!isThrowingTomato) e.currentTarget.style.transform = 'scale(1.15)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
               >
-                <span>🍅</span>
+                <span>{isThrowingTomato ? '⌛' : '🍅'}</span>
                 <span style={{
                   position: 'absolute',
                   top: '-6px',
                   right: '-6px',
-                  background: myBucketCount > 0 ? '#ef4444' : '#0284c7',
+                  background: isThrowingTomato ? '#64748b' : myBucketCount > 0 ? '#ef4444' : '#0284c7',
                   color: '#ffffff',
                   fontSize: '8px',
                   fontWeight: 900,
@@ -1773,7 +1784,7 @@ function PlayerCornerCard({
                   lineHeight: 1,
                   boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
                 }}>
-                  {myBucketCount > 0 ? `x${myBucketCount}` : '50k'}
+                  {isThrowingTomato ? '⌛' : myBucketCount > 0 ? `x${myBucketCount}` : '50k'}
                 </span>
               </button>
             )}

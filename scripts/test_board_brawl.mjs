@@ -28,8 +28,8 @@ const newPos = game.getCurrentPlayer().position;
 console.log(`✔ Dice rolled: [${game.dice[0]}, ${game.dice[1]}]. Moved from ${initialPos} to ${newPos} (${TILES[newPos].name})`);
 
 // 4. Test City Purchase & Immediate Construction
-game.getCurrentPlayer().position = 1; // Cairo ($100)
-game.getCurrentPlayer().cash = 2000;
+game.getCurrentPlayer().position = 1; // Cairo (100,000 CR)
+game.getCurrentPlayer().cash = 2000000;
 game.buyCity('u1', 1, 2); // Buy Land + 1 House
 const cairo = game.properties[1];
 console.log(`✔ Cairo purchased! Owner: ${cairo.ownerId}, Level: ${cairo.level}`);
@@ -37,11 +37,11 @@ if (cairo.ownerId !== 'u1' || cairo.level !== 2) throw new Error('Cairo purchase
 
 // 5. Test 2x Buyout
 const bob = game.players.find(p => p.id === 'u2');
-bob.cash = 2000;
-const cairoCost = TILES[1].price + (cairo.level - 1) * TILES[1].housePrice; // 100 + 50 = 150
-const buyoutPrice = cairoCost * 2; // 300
+bob.cash = 2000000;
+const cairoCost = TILES[1].price + (cairo.level - 1) * TILES[1].housePrice; // 100,000 + 50,000 = 150,000
+const buyoutPrice = cairoCost * 2; // 300,000
 game.buyoutCity('u2', 1);
-console.log(`✔ 2x Buyout executed! Cairo new owner: ${game.properties[1].ownerId} (Paid: $${buyoutPrice})`);
+console.log(`✔ 2x Buyout executed! Cairo new owner: ${game.properties[1].ownerId} (Paid: CR ${buyoutPrice})`);
 if (game.properties[1].ownerId !== 'u2') throw new Error('Buyout failed');
 
 // 6. Test Landmark Upgrade & Immunity
@@ -56,19 +56,31 @@ const buyoutAttempt = game.buyoutCity('u1', 1);
 console.log(`✔ Buyout on Landmark blocked: ${!buyoutAttempt} (Immune to buyouts!)`);
 if (buyoutAttempt !== false) throw new Error('Landmark buyout was not blocked!');
 
-// 7. Test Tomato Sabotage (3 Free + Cash Throws)
+// 7. Test Tomato Sabotage (3 Free + Cash Throws + 2500ms Cooldown)
 const alice = game.players.find(p => p.id === 'u1');
 console.log('Alice free tomatoes initially:', alice.freeTomatoes);
-game.throwTomato('u1', 'u2'); // Throw 1
+const throw1 = game.throwTomato('u1', 'u2'); // Throw 1
+if (!throw1) throw new Error('First tomato throw failed');
+
+// Verify 2500ms cooldown blocks immediate second throw
+const rapidSpamThrow = game.throwTomato('u1', 'u2');
+console.log('✔ Rapid tomato throw blocked by 2500ms cooldown:', !rapidSpamThrow);
+if (rapidSpamThrow) throw new Error('Expected 2500ms cooldown to block rapid spam throw');
+
+// Simulate time advance past 2500ms cooldown for remaining free throws
+alice.lastTomatoThrowTime = 0;
 game.throwTomato('u1', 'u2'); // Throw 2
+alice.lastTomatoThrowTime = 0;
 game.throwTomato('u1', 'u2'); // Throw 3
 console.log('✔ Threw 3 free tomatoes. Free remaining:', alice.freeTomatoes);
 if (alice.freeTomatoes !== 0) throw new Error('Free tomatoes count mismatch');
 
+alice.lastTomatoThrowTime = 0;
+alice.cash = 500000;
 const cashBeforePaidThrow = alice.cash;
-game.throwTomato('u1', 'u2'); // Throw 4 (Costs $100)
-console.log(`✔ Threw 4th tomato ($100 paid). Cash: $${cashBeforePaidThrow} -> $${alice.cash}`);
-if (alice.cash !== cashBeforePaidThrow - 100) throw new Error('Paid tomato did not deduct cash');
+game.throwTomato('u1', 'u2'); // Throw 4 (Costs 50,000 Space Credits)
+console.log(`✔ Threw 4th tomato (50,000 CR paid). Cash: ${cashBeforePaidThrow} -> ${alice.cash}`);
+if (alice.cash !== cashBeforePaidThrow - 50000) throw new Error('Paid tomato did not deduct 50,000 CR');
 
 // 8. Test Line Monopoly Win Condition
 // Alice owns all bottom properties (1, 3, 5, 7)
