@@ -243,51 +243,120 @@ export default function Board3D({
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // 6. Center Striped Lawn Pitch Texture (Business Tour Mowed Grass)
+    // 6. Center Striped Lawn Pitch & Encircling Asphalt Road (Business Tour Stadium Field)
     const lawnCanvas = document.createElement('canvas');
-    lawnCanvas.width = 512;
-    lawnCanvas.height = 512;
+    lawnCanvas.width = 2048;
+    lawnCanvas.height = 2048;
     const lCtx = lawnCanvas.getContext('2d');
+    lCtx.imageSmoothingEnabled = true;
+    lCtx.imageSmoothingQuality = 'high';
 
-    // Diagonal alternating grass mowing stripes
-    const stripeWidth = 32;
-    for (let x = -512; x < 1024; x += stripeWidth) {
+    // 6a. Dark Asphalt Road Perimeter (Encircles the center pitch between lawn and street tiles)
+    lCtx.fillStyle = '#1e293b'; // Charcoal asphalt base
+    lCtx.fillRect(0, 0, 2048, 2048);
+
+    // Subtle asphalt road grain / noise
+    lCtx.fillStyle = 'rgba(15, 23, 42, 0.4)';
+    for (let r = 0; r < 2048; r += 8) {
+      lCtx.fillRect(0, r, 2048, 4);
+    }
+
+    // Dashed road lane divider markings encircling the perimeter
+    lCtx.save();
+    lCtx.strokeStyle = 'rgba(254, 240, 138, 0.9)'; // Luminous road yellow
+    lCtx.lineWidth = 10;
+    lCtx.setLineDash([44, 28]);
+    lCtx.strokeRect(96, 96, 2048 - 192, 2048 - 192);
+    lCtx.restore();
+
+    // Road curb / stone border separating asphalt road from green lawn pitch
+    lCtx.lineWidth = 12;
+    lCtx.strokeStyle = '#475569';
+    lCtx.strokeRect(184, 184, 2048 - 368, 2048 - 368);
+
+    // 6b. Center Green Field (Vibrant Mowed Lawn Stadium Pitch)
+    // Clipped neatly inside the inner perimeter road
+    lCtx.save();
+    lCtx.beginPath();
+    lCtx.rect(190, 190, 1668, 1668);
+    lCtx.clip();
+
+    // Diagonal alternating mowed grass stripes (Vibrant emerald light grass vs rich medium turf)
+    const stripeWidth = 56;
+    for (let x = -2048; x < 4096; x += stripeWidth) {
       const isEven = Math.floor(x / stripeWidth) % 2 === 0;
-      lCtx.fillStyle = isEven ? '#48bb78' : '#38a169';
+      lCtx.fillStyle = isEven ? '#4ade80' : '#22c55e';
       lCtx.beginPath();
       lCtx.moveTo(x, 0);
       lCtx.lineTo(x + stripeWidth, 0);
-      lCtx.lineTo(x + stripeWidth + 512, 512);
-      lCtx.lineTo(x + 512, 512);
+      lCtx.lineTo(x + stripeWidth + 2048, 2048);
+      lCtx.lineTo(x + 2048, 2048);
       lCtx.closePath();
       lCtx.fill();
     }
 
-    // Soft white chalk center circle & pitch markings
-    lCtx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-    lCtx.lineWidth = 6;
+    // Crisp white field boundary lines
+    lCtx.strokeStyle = 'rgba(255, 255, 255, 0.92)';
+    lCtx.lineWidth = 10;
+    lCtx.strokeRect(216, 216, 1616, 1616);
+
+    // Pitch Corner Arcs in crisp white chalk
+    const arcRadius = 130;
+    // Top-Left
     lCtx.beginPath();
-    lCtx.arc(256, 256, 85, 0, Math.PI * 2);
+    lCtx.arc(216, 216, arcRadius, 0, Math.PI / 2);
+    lCtx.stroke();
+    // Top-Right
+    lCtx.beginPath();
+    lCtx.arc(1832, 216, arcRadius, Math.PI / 2, Math.PI);
+    lCtx.stroke();
+    // Bottom-Right
+    lCtx.beginPath();
+    lCtx.arc(1832, 1832, arcRadius, Math.PI, (3 * Math.PI) / 2);
+    lCtx.stroke();
+    // Bottom-Left
+    lCtx.beginPath();
+    lCtx.arc(216, 1832, arcRadius, (3 * Math.PI) / 2, Math.PI * 2);
     lCtx.stroke();
 
+    // Center Halfway Line
     lCtx.beginPath();
-    lCtx.arc(256, 256, 12, 0, Math.PI * 2);
-    lCtx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    lCtx.moveTo(216, 1024);
+    lCtx.lineTo(1832, 1024);
+    lCtx.stroke();
+
+    // Center Circle (Radius ~290)
+    lCtx.beginPath();
+    lCtx.arc(1024, 1024, 290, 0, Math.PI * 2);
+    lCtx.stroke();
+
+    // Center Kickoff / Penalty Spot
+    lCtx.beginPath();
+    lCtx.arc(1024, 1024, 28, 0, Math.PI * 2);
+    lCtx.fillStyle = 'rgba(255, 255, 255, 0.95)';
     lCtx.fill();
 
-    // Subtle scattered flower/confetti petals
-    const petalColors = ['#f43f5e', '#fbbf24', '#38bdf8', '#ffffff'];
-    for (let i = 0; i < 40; i++) {
-      const px = Math.random() * 512;
-      const py = Math.random() * 512;
+    // Subtle scattered flower / confetti celebration petals (Business Tour festive feel)
+    const petalColors = ['#f43f5e', '#fbbf24', '#38bdf8', '#ffffff', '#ec4899'];
+    for (let i = 0; i < 65; i++) {
+      const px = 250 + Math.random() * 1548;
+      const py = 250 + Math.random() * 1548;
+      // Keep center dice rolling circle clear
+      if (Math.hypot(px - 1024, py - 1024) < 240) continue;
       lCtx.fillStyle = petalColors[i % petalColors.length];
       lCtx.beginPath();
-      lCtx.arc(px, py, 3 + Math.random() * 2, 0, Math.PI * 2);
+      lCtx.arc(px, py, 5 + Math.random() * 4, 0, Math.PI * 2);
       lCtx.fill();
     }
 
+    lCtx.restore();
+
     const lawnTexture = new THREE.CanvasTexture(lawnCanvas);
-    lawnTexture.anisotropy = 4;
+    lawnTexture.anisotropy = renderer.capabilities?.getMaxAnisotropy?.() || 16;
+    lawnTexture.minFilter = THREE.LinearMipmapLinearFilter;
+    lawnTexture.magFilter = THREE.LinearFilter;
+    lawnTexture.generateMipmaps = true;
+    lawnTexture.needsUpdate = true;
 
     const lawnMat = new THREE.MeshStandardMaterial({
       map: lawnTexture,
@@ -303,7 +372,7 @@ export default function Board3D({
 
     // 7. Luxury Diamond Table Base (Warm Wood Table with Striped Lawn Pitch on Top)
     const tableGroup = new THREE.Group();
-    const tableGeom = new THREE.BoxGeometry(82, 3.2, 82);
+    const tableGeom = new THREE.BoxGeometry(92, 3.2, 92);
     const tableMaterials = [
       woodSideMat, // +X
       woodSideMat, // -X
@@ -319,7 +388,7 @@ export default function Board3D({
     tableGroup.add(tableMesh);
 
     // Golden Rim Trim
-    const trimGeom = new THREE.BoxGeometry(84, 0.4, 84);
+    const trimGeom = new THREE.BoxGeometry(94, 0.4, 94);
     const trimMat = new THREE.MeshStandardMaterial({
       color: 0xd97706,
       roughness: 0.25,
@@ -330,8 +399,8 @@ export default function Board3D({
     trimMesh.position.y = -0.35;
     tableGroup.add(trimMesh);
 
-    // Center Striped Lawn Pitch (Business Tour Green Field)
-    const lawnGeom = new THREE.PlaneGeometry(76, 76);
+    // Center Striped Lawn Pitch with Inner Perimeter Road (Business Tour Green Field)
+    const lawnGeom = new THREE.PlaneGeometry(63.5, 63.5);
     const lawnMesh = new THREE.Mesh(lawnGeom, lawnMat);
     lawnMesh.rotation.x = -Math.PI / 2;
     lawnMesh.rotation.z = Math.PI / 4;
@@ -341,7 +410,7 @@ export default function Board3D({
 
     scene.add(tableGroup);
 
-    // 7b. Elevated Outer Curb / Terrace Strip (Width ~3.5, Height ~0.45, Soft Stone & Lawn Trim)
+    // 7b. Elevated Outer Curb / Terrace Strip (Width ~4.0, Height ~0.45, Soft Stone & Lawn Trim)
     // Placed behind each of the 4 diamond street sides outside the track
     const curbGroup = new THREE.Group();
     const curbMeshes = [];
@@ -349,7 +418,7 @@ export default function Board3D({
     const trackDepth = 8.5;
     const sideLength = R_outer * Math.SQRT2; // ~79.2
     const streetSpan = sideLength - 2 * trackDepth; // ~62.2 units
-    const curbWidth = 3.5;
+    const curbWidth = 4.0;
     const curbHeight = 0.45;
 
     const apexes = [
@@ -373,7 +442,7 @@ export default function Board3D({
     });
 
     const terraceLawnMat = new THREE.MeshStandardMaterial({
-      color: 0x2e7d32, // Manicured terrace lawn top
+      color: 0x16a34a, // Manicured terrace lawn top
       roughness: 0.82,
       metalness: 0.05,
     });
