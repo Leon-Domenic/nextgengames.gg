@@ -41,6 +41,21 @@ app.prepare().then(() => {
     let currentUserId = null;
     let currentRoomId = null;
 
+    console.log(`[Socket.io] Client connected: ${socket.id} (transport: ${socket.conn.transport.name})`);
+
+    socket.on('disconnect', (reason) => {
+      console.log(`[Socket.io] Client disconnected: ${socket.id} (reason: ${reason})`);
+      if (currentUserId && onlineUsers.has(currentUserId)) {
+        onlineUsers.delete(currentUserId);
+        io.emit('presence_update', Array.from(onlineUsers.entries()).map(([uId, data]) => ({
+          userId: uId,
+          username: data.username,
+          status: data.status,
+          roomId: data.roomId,
+        })));
+      }
+    });
+
     // 1. User Online Presence
     socket.on('register_presence', ({ userId, username }) => {
       if (!userId) return;
@@ -73,10 +88,22 @@ app.prepare().then(() => {
       }
     });
 
-    // 3. Join / Create Board Brawl Room
+    // 3. Request Current Game State (Health check / re-sync)
+    socket.on('request_game_state', ({ roomId }) => {
+      if (!roomId) return;
+      const game = activeGames.get(roomId);
+      if (game) {
+        socket.emit('game_state_update', game.getPublicState());
+      }
+    });
+
+    // 4. Join / Create Board Brawl Room
     socket.on('join_game_room', ({ roomId, user, isSpectator = false, mode = 'blitz' }) => {
+      if (!roomId) return;
       currentRoomId = roomId;
       socket.join(`game_${roomId}`);
+
+      console.log(`[Game Room] Socket ${socket.id} joined room #${roomId} as ${user?.username || 'Guest'}`);
 
       let game = activeGames.get(roomId);
       if (!game) {
@@ -135,8 +162,10 @@ app.prepare().then(() => {
         })));
       }
 
-      // Send initial state immediately to joining client
-      socket.emit('game_state_update', game.getPublicState());
+      // Send initial state to the joining client and broadcast to the room
+      const publicState = game.getPublicState();
+      socket.emit('game_state_update', publicState);
+      io.to(`game_${roomId}`).emit('game_state_update', publicState);
     });
 
     // 4. Game Actions

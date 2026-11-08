@@ -24,7 +24,8 @@ export default function BoardBrawlArenaPage() {
   const { roomId } = params;
   const modeQuery = searchParams.get('mode') || 'blitz';
 
-  const { user, loading } = useAuth();
+  const { user, loading, playAsGuest } = useAuth();
+  const [guestInitializing, setGuestInitializing] = useState(false);
   const [gameState, setGameState] = useState(null);
   const [splatEvent, setSplatEvent] = useState(null);
   const [shakeTrigger, setShakeTrigger] = useState(0);
@@ -35,20 +36,31 @@ export default function BoardBrawlArenaPage() {
   const socket = getSocket();
   const chatBottomRef = useRef(null);
 
-  // Join Room
+  // Auto-init guest if visitor has no session
   useEffect(() => {
-    if (!socket || loading) return;
+    if (!loading && !user && !guestInitializing) {
+      setGuestInitializing(true);
+      playAsGuest().catch(() => {}).finally(() => setGuestInitializing(false));
+    }
+  }, [loading, user, guestInitializing, playAsGuest]);
 
-    // Join game room
-    socket.emit('join_game_room', {
-      roomId,
-      user: user || { id: `anon_${Date.now()}`, username: 'Spectator', is_guest: true },
-      isSpectator: !user,
-      mode: modeQuery,
-    });
+  // Join Room & Real-time State Sync
+  useEffect(() => {
+    if (!socket || loading || guestInitializing) return;
+
+    const joinRoom = () => {
+      socket.emit('join_game_room', {
+        roomId,
+        user: user || { id: `anon_${Date.now()}`, username: 'Guest Tycoon', is_guest: true },
+        isSpectator: false,
+        mode: modeQuery,
+      });
+    };
 
     const handleStateUpdate = (newState) => {
-      setGameState(newState);
+      if (newState && newState.roomId === roomId) {
+        setGameState(newState);
+      }
     };
 
     const handleTomatoImpact = (data) => {
@@ -68,16 +80,35 @@ export default function BoardBrawlArenaPage() {
       else sounds.playDoublesSurge();
     };
 
+    // Attach listeners FIRST
     socket.on('game_state_update', handleStateUpdate);
     socket.on('tomato_impact_event', handleTomatoImpact);
     socket.on('taunt_sound_event', handleTauntSound);
+    socket.on('connect', joinRoom);
+
+    // Initial join attempt
+    if (socket.connected) {
+      joinRoom();
+    } else {
+      socket.connect();
+    }
+
+    // Safety fallback: re-request state every 2 seconds if not yet received
+    const syncInterval = setInterval(() => {
+      if (!gameState) {
+        socket.emit('request_game_state', { roomId });
+        joinRoom();
+      }
+    }, 2000);
 
     return () => {
+      clearInterval(syncInterval);
       socket.off('game_state_update', handleStateUpdate);
       socket.off('tomato_impact_event', handleTomatoImpact);
       socket.off('taunt_sound_event', handleTauntSound);
+      socket.off('connect', joinRoom);
     };
-  }, [socket, roomId, user, loading, modeQuery]);
+  }, [socket, roomId, user, loading, guestInitializing, modeQuery, gameState]);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -88,10 +119,73 @@ export default function BoardBrawlArenaPage() {
 
   if (!gameState) {
     return (
-      <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: '#00f0ff', fontSize: '18px', fontWeight: 700 }}>
-          Connecting to Board Brawl arena #{roomId}...
+      <div style={{
+        minHeight: '80vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px',
+        textAlign: 'center',
+        gap: '16px',
+      }}>
+        <div style={{
+          width: '52px',
+          height: '52px',
+          border: '4px solid rgba(0, 240, 255, 0.2)',
+          borderTopColor: '#00f0ff',
+          borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite',
+        }} />
+        <h2 style={{ color: 'var(--text-primary, #fff)', fontSize: '22px', fontWeight: 800, margin: 0 }}>
+          Connecting to Board Brawl arena <span style={{ color: '#00f0ff' }}>#{roomId}</span>
+        </h2>
+        <p style={{ color: 'var(--text-secondary, #94a3b8)', fontSize: '14px', maxWidth: '420px', margin: 0 }}>
+          Synchronizing authoritative game state and real-time room channels...
         </p>
+        <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
+          <button
+            onClick={() => {
+              if (socket) {
+                socket.connect();
+                socket.emit('join_game_room', {
+                  roomId,
+                  user: user || { id: `anon_${Date.now()}`, username: 'Guest Tycoon', is_guest: true },
+                  isSpectator: false,
+                  mode: modeQuery,
+                });
+                socket.emit('request_game_state', { roomId });
+              }
+            }}
+            style={{
+              padding: '10px 18px',
+              background: 'rgba(0, 240, 255, 0.15)',
+              border: '1px solid #00f0ff',
+              color: '#00f0ff',
+              borderRadius: '8px',
+              fontWeight: 700,
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            ⚡ Re-sync Room
+          </button>
+          <button
+            onClick={() => router.push('/friends')}
+            style={{
+              padding: '10px 18px',
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              color: 'var(--text-primary, #fff)',
+              borderRadius: '8px',
+              fontWeight: 600,
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            Back to Friends Hub
+          </button>
+        </div>
       </div>
     );
   }

@@ -12,7 +12,7 @@ import { TOKEN_ICONS, CHARACTERS } from '@/lib/board-brawl/characters.js';
 
 export default function FriendsHubPage() {
   const router = useRouter();
-  const { user, onlineUsers } = useAuth();
+  const { user, onlineUsers, playAsGuest } = useAuth();
   const [friendsData, setFriendsData] = useState({ friends: [], incoming: [], outgoing: [] });
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -143,9 +143,16 @@ export default function FriendsHubPage() {
     alert('Invitation sent to your friend!');
   };
 
-  const launchBoardBrawl = () => {
+  const launchBoardBrawl = async () => {
     if (!lobbyCode) return;
-    router.push(`/game/board-brawl/${lobbyCode}?mode=${gameMode}`);
+    try {
+      if (!user) {
+        await playAsGuest();
+      }
+      router.push(`/game/board-brawl/${lobbyCode}?mode=${gameMode}`);
+    } catch (e) {
+      router.push(`/game/board-brawl/${lobbyCode}?mode=${gameMode}`);
+    }
   };
 
   return (
