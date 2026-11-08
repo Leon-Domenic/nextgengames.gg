@@ -1,9 +1,29 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { TILES } from '@/lib/board-brawl/types';
 import { sounds } from '@/lib/audio';
-import { Building2, Zap, ArrowRight, ShieldCheck, DollarSign } from 'lucide-react';
+import { Building2, Zap, ArrowRight, ShieldCheck, Crown, Landmark, Home, Trees, Coins, Sparkles } from 'lucide-react';
+
+const LANDMARK_ICONS = {
+  Egypt: '🏛️',
+  Greece: '🏛️',
+  Czechia: '🏰',
+  Austria: '🎻',
+  Hungary: '🏰',
+  Spain: '💃',
+  Italy: '🏟️',
+  Germany: '🏰',
+  Netherlands: '🌷',
+  Belgium: '🍫',
+  UK: '🕰️',
+  Ireland: '🍀',
+  France: '🗼',
+  Japan: '⛩️',
+  Singapore: '🦁',
+  UAE: '🏜️',
+  Monaco: '🛥️',
+};
 
 export default function ActionModal({
   currentTileId,
@@ -25,181 +45,455 @@ export default function ActionModal({
   const isRival = prop.ownerId && prop.ownerId !== player?.id;
   const rivalOwner = isRival ? players.find(p => p.id === prop.ownerId) : null;
 
-  // Buyout math: 2x total invested value
-  const totalVal = tile.price + (prop.level - 1) * tile.housePrice;
+  // Selected upgrade tier for purchasing (1 = Land, 2 = Cottage, 3 = Hotel, 4 = Landmark)
+  const currentLvl = prop.level || 0;
+  const [selectedTier, setSelectedTier] = useState(() => {
+    if (!prop.ownerId) return 2; // Default to Buy + Cottage
+    if (isOwner) return Math.min(5, currentLvl + 1);
+    return 1;
+  });
+  const [isBusy, setIsBusy] = useState(false);
+
+  const handleAction = (callback) => {
+    if (isBusy) return;
+    setIsBusy(true);
+    callback();
+    setTimeout(() => setIsBusy(false), 1200);
+  };
+
+  // Financial calculations
+  const totalVal = tile.price + (Math.max(0, currentLvl - 1)) * tile.housePrice;
   const buyoutCost = totalVal * 2;
   const canBuyout = isRival && !prop.isLandmark && player?.cash >= buyoutCost;
 
-  // Construction math
-  const canBuyLand = !prop.ownerId && player?.cash >= tile.price;
-  const canBuyWithHouse = !prop.ownerId && player?.cash >= (tile.price + tile.housePrice);
-  const canUpgrade = isOwner && !prop.isLandmark && player?.cash >= tile.housePrice;
+  // Upgrade pricing for fresh buy
+  const tierCost = (targetLvl) => {
+    if (!prop.ownerId) {
+      if (targetLvl === 1) return tile.price;
+      return tile.price + (targetLvl - 1) * tile.housePrice;
+    }
+    // Upgrading existing
+    return tile.housePrice;
+  };
+
+  const costToBuild = tierCost(selectedTier);
+  const canAfford = player?.cash >= costToBuild;
+  const currentRent = tile.rent ? (tile.rent[Math.max(0, currentLvl - 1)] || tile.rent[0]) : 0;
+  const nextRent = tile.rent ? (tile.rent[Math.max(0, selectedTier - 1)] || tile.rent[0]) : 0;
+
+  const landmarkEmoji = LANDMARK_ICONS[tile.country] || tile.flag || '🏛️';
+  const ribbonColor = tile.color || '#2563eb';
 
   return (
     <div style={{
       width: '100%',
       maxWidth: '440px',
-      background: 'rgba(15, 23, 42, 0.94)',
-      border: '2px solid rgba(56, 189, 248, 0.5)',
-      boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.8), 0 0 25px rgba(56, 189, 248, 0.25)',
-      borderRadius: '20px',
-      padding: '24px',
-      textAlign: 'center',
-      backdropFilter: 'blur(16px)',
-      color: '#f8fafc',
+      maxHeight: 'min(90vh, 590px)',
+      overflowY: 'auto',
+      display: 'flex',
+      flexDirection: 'column',
+      background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+      borderRadius: '26px',
+      boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.08), 0 0 40px rgba(59, 130, 246, 0.15)',
+      color: '#0f172a',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      position: 'relative',
+      userSelect: 'none',
+      animation: 'modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
     }}>
-      {/* City Banner */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '8px' }}>
-        <span style={{ fontSize: '28px' }}>{tile.flag || tile.icon}</span>
-        <h3 style={{ fontSize: '22px', fontWeight: 900, margin: 0, color: '#ffffff', letterSpacing: '0.5px' }}>
-          {tile.name}
-        </h3>
+      {/* Turn Countdown Progress Bar */}
+      <div style={{
+        width: '100%',
+        height: '5px',
+        backgroundColor: 'rgba(0, 0, 0, 0.12)',
+        position: 'relative',
+        overflow: 'hidden',
+        flexShrink: 0,
+      }}>
+        <div style={{
+          height: '100%',
+          width: `${Math.min(100, Math.max(0, ((turnTimer || 0) / 15) * 100))}%`,
+          backgroundColor: (turnTimer || 0) > 6 ? '#22c55e' : (turnTimer || 0) > 3 ? '#f59e0b' : '#ef4444',
+          transition: 'width 0.9s linear, background-color 0.3s ease',
+          boxShadow: (turnTimer || 0) <= 3 ? '0 0 8px #ef4444' : 'none',
+        }} />
       </div>
-      <p style={{ fontSize: '13px', color: '#94a3b8', margin: '0 0 18px 0', fontWeight: 600 }}>
-        {tile.country ? `${tile.country} • ${tile.colorGroup?.toUpperCase()} DISTRICT` : tile.description}
-      </p>
 
-      {/* Case 1: Unowned City Purchase */}
-      {!prop.ownerId && tile.type === 'city' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <button
-            onClick={() => { sounds.playBuild(); onBuy(tile.id, 1); }}
-            disabled={!canBuyLand}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '12px 16px',
-              background: canBuyLand ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-              border: canBuyLand ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '10px',
-              color: canBuyLand ? '#38bdf8' : '#64748b',
-              fontWeight: 800,
-              fontSize: '14px',
-              cursor: canBuyLand ? 'pointer' : 'not-allowed',
-            }}
-          >
-            <span>Buy Land</span>
-            <span>${tile.price}</span>
-          </button>
-
-          <button
-            onClick={() => { sounds.playBuild(); onBuy(tile.id, 2); }}
-            disabled={!canBuyWithHouse}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '12px 16px',
-              background: canBuyWithHouse ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(16, 185, 129, 0.25))' : 'rgba(255, 255, 255, 0.05)',
-              border: canBuyWithHouse ? '1px solid #22c55e' : '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '10px',
-              color: canBuyWithHouse ? '#4ade80' : '#64748b',
-              fontWeight: 800,
-              fontSize: '14px',
-              cursor: canBuyWithHouse ? 'pointer' : 'not-allowed',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Building2 size={16} />
-              <span>Buy + 1st House</span>
-            </div>
-            <span>${tile.price + tile.housePrice}</span>
-          </button>
+      {/* Top Business Tour Style Curved Ribbon Header */}
+      <div style={{
+        position: 'relative',
+        background: `linear-gradient(135deg, ${ribbonColor} 0%, #1e3a8a 100%)`,
+        padding: '14px 18px 16px',
+        textAlign: 'center',
+        color: '#ffffff',
+        borderBottomLeftRadius: '22px',
+        borderBottomRightRadius: '22px',
+        boxShadow: `0 8px 20px -4px ${ribbonColor}66`,
+        flexShrink: 0,
+      }}>
+        {/* Country Flag Badge */}
+        <div style={{
+          position: 'absolute',
+          left: '16px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          fontSize: '28px',
+          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
+        }}>
+          {tile.flag || '🌐'}
         </div>
-      )}
 
-      {/* Case 2: Owned by Player (Upgrade to 2/3 Houses or Hotel) */}
-      {isOwner && tile.type === 'city' && !prop.isLandmark && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{ padding: '10px', background: 'rgba(56, 189, 248, 0.1)', borderRadius: '8px', fontSize: '13px', color: '#38bdf8', fontWeight: 700 }}>
-            You own {tile.name}! Current Level: {prop.level >= 5 ? 'Luxury Hotel' : `${prop.level - 1} House(s)`}
-          </div>
-
-          <button
-            onClick={() => { sounds.playBuild(); onUpgrade(tile.id); }}
-            disabled={!canUpgrade}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '12px 16px',
-              background: canUpgrade ? 'linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(245, 158, 11, 0.25))' : 'rgba(255, 255, 255, 0.05)',
-              border: canUpgrade ? '1px solid #eab308' : '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '10px',
-              color: canUpgrade ? '#facc15' : '#64748b',
-              fontWeight: 800,
-              fontSize: '14px',
-              cursor: canUpgrade ? 'pointer' : 'not-allowed',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Building2 size={16} />
-              <span>{prop.level >= 4 ? 'Upgrade to Luxury Hotel' : 'Build Next House'}</span>
-            </div>
-            <span>${tile.housePrice}</span>
-          </button>
-        </div>
-      )}
-
-      {/* Case 3: Owned by Rival (Sabotage 2x Buyout option) */}
-      {isRival && tile.type === 'city' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{ padding: '10px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', fontSize: '13px', color: '#f87171', fontWeight: 700 }}>
-            Owned by {rivalOwner?.name || 'Rival'}! Rent paid.
-          </div>
-
-          {!prop.isLandmark && (
-            <button
-              onClick={() => { sounds.playBuyout(); onBuyout(tile.id); }}
-              disabled={!canBuyout}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '12px 16px',
-                background: canBuyout ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.25))' : 'rgba(255, 255, 255, 0.05)',
-                border: canBuyout ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: '10px',
-                color: canBuyout ? '#f87171' : '#64748b',
-                fontWeight: 800,
-                fontSize: '14px',
-                cursor: canBuyout ? 'pointer' : 'not-allowed',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Zap size={16} />
-                <span>Hostile Buyout (2x)</span>
-              </div>
-              <span>${buyoutCost}</span>
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Pass / End Turn Button */}
-      <button
-        onClick={onEndTurn}
-        style={{
-          marginTop: '16px',
-          width: '100%',
-          padding: '12px',
-          background: 'rgba(255, 255, 255, 0.08)',
-          border: '1px solid rgba(255, 255, 255, 0.15)',
-          borderRadius: '10px',
-          color: '#e2e8f0',
+        {/* City Title */}
+        <h2 style={{
+          fontSize: '24px',
+          fontWeight: 900,
+          margin: 0,
+          letterSpacing: '1px',
+          textTransform: 'uppercase',
+          textShadow: '0 2px 4px rgba(0,0,0,0.35)',
+        }}>
+          {tile.name}
+        </h2>
+        <div style={{
+          fontSize: '11px',
           fontWeight: 700,
-          fontSize: '13px',
-          cursor: 'pointer',
+          letterSpacing: '1.2px',
+          opacity: 0.9,
+          textTransform: 'uppercase',
+          marginTop: '2px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '6px',
-        }}
-      >
-        <span>Pass & End Turn</span>
-        <ArrowRight size={15} />
-      </button>
+          gap: '8px',
+        }}>
+          <span>{tile.country} • {tile.colorGroup} District</span>
+          {turnTimer !== undefined && (
+            <span style={{
+              background: (turnTimer || 0) <= 3 ? '#ef4444' : 'rgba(255,255,255,0.22)',
+              color: '#ffffff',
+              padding: '1px 7px',
+              borderRadius: '999px',
+              fontSize: '10px',
+              fontWeight: 900,
+            }}>
+              ⏱️ {turnTimer}s
+            </span>
+          )}
+        </div>
+
+        {/* Star Badge */}
+        <div style={{
+          position: 'absolute',
+          right: '16px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          background: 'rgba(255, 255, 255, 0.2)',
+          borderRadius: '50%',
+          padding: '6px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <Sparkles size={18} color="#facc15" />
+        </div>
+      </div>
+
+      <div style={{ padding: '14px 18px 18px', flex: 1 }}>
+        {/* Center Stylized 3D Miniature Landmark Pedestal */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto 12px',
+        }}>
+          <div style={{
+            width: '80px',
+            height: '62px',
+            background: 'linear-gradient(145deg, #e2e8f0, #cbd5e1)',
+            borderRadius: '16px',
+            transform: 'perspective(400px) rotateX(20deg)',
+            boxShadow: '0 8px 20px -5px rgba(0,0,0,0.2), inset 0 2px 4px #ffffff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '34px',
+          }}>
+            <span style={{ transform: 'rotateX(-20deg)', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.25))' }}>
+              {landmarkEmoji}
+            </span>
+          </div>
+        </div>
+
+        {/* 4 Upgrade Tier Slots (Plot, Cottage, Hotel, Golden Landmark) */}
+        {tile.type === 'city' && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: '8px',
+            marginBottom: '16px',
+          }}>
+            {/* Slot 1: Plot */}
+            <div
+              onClick={() => !prop.ownerId && setSelectedTier(1)}
+              style={{
+                background: selectedTier === 1 ? 'linear-gradient(180deg, #eff6ff, #dbeafe)' : '#f8fafc',
+                border: selectedTier === 1 ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                borderRadius: '14px',
+                padding: '10px 4px',
+                textAlign: 'center',
+                cursor: !prop.ownerId ? 'pointer' : 'default',
+                transform: selectedTier === 1 ? 'scale(1.04)' : 'scale(1)',
+                transition: 'all 0.15s ease',
+                boxShadow: selectedTier === 1 ? '0 6px 14px rgba(37, 99, 235, 0.2)' : 'none',
+              }}
+            >
+              <div style={{ fontSize: '10px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Plot</div>
+              <div style={{ fontSize: '20px', margin: '4px 0' }}>🌱</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#0f172a' }}>{tile.price} CR</div>
+            </div>
+
+            {/* Slot 2: Cottage */}
+            <div
+              onClick={() => (!prop.ownerId || isOwner) && setSelectedTier(2)}
+              style={{
+                background: selectedTier === 2 ? 'linear-gradient(180deg, #ecfdf5, #d1fae5)' : '#f8fafc',
+                border: selectedTier === 2 ? '2px solid #10b981' : '1px solid #e2e8f0',
+                borderRadius: '14px',
+                padding: '10px 4px',
+                textAlign: 'center',
+                cursor: (!prop.ownerId || isOwner) ? 'pointer' : 'default',
+                transform: selectedTier === 2 ? 'scale(1.04)' : 'scale(1)',
+                transition: 'all 0.15s ease',
+                boxShadow: selectedTier === 2 ? '0 6px 14px rgba(16, 185, 129, 0.2)' : 'none',
+              }}
+            >
+              <div style={{ fontSize: '10px', fontWeight: 800, color: '#059669', textTransform: 'uppercase' }}>Cottage</div>
+              <div style={{ fontSize: '20px', margin: '4px 0' }}>🏡</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#0f172a' }}>
+                {prop.ownerId ? tile.housePrice : tile.price + tile.housePrice} CR
+              </div>
+            </div>
+
+            {/* Slot 3: Hotel */}
+            <div
+              onClick={() => (!prop.ownerId || isOwner) && setSelectedTier(3)}
+              style={{
+                background: selectedTier === 3 ? 'linear-gradient(180deg, #fff7ed, #ffedd5)' : '#f8fafc',
+                border: selectedTier === 3 ? '2px solid #f97316' : '1px solid #e2e8f0',
+                borderRadius: '14px',
+                padding: '10px 4px',
+                textAlign: 'center',
+                cursor: (!prop.ownerId || isOwner) ? 'pointer' : 'default',
+                transform: selectedTier === 3 ? 'scale(1.04)' : 'scale(1)',
+                transition: 'all 0.15s ease',
+                boxShadow: selectedTier === 3 ? '0 6px 14px rgba(249, 115, 22, 0.2)' : 'none',
+              }}
+            >
+              <div style={{ fontSize: '10px', fontWeight: 800, color: '#ea580c', textTransform: 'uppercase' }}>Hotel</div>
+              <div style={{ fontSize: '20px', margin: '4px 0' }}>🏢</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#0f172a' }}>
+                {prop.ownerId ? tile.housePrice : tile.price + tile.housePrice * 2} CR
+              </div>
+            </div>
+
+            {/* Slot 4: Golden Landmark */}
+            <div
+              onClick={() => (!prop.ownerId || isOwner) && setSelectedTier(4)}
+              style={{
+                background: selectedTier === 4 ? 'linear-gradient(180deg, #fefce8, #fef08a)' : '#f8fafc',
+                border: selectedTier === 4 ? '2px solid #eab308' : '1px solid #e2e8f0',
+                borderRadius: '14px',
+                padding: '10px 4px',
+                textAlign: 'center',
+                cursor: (!prop.ownerId || isOwner) ? 'pointer' : 'default',
+                transform: selectedTier === 4 ? 'scale(1.04)' : 'scale(1)',
+                transition: 'all 0.15s ease',
+                boxShadow: selectedTier === 4 ? '0 6px 14px rgba(234, 179, 8, 0.25)' : 'none',
+                position: 'relative',
+              }}
+            >
+              <div style={{ fontSize: '9px', fontWeight: 900, color: '#ca8a04', textTransform: 'uppercase' }}>Landmark</div>
+              <div style={{ fontSize: '20px', margin: '4px 0' }}>👑</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#0f172a' }}>
+                {prop.ownerId ? tile.housePrice : tile.price + tile.housePrice * 3} CR
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Landmark Protection Notice */}
+        {selectedTier === 4 && (
+          <div style={{
+            fontSize: '11px',
+            fontWeight: 800,
+            color: '#b45309',
+            background: '#fef3c7',
+            padding: '6px 12px',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            marginBottom: '14px',
+          }}>
+            <ShieldCheck size={14} />
+            <span>CANNOT BE BOUGHT OUT BY RIVALS!</span>
+          </div>
+        )}
+
+        {/* Dynamic Financial Banner */}
+        <div style={{
+          background: 'linear-gradient(90deg, #fef3c7 0%, #fde68a 100%)',
+          border: '1px solid #fcd34d',
+          borderRadius: '14px',
+          padding: '10px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '18px',
+          boxShadow: 'inset 0 1px 2px #ffffff',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '18px' }}>🪙</span>
+            <div>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase' }}>Rent Yield</div>
+              <div style={{ fontSize: '15px', fontWeight: 900, color: '#78350f' }}>{nextRent} CR</div>
+            </div>
+          </div>
+
+          <div style={{
+            background: '#ffffff',
+            padding: '4px 10px',
+            borderRadius: '20px',
+            fontSize: '11px',
+            fontWeight: 900,
+            color: '#b45309',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+          }}>
+            FULL DISTRICT: 2X
+          </div>
+        </div>
+
+        {/* Action Controls */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {/* Case 1: Unowned -> Big Juicy Green Button */}
+          {!prop.ownerId && tile.type === 'city' && (
+            <button
+              onClick={() => { sounds.playBuild(); onBuy(tile.id, selectedTier); }}
+              disabled={!canAfford}
+              style={{
+                width: '100%',
+                padding: '14px 20px',
+                background: canAfford ? 'linear-gradient(180deg, #22c55e 0%, #16a34a 100%)' : '#cbd5e1',
+                border: 'none',
+                borderRadius: '18px',
+                color: '#ffffff',
+                fontWeight: 900,
+                fontSize: '17px',
+                letterSpacing: '0.5px',
+                cursor: canAfford ? 'pointer' : 'not-allowed',
+                boxShadow: canAfford ? '0 10px 20px -5px rgba(22, 163, 74, 0.4), inset 0 2px 2px rgba(255,255,255,0.4)' : 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                transition: 'transform 0.1s ease',
+              }}
+            >
+              <span>BUY & UPGRADE ({costToBuild} Space Credits)</span>
+            </button>
+          )}
+
+          {/* Case 2: Owned by Player -> Upgrade Button */}
+          {isOwner && tile.type === 'city' && !prop.isLandmark && (
+            <button
+              onClick={() => { sounds.playBuild(); onUpgrade(tile.id); }}
+              disabled={!canAfford}
+              style={{
+                width: '100%',
+                padding: '14px 20px',
+                background: canAfford ? 'linear-gradient(180deg, #3b82f6 0%, #2563eb 100%)' : '#cbd5e1',
+                border: 'none',
+                borderRadius: '18px',
+                color: '#ffffff',
+                fontWeight: 900,
+                fontSize: '17px',
+                cursor: canAfford ? 'pointer' : 'not-allowed',
+                boxShadow: canAfford ? '0 10px 20px -5px rgba(37, 99, 235, 0.4)' : 'none',
+              }}
+            >
+              <span>UPGRADE LEVEL ({tile.housePrice} Space Credits)</span>
+            </button>
+          )}
+
+          {/* Case 3: Owned by Rival -> 2X Hostile Buyout Button */}
+          {isRival && tile.type === 'city' && (
+            <>
+              <div style={{
+                fontSize: '12px',
+                fontWeight: 800,
+                color: '#ef4444',
+                background: '#fee2e2',
+                padding: '8px',
+                borderRadius: '10px',
+                textAlign: 'center',
+              }}>
+                Owned by {rivalOwner?.name || 'Rival'}! Paid rent: {currentRent} Space Credits
+              </div>
+
+              {!prop.isLandmark && (
+                <button
+                  onClick={() => { sounds.playBuyout(); onBuyout(tile.id); }}
+                  disabled={!canBuyout}
+                  style={{
+                    width: '100%',
+                    padding: '14px 20px',
+                    background: canBuyout ? 'linear-gradient(180deg, #ec4899 0%, #d946ef 100%)' : '#cbd5e1',
+                    border: 'none',
+                    borderRadius: '18px',
+                    color: '#ffffff',
+                    fontWeight: 900,
+                    fontSize: '16px',
+                    cursor: canBuyout ? 'pointer' : 'not-allowed',
+                    boxShadow: canBuyout ? '0 10px 20px -5px rgba(217, 70, 239, 0.4)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <Zap size={18} />
+                  <span>HOSTILE BUYOUT 2X ({buyoutCost} Space Credits)</span>
+                </button>
+              )}
+            </>
+          )}
+
+          {/* Pass / End Turn Button */}
+          <button
+            onClick={onEndTurn}
+            style={{
+              width: '100%',
+              padding: '12px',
+              background: '#f1f5f9',
+              border: '1px solid #e2e8f0',
+              borderRadius: '16px',
+              color: '#64748b',
+              fontWeight: 800,
+              fontSize: '14px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+            }}
+          >
+            <span>PASS</span>
+            <ArrowRight size={15} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

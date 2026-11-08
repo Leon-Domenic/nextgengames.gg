@@ -3,6 +3,7 @@ import { parse } from 'url';
 import next from 'next';
 import { Server as SocketIOServer } from 'socket.io';
 import { BoardBrawlGame } from './lib/board-brawl/engine.js';
+import { getRandomEventCard, getEventCard } from './lib/board-brawl/cards.js';
 import db from './lib/db.js';
 
 const dev = process.env.NODE_ENV !== 'production';
@@ -115,6 +116,9 @@ app.prepare().then(() => {
           onStateChange: (state) => {
             io.to(`game_${roomId}`).emit('game_state_update', state);
           },
+          onActionCardPlayed: (cardData) => {
+            io.to(`game_${roomId}`).emit('action_card_played', cardData);
+          },
           onTomatoHit: (data) => {
             io.to(`game_${roomId}`).emit('tomato_impact_event', data);
             // Record stats in DB
@@ -179,14 +183,28 @@ app.prepare().then(() => {
         const botCount = game.players.filter(p => p.isBot).length + 1;
         const botNames = ['BaronVonCash', 'Apex-9', 'AxelNitro', 'CaptainMonaco', 'AstroVance', 'LordQuackers', 'HodlKing', 'QueenVictoria', 'Knuckles', 'MadameSolana'];
         const botTokens = ['hat', 'robot', 'car', 'yacht', 'rocket', 'duck', 'diamond', 'crown', 'brawler', 'mystic'];
-        const botColors = ['#00f0ff', '#00ff88', '#ff3344', '#38bdf8', '#a855f7', '#eab308', '#06b6d4', '#f59e0b', '#ef4444', '#ec4899'];
+        const availableColors = ['#00f0ff', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'];
+        const usedColors = new Set(game.players.map(p => (p.avatarColor || '').toLowerCase()));
+        const botColor = availableColors.find(c => !usedColors.has(c.toLowerCase())) || availableColors[(botCount - 1) % availableColors.length];
 
         game.addPlayer({
           id: `bot_${Date.now()}_${botCount}`,
           username: botNames[(botCount - 1) % botNames.length],
-          avatar_color: botColors[(botCount - 1) % botColors.length],
+          avatar_color: botColor,
           avatar_token: botTokens[(botCount - 1) % botTokens.length],
+          dice_skin: ['classic_red', 'cyber_neon', 'golden_vegas', 'royal_emerald', 'amethyst_galaxy', 'obsidian_flame', 'arctic_frost', 'rose_quartz'][(botCount - 1) % 8],
         }, true);
+      } else if (action === 'select_character') {
+        game.updatePlayerCharacter(payload.playerId, payload.token, payload.color);
+      } else if (action === 'select_dice_skin') {
+        game.updatePlayerDiceSkin(payload.playerId, payload.skinId);
+      } else if (action === 'play_action_card') {
+        game.playActionCard(payload.playerId, payload.cardId, payload.target);
+      } else if (action === 'trigger_event_card') {
+        const card = payload?.cardId ? getEventCard(payload.cardId) : getRandomEventCard();
+        game.applyEventCard(game.getCurrentPlayer() || game.players[0], card, false);
+      } else if (action === 'dismiss_event_card') {
+        game.dismissEventCard(payload.playerId);
       } else if (action === 'roll_dice') {
         game.rollDice(payload.playerId);
       } else if (action === 'buy_city') {
@@ -197,6 +215,10 @@ app.prepare().then(() => {
         game.upgradeCity(payload.playerId, payload.tileId);
       } else if (action === 'set_festival') {
         game.setFestival(payload.playerId, payload.tileId);
+      } else if (action === 'pay_bail') {
+        game.payBail(payload.playerId);
+      } else if (action === 'declare_bankruptcy') {
+        game.declareBankruptcy(payload.playerId, game.pendingDebt?.creditorId);
       } else if (action === 'throw_tomato') {
         game.throwTomato(payload.fromPlayerId, payload.targetPlayerId);
       } else if (action === 'end_turn') {
