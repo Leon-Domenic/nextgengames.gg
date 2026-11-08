@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { sounds, MUSIC_PLAYLIST } from '@/lib/audio';
 import {
   SETTINGS_KEYS,
@@ -39,6 +40,10 @@ import {
 } from 'lucide-react';
 
 export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [activeTab, setActiveTab] = useState('audio'); // 'audio' | 'graphics' | 'gameplay' | 'controls' | 'info'
 
   // Master & Audio state
@@ -136,7 +141,7 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   // Audio Handlers
   const handleMasterVolumeChange = (e) => {
@@ -321,7 +326,7 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
   const equippedChar = CHARACTER_MAP[equippedCharId] || CHARACTERS[0];
   const equippedDice = DICE_SKIN_MAP[equippedDiceSkinId] || { name: 'Classic Red', icon: '🎲' };
 
-  return (
+  return createPortal(
     <div
       style={{
         position: 'fixed',
@@ -330,9 +335,9 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
         background: 'rgba(15, 23, 42, 0.82)',
         backdropFilter: 'blur(14px)',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'center',
-        padding: '20px 16px',
+        padding: '24px 16px',
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         overflowY: 'auto',
       }}
@@ -344,7 +349,8 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
         style={{
           width: '740px',
           maxWidth: '100%',
-          maxHeight: 'calc(100vh - 40px)',
+          maxHeight: 'calc(100vh - 48px)',
+          margin: 'auto',
           background: '#ffffff',
           borderRadius: '24px',
           border: '3px solid #38bdf8',
@@ -363,7 +369,7 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
             background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 60%, #0f172a 100%)',
             padding: '18px 24px',
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             justifyContent: 'space-between',
             borderBottom: '3px solid #38bdf8',
           }}
@@ -1835,6 +1841,7 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

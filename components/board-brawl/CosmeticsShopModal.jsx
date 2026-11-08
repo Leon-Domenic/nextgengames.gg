@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { CHARACTERS } from '@/lib/board-brawl/characters';
 import { DICE_SKINS } from '@/lib/board-brawl/diceSkins';
 import { sounds } from '@/lib/audio';
@@ -19,6 +20,10 @@ export default function CosmeticsShopModal({
   userCash = 5000,
   userCoins = 50,
 }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [activeTab, setActiveTab] = useState('characters'); // 'characters' | 'dice'
   const [selectedItem, setSelectedItem] = useState(
     CHARACTERS.find(c => c.id === equippedCharacter) || CHARACTERS[0]
@@ -40,7 +45,7 @@ export default function CosmeticsShopModal({
     return new Set(['hat', 'witch', 'traveler', 'classic_red']);
   });
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   const isCharacterTab = activeTab === 'characters';
   const itemList = isCharacterTab ? CHARACTERS : DICE_SKINS;
@@ -115,7 +120,7 @@ export default function CosmeticsShopModal({
     handleEquip(item);
   };
 
-  return (
+  return createPortal(
     <div
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -587,6 +592,7 @@ export default function CosmeticsShopModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

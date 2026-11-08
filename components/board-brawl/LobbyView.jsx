@@ -99,7 +99,10 @@ export default function LobbyView({
       <SettingsModal
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
-        onOpenCosmetics={() => setShowShop(true)}
+        onOpenCosmetics={() => {
+          setShowSettings(false);
+          setShowShop(true);
+        }}
       />
 
       {/* 1. Top Business Tour Navigation Bar */}

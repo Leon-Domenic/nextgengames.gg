@@ -905,7 +905,10 @@ export default function BoardBrawlArenaPage() {
             <SettingsModal
               isOpen={showSettingsModal}
               onClose={() => setShowSettingsModal(false)}
-              onOpenCosmetics={() => setShowInGameShop(true)}
+              onOpenCosmetics={() => {
+                setShowSettingsModal(false);
+                setShowInGameShop(true);
+              }}
             />
 
             {/* The Steady 45-Degree Diamond 3D Arena */}

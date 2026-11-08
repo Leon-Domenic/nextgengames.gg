@@ -67,7 +67,7 @@ export default function ScreenShakeWrapper({ shakeTrigger, intensity = 'heavy', 
       transition: transform === 'none' ? 'transform 0.1s ease-out' : 'none',
       width: '100%',
       height: '100%',
-      willChange: 'transform',
+      willChange: transform === 'none' ? 'auto' : 'transform',
     }}>
       {children}
     </div>
