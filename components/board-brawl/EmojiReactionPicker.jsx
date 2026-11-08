@@ -40,9 +40,11 @@ export default function EmojiReactionPicker({
   // Placement relative to avatar box depending on corner
   const placementStyle = {
     'top-left': { top: '50px', left: '0px' },
-    'top-right': { top: '50px', left: '0px' },
+    'top-right': { top: '50px', right: '0px' },
+    'mid-left': { top: '50px', left: '0px' },
+    'mid-right': { top: '50px', right: '0px' },
     'bottom-left': { bottom: '50px', left: '0px' },
-    'bottom-right': { bottom: '50px', left: '0px' },
+    'bottom-right': { bottom: '50px', right: '0px' },
     'pedestal': { top: '108px', left: '50%', transform: 'translateX(-50%)' },
   }[position] || { top: '50px', left: '0px' };
 

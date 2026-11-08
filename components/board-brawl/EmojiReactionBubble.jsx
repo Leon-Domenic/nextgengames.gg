@@ -6,43 +6,48 @@ export default function EmojiReactionBubble({
   reaction,
   position = 'top-left',
 }) {
-  const [visible, setVisible] = useState(false);
+  const [active, setActive] = useState(() => {
+    if (!reaction?.emoji || !reaction?.timestamp) return null;
+    return (Date.now() - reaction.timestamp < 3500) ? reaction : null;
+  });
 
   useEffect(() => {
     if (!reaction?.emoji || !reaction?.timestamp) {
-      setVisible(false);
+      setActive(null);
       return;
     }
 
     const elapsed = Date.now() - reaction.timestamp;
     if (elapsed < 3500) {
-      setVisible(true);
+      setActive(reaction);
       const timer = setTimeout(() => {
-        setVisible(false);
+        setActive(null);
       }, 3500 - elapsed);
       return () => clearTimeout(timer);
     } else {
-      setVisible(false);
+      setActive(null);
     }
   }, [reaction?.emoji, reaction?.timestamp]);
 
-  if (!visible || !reaction?.emoji) return null;
+  if (!active?.emoji) return null;
 
   // Placement next to the avatar box
   const placementStyle = {
-    'top-left': { left: '50px', top: '-10px' },
-    'top-right': { right: '50px', top: '-10px' },
-    'bottom-left': { left: '50px', bottom: '-10px' },
-    'bottom-right': { right: '50px', bottom: '-10px' },
+    'top-left': { left: '52px', top: '-6px' },
+    'top-right': { right: '52px', top: '-6px' },
+    'mid-left': { left: '52px', top: '-6px' },
+    'mid-right': { right: '52px', top: '-6px' },
+    'bottom-left': { left: '52px', bottom: '-6px' },
+    'bottom-right': { right: '52px', bottom: '-6px' },
     'pedestal': { top: '-46px', left: '50%', transform: 'translateX(-50%)' },
-  }[position] || { left: '50px', top: '-10px' };
+  }[position] || { left: '52px', top: '-6px' };
 
   return (
     <div
       style={{
         position: 'absolute',
         ...placementStyle,
-        zIndex: 900,
+        zIndex: 9999,
         pointerEvents: 'none',
         display: 'flex',
         alignItems: 'center',
@@ -72,7 +77,7 @@ export default function EmojiReactionBubble({
           filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))',
         }}
       >
-        <span>{reaction.emoji}</span>
+        <span>{active.emoji}</span>
       </div>
     </div>
   );
