@@ -944,11 +944,11 @@ export default function Board3D({
     const getRot = (val) => {
       switch (val) {
         case 1: return new THREE.Euler(0, 0, 0);
-        case 6: return new THREE.Euler(Math.PI, 0, 0);
         case 2: return new THREE.Euler(-Math.PI / 2, 0, 0);
+        case 3: return new THREE.Euler(0, 0, Math.PI / 2);
+        case 4: return new THREE.Euler(0, 0, -Math.PI / 2);
         case 5: return new THREE.Euler(Math.PI / 2, 0, 0);
-        case 3: return new THREE.Euler(0, 0, -Math.PI / 2);
-        case 4: return new THREE.Euler(0, 0, Math.PI / 2);
+        case 6: return new THREE.Euler(Math.PI, 0, 0);
         default: return new THREE.Euler(0, 0, 0);
       }
     };
