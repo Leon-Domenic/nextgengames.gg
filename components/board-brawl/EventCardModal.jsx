@@ -3,9 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import { CARD_RARITY } from '@/lib/board-brawl/cards';
 import { sounds } from '@/lib/audio';
+import { t } from '@/lib/board-brawl/i18n';
 import { Sparkles, Zap, Shield, AlertTriangle, ArrowRight, Clock } from 'lucide-react';
 
-const DISPLAY_DURATION_MS = 6000; // 6.0 seconds display time (>= 4.5s requirement)
+const DISPLAY_DURATION_MS = 7500; // 7.5 seconds display time (7-8s requirement)
 
 export default function EventCardModal({
   eventData,
@@ -155,7 +156,7 @@ export default function EventCardModal({
             textShadow: '0 2px 10px rgba(0,0,0,0.5)',
           }}
         >
-          {card.title}
+          {t(card.id + '_title') || t(card.title)}
         </h2>
 
         {/* Flavor Description */}
@@ -168,7 +169,7 @@ export default function EventCardModal({
             padding: '0 8px',
           }}
         >
-          {card.description}
+          {t(card.id + '_desc') || t(card.description)}
         </p>
 
         {/* Visual Impact Summary Pill */}
@@ -247,7 +248,7 @@ export default function EventCardModal({
             onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
           >
             <Clock size={15} />
-            <span>CONTINUE ({secondsLeft}s)</span>
+            <span>DISMISS / OK ({secondsLeft}s)</span>
             <ArrowRight size={16} />
           </button>
         </div>

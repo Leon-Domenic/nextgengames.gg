@@ -14,6 +14,7 @@ const nextConfig = {
   },
   async redirects() {
     return [
+      { source: '/games', destination: '/browsergames', permanent: false },
       { source: '/guides', destination: '/', permanent: false },
       { source: '/leaderboard', destination: '/', permanent: false },
       { source: '/lore', destination: '/', permanent: false },

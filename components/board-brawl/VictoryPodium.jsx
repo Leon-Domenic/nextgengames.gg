@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
 import { Trophy, Medal, Crown, Flame, Target, ArrowRight, Clock, Coins, Building2, RotateCcw } from 'lucide-react';
 import { TOKEN_ICONS } from '@/lib/board-brawl/characters';
+import { useTranslation } from '@/lib/board-brawl/i18n';
 
 export default function VictoryPodium({
   winner,
@@ -16,6 +17,7 @@ export default function VictoryPodium({
   onReturnToHub,
   onPlayAgain,
 }) {
+  const { t } = useTranslation();
   const initialSeconds = typeof lobbyReturnRemaining === 'number' && lobbyReturnRemaining > 0
     ? lobbyReturnRemaining
     : autoReturnSeconds;
@@ -199,7 +201,7 @@ export default function VictoryPodium({
           letterSpacing: '-0.02em',
           textShadow: '0 2px 14px rgba(255, 255, 255, 0.3)',
         }}>
-          {winner?.name || 'Player'} WINS!
+          {winner?.name || 'Player'} {t('wins')}
         </h1>
 
         {/* Victory Condition Tag */}
@@ -352,7 +354,7 @@ export default function VictoryPodium({
                             background: '#f59e0b',
                             color: '#000',
                           }}>
-                            WINNER
+                            {t('winner').toUpperCase()}
                           </span>
                         )}
                         {player.isBankrupt && (
@@ -365,7 +367,7 @@ export default function VictoryPodium({
                             color: '#ef4444',
                             border: '1px solid #ef4444',
                           }}>
-                            BANKRUPT
+                            {t('bankrupt')}
                           </span>
                         )}
                       </div>
@@ -541,7 +543,7 @@ export default function VictoryPodium({
               transition: 'all 0.15s ease',
             }}
           >
-            LEAVE TO HUB
+            {t('leaveToHub')}
             <ArrowRight size={17} />
           </button>
         </div>

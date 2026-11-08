@@ -133,6 +133,15 @@ app.prepare().then(() => {
           onChatMessage: (msg) => {
             io.to(`game_${roomId}`).emit('chat_message_event', msg);
           },
+          onTradeUpdate: (tradeData) => {
+            io.to(`game_${roomId}`).emit('trade_update_event', tradeData);
+          },
+          onTradeCompleted: (tradeData) => {
+            io.to(`game_${roomId}`).emit('trade_completed_event', tradeData);
+          },
+          onTradeDeclined: (tradeData) => {
+            io.to(`game_${roomId}`).emit('trade_declined_event', tradeData);
+          },
           onWin: (winData) => {
             io.to(`game_${roomId}`).emit('game_over_event', winData);
             // Update match stats in DB
@@ -201,6 +210,15 @@ app.prepare().then(() => {
           avatar_token: botTokens[(botCount - 1) % botTokens.length],
           dice_skin: ['classic_red', 'cyber_neon', 'golden_vegas', 'royal_emerald', 'amethyst_galaxy', 'obsidian_flame', 'arctic_frost', 'rose_quartz'][(botCount - 1) % 8],
         }, true);
+      } else if (action === 'remove_player' || action === 'remove_bot') {
+        const targetId = payload?.playerId || payload?.userId;
+        const hostPlayer = game.players[0];
+        if (targetId && game.status === 'waiting') {
+          if (targetId !== hostPlayer?.id) {
+            game.removePlayer(targetId);
+            io.to(`game_${roomId}`).emit('player_kicked_event', { playerId: targetId });
+          }
+        }
       } else if (action === 'select_character') {
         game.updatePlayerCharacter(payload.playerId, payload.token, payload.color);
       } else if (action === 'select_dice_skin') {
@@ -252,10 +270,39 @@ app.prepare().then(() => {
           emoji: payload.emoji,
           timestamp: Date.now(),
         });
+      } else if (action === 'trade_propose') {
+        game.proposeTrade(payload.proposerId, payload.targetId, payload.offer);
+      } else if (action === 'trade_counter') {
+        game.counterTrade(payload.playerId, payload.tradeId, payload.updatedOffer);
+      } else if (action === 'trade_respond') {
+        game.respondToTrade(payload.playerId, payload.tradeId, payload.response);
+      } else if (action === 'trade_cancel') {
+        game.cancelTrade(payload.playerId, payload.tradeId);
       }
     });
 
-    // 5. Disconnect
+    // 5. Dedicated Trade & Negotiation Events
+    socket.on('trade_propose', ({ roomId, proposerId, targetId, offer }) => {
+      const game = activeGames.get(roomId);
+      if (game) game.proposeTrade(proposerId, targetId, offer);
+    });
+
+    socket.on('trade_counter', ({ roomId, playerId, tradeId, updatedOffer }) => {
+      const game = activeGames.get(roomId);
+      if (game) game.counterTrade(playerId, tradeId, updatedOffer);
+    });
+
+    socket.on('trade_respond', ({ roomId, playerId, tradeId, response }) => {
+      const game = activeGames.get(roomId);
+      if (game) game.respondToTrade(playerId, tradeId, response);
+    });
+
+    socket.on('trade_cancel', ({ roomId, playerId, tradeId }) => {
+      const game = activeGames.get(roomId);
+      if (game) game.cancelTrade(playerId, tradeId);
+    });
+
+    // 6. Disconnect
     socket.on('disconnect', () => {
       if (currentUserId && onlineUsers.has(currentUserId)) {
         onlineUsers.delete(currentUserId);

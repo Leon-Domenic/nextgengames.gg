@@ -8,15 +8,17 @@ import { Sparkles, Trophy, ArrowRight, X } from 'lucide-react';
 export default function FestivalSelectModal({
   properties = {},
   myPlayer,
+  player,
   onSelectFestival,
   onSkip,
   turnTimer = 15,
 }) {
-  if (!myPlayer) return null;
+  const userPlayer = myPlayer || player;
+  if (!userPlayer) return null;
 
   const ownedCityIds = Object.keys(properties).filter((tId) => {
     const prop = properties[tId];
-    return prop && prop.ownerId === myPlayer.id;
+    return prop && prop.ownerId === userPlayer.id;
   });
 
   const handleSelect = (tileId) => {

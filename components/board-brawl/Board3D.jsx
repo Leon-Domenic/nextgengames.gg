@@ -121,6 +121,7 @@ export default function Board3D({
   onThrowTomato,
   onEndTurn,
   onTileClick,
+  onInspectTile,
   onPawnMovementStart,
   onPawnMovementComplete,
 }) {
@@ -134,15 +135,24 @@ export default function Board3D({
   const hoveredMeshRef = useRef(null);
   const pawnMeshesRef = useRef(new Map());
   const buildingsGroupRef = useRef(null);
+  const curbMeshesRef = useRef([]);
   const diceGroupRef = useRef(null);
   const diceMeshesRef = useRef([]);
   const diceSimRef = useRef({ active: false, progress: 1.0, targetRotation1: null, targetRotation2: null });
   const lastRollIdRef = useRef(null);
 
   const onTileClickRef = useRef(onTileClick);
+  const onInspectTileRef = useRef(onInspectTile);
+  const propertiesRef = useRef(properties);
   useEffect(() => {
     onTileClickRef.current = onTileClick;
   }, [onTileClick]);
+  useEffect(() => {
+    onInspectTileRef.current = onInspectTile;
+  }, [onInspectTile]);
+  useEffect(() => {
+    propertiesRef.current = properties;
+  }, [properties]);
 
   const [sceneReady, setSceneReady] = useState(false);
 
@@ -330,6 +340,91 @@ export default function Board3D({
     tableGroup.add(lawnMesh);
 
     scene.add(tableGroup);
+
+    // 7b. Elevated Outer Curb / Terrace Strip (Width ~3.5, Height ~0.45, Soft Stone & Lawn Trim)
+    // Placed behind each of the 4 diamond street sides outside the track
+    const curbGroup = new THREE.Group();
+    const curbMeshes = [];
+    const R_outer = 56;
+    const trackDepth = 8.5;
+    const sideLength = R_outer * Math.SQRT2; // ~79.2
+    const streetSpan = sideLength - 2 * trackDepth; // ~62.2 units
+    const curbWidth = 3.5;
+    const curbHeight = 0.45;
+
+    const apexes = [
+      new THREE.Vector2(0, R_outer),      // Corner 0: South (START)
+      new THREE.Vector2(-R_outer, 0),     // Corner 1: West (PRISON)
+      new THREE.Vector2(0, -R_outer),     // Corner 2: North (CHAMPIONSHIPS)
+      new THREE.Vector2(R_outer, 0),      // Corner 3: East (WORLD TOUR)
+    ];
+
+    const sideRotations = [
+      (3 * Math.PI) / 4,   // Side 0
+      Math.PI / 4,         // Side 1
+      -Math.PI / 4,        // Side 2
+      (-3 * Math.PI) / 4,  // Side 3
+    ];
+
+    const stoneMat = new THREE.MeshStandardMaterial({
+      color: 0x334155, // Slate soft stone curb
+      roughness: 0.65,
+      metalness: 0.15,
+    });
+
+    const terraceLawnMat = new THREE.MeshStandardMaterial({
+      color: 0x2e7d32, // Manicured terrace lawn top
+      roughness: 0.82,
+      metalness: 0.05,
+    });
+
+    const curbTrimMat = new THREE.MeshStandardMaterial({
+      color: 0xd97706, // Polished brass / golden curb edge trim
+      roughness: 0.35,
+      metalness: 0.75,
+    });
+
+    for (let side = 0; side < 4; side++) {
+      const pStart = apexes[side];
+      const pEnd = apexes[(side + 1) % 4];
+      const u_edge = new THREE.Vector2().subVectors(pEnd, pStart).normalize();
+      const mid = new THREE.Vector2().addVectors(pStart, pEnd).multiplyScalar(0.5);
+      let u_in = new THREE.Vector2(-u_edge.y, u_edge.x);
+      if (u_in.dot(mid) > 0) u_in.negate();
+      const u_out = u_in.clone().negate();
+
+      // Outer edge of the street lies along mid. Center of curb is curbWidth / 2 outward.
+      const curbCenter = mid.clone().add(u_out.clone().multiplyScalar(curbWidth / 2));
+
+      const sideCurbGroup = new THREE.Group();
+      sideCurbGroup.position.set(curbCenter.x, curbHeight / 2, curbCenter.y);
+      sideCurbGroup.rotation.y = sideRotations[side];
+
+      // Base stone curb with lawn top (+Y face is terraceLawnMat)
+      const curbGeom = new THREE.BoxGeometry(streetSpan, curbHeight, curbWidth);
+      const curbMesh = new THREE.Mesh(curbGeom, [stoneMat, stoneMat, terraceLawnMat, stoneMat, stoneMat, stoneMat]);
+      curbMesh.castShadow = true;
+      curbMesh.receiveShadow = true;
+      sideCurbGroup.add(curbMesh);
+
+      // Inner street-side golden bevel trim (faces street tiles at local Z = +curbWidth / 2)
+      const innerTrimGeom = new THREE.BoxGeometry(streetSpan + 0.1, 0.08, 0.28);
+      const innerTrim = new THREE.Mesh(innerTrimGeom, curbTrimMat);
+      innerTrim.position.set(0, curbHeight / 2 + 0.02, curbWidth / 2 - 0.14);
+      sideCurbGroup.add(innerTrim);
+
+      // Outer stone terrace railing edge (at local Z = -curbWidth / 2)
+      const outerTrimGeom = new THREE.BoxGeometry(streetSpan + 0.1, 0.06, 0.22);
+      const outerTrim = new THREE.Mesh(outerTrimGeom, stoneMat);
+      outerTrim.position.set(0, curbHeight / 2 + 0.02, -curbWidth / 2 + 0.11);
+      sideCurbGroup.add(outerTrim);
+
+      curbGroup.add(sideCurbGroup);
+      curbMeshes.push(curbMesh);
+    }
+
+    curbMeshesRef.current = curbMeshes;
+    scene.add(curbGroup);
 
     // 7. 48 Perimeter 3D Tiles (Monopoly Flush Square Corners & Outward-Facing Slabs)
     const tileGroup = new THREE.Group();
@@ -815,14 +910,35 @@ export default function Board3D({
       mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
       mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(mouse, cameraRef.current);
-      return raycaster.intersectObjects(tileMeshesRef.current, false);
+
+      const targets = [...tileMeshesRef.current];
+      if (buildingsGroupRef.current) {
+        targets.push(...buildingsGroupRef.current.children);
+      }
+      return raycaster.intersectObjects(targets, true);
+    };
+
+    const resolveHitTile = (intersects) => {
+      for (const hit of intersects) {
+        let cur = hit.object;
+        while (cur && cur !== scene) {
+          if (cur.userData?.tileId !== undefined && cur.userData?.tileId !== null) {
+            const tileId = cur.userData.tileId;
+            const tileMesh = tileMeshesRef.current[tileId];
+            return { tileId, tileMesh };
+          }
+          cur = cur.parent;
+        }
+      }
+      return null;
     };
 
     const handlePointerMove = (e) => {
       const intersects = getRaycastIntersects(e.clientX, e.clientY);
+      const hit = resolveHitTile(intersects);
 
-      if (intersects.length > 0) {
-        const hitMesh = intersects[0].object;
+      if (hit && hit.tileMesh) {
+        const hitMesh = hit.tileMesh;
         if (hoveredMeshRef.current !== hitMesh) {
           if (hoveredMeshRef.current) {
             const prevMat = hoveredMeshRef.current.material?.[2];
@@ -839,7 +955,7 @@ export default function Board3D({
             topMat.emissive.setHex(0x38bdf8);
             topMat.emissiveIntensity = 0.35;
           }
-          hitMesh.position.y = 0.32;
+          hitMesh.position.y = 0.30;
           renderer.domElement.style.cursor = 'pointer';
         }
       } else {
@@ -865,13 +981,14 @@ export default function Board3D({
       if (dist > 8) return; // Ignore drag/swipe moves
 
       const intersects = getRaycastIntersects(e.clientX, e.clientY);
-      if (intersects.length > 0) {
-        const hitMesh = intersects[0].object;
-        const tileId = hitMesh.userData?.tileId;
-        if (tileId !== undefined && tileId !== null) {
-          sounds.playClick?.();
-          onTileClickRef.current?.(tileId);
-        }
+      const hit = resolveHitTile(intersects);
+      if (hit && hit.tileId !== undefined && hit.tileId !== null) {
+        const tileId = hit.tileId;
+        const tileData = TILES.find((t) => t.id === tileId) || TILES[tileId];
+        const propData = propertiesRef.current?.[tileId];
+        sounds.playClick?.();
+        onTileClickRef.current?.(tileId, tileData, propData);
+        onInspectTileRef.current?.(tileId, tileData, propData);
       }
     };
 
@@ -903,10 +1020,10 @@ export default function Board3D({
       const delta = clock.getDelta();
       const elapsed = clock.getElapsedTime();
 
-      // Idle Hover & Real-time Avatar Animations for Pawns
+      // Idle Hover & Real-time Avatar Animations for Pawns (Heroic scale foot contact y = 0.35)
       pawnMeshesRef.current.forEach(({ group, isMoving }) => {
         if (!isMoving && group) {
-          group.position.y = 0.2 + Math.sin(elapsed * 3.5) * 0.12;
+          group.position.y = 0.35 + Math.sin(elapsed * 3.5) * 0.12;
         }
         if (group && typeof group.userData?.update === 'function') {
           group.userData.update(delta, elapsed, isMoving);
@@ -989,34 +1106,50 @@ export default function Board3D({
       const owner = players.find((u) => u.id === prop.ownerId);
       const ownerColor = owner?.avatarColor || '#00f0ff';
 
-      // 1. Owner Crest on the Ground in Player's Custom Color
-      const crest = createOwnerCrest(ownerColor);
-      crest.position.set(p.x, 0.28, p.z);
+      // 1. Subtle Flat Glowing Owner Crest & Border Ring on the Street Tile
+      // Sits flat on the card surface at y = 0.35, keeping 100% of flag, city name & price pill clean
+      const crest = createOwnerCrest(ownerColor, p.width, p.length);
+      crest.position.set(p.x, 0.35, p.z);
       crest.rotation.y = p.rotationY;
+      crest.traverse((obj) => {
+        obj.userData = { tileId, isTile: true };
+      });
       group.add(crest);
 
-      // 2. 3D Miniature Houses (Levels 2-4) in Player's Custom Color
+      // 2. 3D Miniature Houses (Levels 2-4) on the Elevated Outer Terrace Curb
+      // Relocated to outer perimeter terrace behind the color header (localOffset.z = -5.1)
       if (prop.level >= 2 && prop.level <= 4) {
         const houseCount = prop.level - 1;
-        const offsets = houseCount === 1 ? [0] : houseCount === 2 ? [-1.1, 1.1] : [-1.8, 0, 1.8];
+        const offsets = houseCount === 1 ? [0] : houseCount === 2 ? [-1.2, 1.2] : [-1.7, 0, 1.7];
 
         offsets.forEach((offsetX) => {
           const house = create3DHouse(ownerColor);
-          const localOffset = new THREE.Vector3(offsetX, 0.26, -2.0);
+          const localOffset = new THREE.Vector3(offsetX, 0, -5.1);
           localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
-          house.position.set(p.x + localOffset.x, 0.26, p.z + localOffset.z);
-          house.rotation.y = p.rotationY;
+          house.position.set(p.x + localOffset.x, 0.45, p.z + localOffset.z);
+
+          // Rotate slightly inward toward the street
+          const inwardAngle = offsetX < -0.1 ? 0.12 : offsetX > 0.1 ? -0.12 : 0;
+          house.rotation.y = p.rotationY + inwardAngle;
+
+          house.traverse((obj) => {
+            obj.userData = { tileId, isTile: true };
+          });
           group.add(house);
         });
       }
 
-      // 3. 3D Luxury Hotel / Skyscraper (Level 5) in Player's Custom Color
+      // 3. 3D Luxury Hotel / Skyscraper (Level 5) on the Elevated Outer Terrace Curb
       if (prop.level >= 5) {
         const hotel = create3DHotel(ownerColor);
-        const localOffset = new THREE.Vector3(0, 0.26, -1.8);
+        const localOffset = new THREE.Vector3(0, 0, -5.1);
         localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
-        hotel.position.set(p.x + localOffset.x, 0.26, p.z + localOffset.z);
+        hotel.position.set(p.x + localOffset.x, 0.45, p.z + localOffset.z);
         hotel.rotation.y = p.rotationY;
+
+        hotel.traverse((obj) => {
+          obj.userData = { tileId, isTile: true };
+        });
         group.add(hotel);
       }
     });
@@ -1055,7 +1188,7 @@ export default function Board3D({
         const subAngle = (idx * Math.PI * 2) / Math.max(1, players.length);
         const subOffset = new THREE.Vector3(Math.cos(subAngle) * 1.3, 0, Math.sin(subAngle) * 1.3);
 
-        pawnGroup.position.set(startPos.x + subOffset.x, 0.25, startPos.z + subOffset.z);
+        pawnGroup.position.set(startPos.x + subOffset.x, 0.35, startPos.z + subOffset.z);
         scene.add(pawnGroup);
 
         entry = {
@@ -1112,13 +1245,13 @@ export default function Board3D({
               entry.group.scale.y = origScaleY * (1.0 - squash);
               entry.group.scale.x = origScaleXZ * (1.0 + squash * 0.45);
               entry.group.scale.z = origScaleXZ * (1.0 + squash * 0.45);
-              entry.group.position.y = 0.25 - squash * 0.12;
+              entry.group.position.y = 0.35 - squash * 0.12;
 
               if (lp < 1.0) {
                 requestAnimationFrame(landAnim);
               } else {
                 entry.group.scale.set(origScaleXZ, origScaleY, origScaleXZ);
-                entry.group.position.y = 0.25;
+                entry.group.position.y = 0.35;
                 entry.currentTile = toTile;
                 entry.targetTile = toTile;
                 entry.isMoving = false;
@@ -1134,7 +1267,7 @@ export default function Board3D({
           const startCoords = entry.group.position.clone();
           const targetPos = new THREE.Vector3(
             targetCoords.x + entry.subOffset.x,
-            0.25,
+            0.35,
             targetCoords.z + entry.subOffset.z
           );
 
@@ -1149,7 +1282,7 @@ export default function Board3D({
             t = Math.min(1.0, (now - hopStartTime) / hopDuration);
 
             entry.group.position.lerpVectors(startCoords, targetPos, t);
-            entry.group.position.y = 0.25 + Math.sin(t * Math.PI) * 2.4;
+            entry.group.position.y = 0.35 + Math.sin(t * Math.PI) * 4.5;
 
             if (t < 1.0) {
               requestAnimationFrame(stepAnim);

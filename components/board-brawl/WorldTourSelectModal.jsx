@@ -8,26 +8,31 @@ import { Plane, Coins, ArrowRight, X, Sparkles, Building2, CheckCircle2 } from '
 export default function WorldTourSelectModal({
   properties = {},
   myPlayer,
+  player,
   onSelectDestination,
   onSkip,
+  onSkipFlight,
   turnTimer = 25,
 }) {
   const [filter, setFilter] = useState('all'); // 'all' | 'neutral' | 'owned'
 
-  if (!myPlayer) return null;
+  const userPlayer = myPlayer || player;
+  const handleSkip = onSkip || onSkipFlight;
 
-  const currentPos = myPlayer.position ?? 16;
+  if (!userPlayer) return null;
+
+  const currentPos = userPlayer.position ?? 16;
   const flightTicketCost = 50000;
 
   // Filter ONLY neutral city tiles or own owned city tiles (NO chance, tax, airport, etc.)
   const eligibleTiles = TILES.filter((tile) => {
     if (tile.type !== 'city') return false;
     const prop = properties[tile.id];
-    return !prop?.ownerId || prop?.ownerId === myPlayer.id;
+    return !prop?.ownerId || prop?.ownerId === userPlayer.id;
   });
 
   const neutralTiles = eligibleTiles.filter((t) => !properties[t.id]?.ownerId);
-  const ownedTiles = eligibleTiles.filter((t) => properties[t.id]?.ownerId === myPlayer.id);
+  const ownedTiles = eligibleTiles.filter((t) => properties[t.id]?.ownerId === userPlayer.id);
 
   const displayTiles =
     filter === 'neutral'
@@ -321,7 +326,7 @@ export default function WorldTourSelectModal({
         <button
           onClick={() => {
             sounds.playBuild?.();
-            onSkip?.();
+            handleSkip?.();
           }}
           style={{
             width: '100%',

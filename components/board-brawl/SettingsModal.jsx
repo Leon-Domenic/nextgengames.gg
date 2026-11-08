@@ -37,9 +37,12 @@ import {
   Palette,
   ShieldAlert,
   Compass,
+  Globe,
 } from 'lucide-react';
+import { useTranslation, LANGUAGES } from '@/lib/board-brawl/i18n';
 
 export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
+  const { t, language, setLanguage } = useTranslation();
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -420,7 +423,7 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
                   gap: '8px',
                 }}
               >
-                GAME SETTINGS
+                {t('gameSettings').toUpperCase()}
                 <span
                   style={{
                     background: 'rgba(56, 189, 248, 0.25)',
@@ -442,25 +445,74 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            aria-label="Close Settings"
-            style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '12px',
-              background: 'rgba(255, 255, 255, 0.15)',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffffff',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <X size={20} />
-          </button>
+          {/* Quick Header Language Switcher & Close */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                background: 'rgba(0, 0, 0, 0.25)',
+                padding: '3px 6px',
+                borderRadius: '12px',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+              }}
+            >
+              {LANGUAGES.map((lang) => {
+                const isSelected = language === lang.code;
+                return (
+                  <button
+                    key={lang.code}
+                    onClick={() => {
+                      setLanguage(lang.code);
+                      sounds.playPawnStep?.();
+                    }}
+                    title={lang.name}
+                    style={{
+                      background: isSelected ? '#ffffff' : 'transparent',
+                      border: isSelected ? '1px solid #bae6fd' : '1px solid transparent',
+                      borderRadius: '8px',
+                      padding: '3px 6px',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '3px',
+                      color: isSelected ? '#0369a1' : 'rgba(255, 255, 255, 0.85)',
+                      boxShadow: isSelected ? '0 1px 4px rgba(0, 0, 0, 0.25)' : 'none',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <span>{lang.flag}</span>
+                    <span style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase' }}>
+                      {lang.code}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={onClose}
+              aria-label="Close Settings"
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '12px',
+                background: 'rgba(255, 255, 255, 0.15)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#ffffff',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* 5-Tab Segmented Navigation */}
@@ -477,11 +529,11 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
           }}
         >
           {[
-            { id: 'audio', label: 'Audio & Jukebox', icon: Volume2 },
-            { id: 'graphics', label: 'Visuals & 3D', icon: Monitor },
-            { id: 'gameplay', label: 'Gameplay', icon: Gamepad2 },
-            { id: 'controls', label: 'Keybinds', icon: Keyboard },
-            { id: 'info', label: 'About & Loadout', icon: Info },
+            { id: 'audio', label: t('audio'), icon: Volume2 },
+            { id: 'graphics', label: t('graphics'), icon: Monitor },
+            { id: 'gameplay', label: t('gameplay'), icon: Gamepad2 },
+            { id: 'controls', label: t('keybinds'), icon: Keyboard },
+            { id: 'info', label: t('aboutLoadout'), icon: Info },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -1359,6 +1411,108 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
           {/* TAB 3: GAMEPLAY */}
           {activeTab === 'gameplay' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Language Selection Card */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  padding: '16px 20px',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '16px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div
+                      style={{
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '12px',
+                        background: '#e0f2fe',
+                        color: '#0284c7',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Globe size={20} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>
+                        {t('language')}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>
+                        {t('selectLanguage')} ({LANGUAGES.find((l) => l.code === language)?.name || 'English'})
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dropdown Selector */}
+                  <select
+                    value={language}
+                    onChange={(e) => {
+                      setLanguage(e.target.value);
+                      sounds.playPawnStep?.();
+                    }}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '10px',
+                      border: '1px solid #cbd5e1',
+                      background: '#ffffff',
+                      color: '#0f172a',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      outline: 'none',
+                    }}
+                  >
+                    {LANGUAGES.map((l) => (
+                      <option key={l.code} value={l.code}>
+                        {l.flag} {l.name} ({l.code.toUpperCase()})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Flag Pills Row */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '8px', marginTop: '4px' }}>
+                  {LANGUAGES.map((l) => {
+                    const isSelected = language === l.code;
+                    return (
+                      <button
+                        key={l.code}
+                        onClick={() => {
+                          setLanguage(l.code);
+                          sounds.playPawnStep?.();
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          padding: '10px 8px',
+                          borderRadius: '12px',
+                          border: isSelected ? '2px solid #0284c7' : '1px solid #e2e8f0',
+                          background: isSelected ? '#e0f2fe' : '#ffffff',
+                          color: isSelected ? '#0369a1' : '#475569',
+                          fontWeight: 800,
+                          fontSize: '13px',
+                          cursor: 'pointer',
+                          boxShadow: isSelected ? '0 2px 8px rgba(2, 132, 199, 0.2)' : 'none',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <span style={{ fontSize: '18px' }}>{l.flag}</span>
+                        <span>{l.name}</span>
+                        {isSelected && <Check size={14} style={{ color: '#0284c7' }} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Quick Roll Mode */}
               <div
                 style={{
@@ -1388,10 +1542,10 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
                   </div>
                   <div>
                     <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>
-                      Quick Roll Mode
+                      {t('fastDice')}
                     </div>
                     <div style={{ fontSize: '12px', color: '#64748b' }}>
-                      Fast-forward 3D dice physics and reduce bounce duration to 300ms
+                      {t('fastDiceDesc')}
                     </div>
                   </div>
                 </div>
@@ -1439,10 +1593,10 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
               >
                 <div>
                   <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>
-                    Auto-Pass Empty Turns
+                    {t('autoPass')}
                   </div>
                   <div style={{ fontSize: '12px', color: '#64748b' }}>
-                    Automatically conclude your turn when landing on neutral tiles with no actions
+                    {t('autoPassDesc')}
                   </div>
                 </div>
 
@@ -1821,7 +1975,7 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
             }}
           >
             <RotateCcw size={14} />
-            Reset to Defaults
+            {t('resetSettings')}
           </button>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

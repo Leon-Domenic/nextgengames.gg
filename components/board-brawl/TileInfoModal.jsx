@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { TILES } from '@/lib/board-brawl/types';
+import { t } from '@/lib/board-brawl/i18n';
 import {
   X,
   Building,
@@ -190,7 +191,7 @@ export default function TileInfoModal({
                   textShadow: '0 2px 4px rgba(0, 0, 0, 0.4)',
                 }}
               >
-                {tile.name}
+                {t(tile.name)}
               </div>
             </div>
           </div>

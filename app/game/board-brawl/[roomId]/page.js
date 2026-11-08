@@ -24,11 +24,14 @@ import DebtLiquidationModal from '@/components/board-brawl/DebtLiquidationModal'
 import TileInfoModal from '@/components/board-brawl/TileInfoModal';
 import EmojiReactionPicker from '@/components/board-brawl/EmojiReactionPicker';
 import EmojiReactionBubble from '@/components/board-brawl/EmojiReactionBubble';
+import TradeModal from '@/components/board-brawl/TradeModal';
+import TradeNotificationToast from '@/components/board-brawl/TradeNotificationToast';
 import {
   Users, Bot, Play, MessageSquare, Send, Sparkles, AlertCircle, Copy, CheckCheck,
-  Volume2, VolumeX, Crown, ShieldAlert, X, ShoppingBag, Home, Settings, Clock
+  Volume2, VolumeX, Crown, ShieldAlert, X, ShoppingBag, Home, Settings, Clock, ArrowRight, Handshake
 } from 'lucide-react';
 import { TOKEN_ICONS, CHARACTERS } from '@/lib/board-brawl/characters.js';
+import { useTranslation } from '@/lib/board-brawl/i18n';
 
 const CORNER_SLOT_THEMES = [
   { headerBg: '#e11d48', accent: '#fb7185', name: 'Pink/Red' },
@@ -40,6 +43,7 @@ const CORNER_SLOT_THEMES = [
 ];
 
 export default function BoardBrawlArenaPage() {
+  const { t } = useTranslation();
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -62,6 +66,8 @@ export default function BoardBrawlArenaPage() {
   const [inspectedTileId, setInspectedTileId] = useState(null);
   const [playerReactions, setPlayerReactions] = useState({});
   const [localMatchTimeRemaining, setLocalMatchTimeRemaining] = useState(1200);
+  const [tradeTargetPlayer, setTradeTargetPlayer] = useState(null);
+  const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
 
   // Pawn Movement Arrival & Modal Deferral State
   const [movementPendingArrival, setMovementPendingArrival] = useState(false);
@@ -74,7 +80,7 @@ export default function BoardBrawlArenaPage() {
     if (safetyArrivalTimerRef.current) clearTimeout(safetyArrivalTimerRef.current);
     safetyArrivalTimerRef.current = setTimeout(() => {
       setMovementPendingArrival(false);
-    }, 4500);
+    }, 10000);
   }, []);
 
   const handlePawnMovementComplete = useCallback((playerId, targetTileId) => {
@@ -85,7 +91,7 @@ export default function BoardBrawlArenaPage() {
       clearTimeout(safetyArrivalTimerRef.current);
     }
     // Defer showing ActionModal, EventCardModal, FestivalSelectModal, and WorldTourSelectModal
-    // until the pawn has physically arrived and landed on the target tile (+ 400ms pause for visual landing impact)
+    // until the pawn has physically arrived and landed on the target tile (+ 350ms pause for visual landing impact)
     setTimeout(() => {
       setMovementPendingArrival(false);
     }, 350);
@@ -242,6 +248,22 @@ export default function BoardBrawlArenaPage() {
     socket.on('action_card_played', (cardData) => setActionCardPlayEvent(cardData));
     socket.on('taunt_sound_event', handleTauntSound);
     socket.on('player_reaction_event', handlePlayerReaction);
+    const handlePlayerKicked = ({ playerId }) => {
+      const myId = user?.id || localPlayerIdRef.current;
+      if (myId && playerId === myId) {
+        alert('You were removed from the lobby by the host.');
+        router.push('/browsergames');
+      }
+    };
+    socket.on('player_kicked_event', handlePlayerKicked);
+    const handleTradeCompleted = () => {
+      try { sounds.playDealStruck?.(); } catch (e) {}
+    };
+    const handleTradeDeclined = () => {
+      try { sounds.playBuy?.(); } catch (e) {}
+    };
+    socket.on('trade_completed_event', handleTradeCompleted);
+    socket.on('trade_declined_event', handleTradeDeclined);
     socket.on('connect', joinRoom);
 
     // Initial join attempt once per room
@@ -267,6 +289,9 @@ export default function BoardBrawlArenaPage() {
       socket.off('action_card_played');
       socket.off('taunt_sound_event', handleTauntSound);
       socket.off('player_reaction_event', handlePlayerReaction);
+      socket.off('player_kicked_event', handlePlayerKicked);
+      socket.off('trade_completed_event', handleTradeCompleted);
+      socket.off('trade_declined_event', handleTradeDeclined);
       socket.off('connect', joinRoom);
     };
   }, [socket, roomId, user?.id, loading, guestInitializing, modeQuery]);
@@ -341,7 +366,7 @@ export default function BoardBrawlArenaPage() {
             Table #{roomId} could not be synchronized or has been concluded.
           </p>
           <button
-            onClick={() => router.push('/games')}
+            onClick={() => router.push('/browsergames')}
             style={{
               padding: '12px 24px',
               background: '#0284c7',
@@ -363,6 +388,9 @@ export default function BoardBrawlArenaPage() {
   const myPlayerObj = gameState.players.find(p => p.id === user?.id)
     || gameState.players.find(p => p.id === localPlayerIdRef.current)
     || (nonBots.length === 1 ? nonBots[0] : null);
+  const isHost = Boolean(
+    myPlayerObj && gameState.players[0] && myPlayerObj.id === gameState.players[0].id
+  ) || (gameState.players.length > 0 && !gameState.players[0]?.isBot && (myPlayerObj?.id === gameState.players[0]?.id || !gameState.players.some(p => !p.isBot && p.id !== myPlayerObj?.id)));
   const currentPlayer = gameState.players[gameState.activePlayerIndex];
   const isMyTurn = Boolean(currentPlayer && myPlayerObj && currentPlayer.id === myPlayerObj.id);
   const activePlayerId = myPlayerObj?.id || user?.id;
@@ -374,6 +402,15 @@ export default function BoardBrawlArenaPage() {
 
   const handleAddBot = () => {
     socket.emit('game_action', { roomId, action: 'add_bot' });
+  };
+
+  const handleRemovePlayer = (playerId) => {
+    sounds.playBuy();
+    socket.emit('game_action', {
+      roomId,
+      action: 'remove_player',
+      payload: { playerId }
+    });
   };
 
   const handleSelectCharacter = (charId) => {
@@ -415,7 +452,7 @@ export default function BoardBrawlArenaPage() {
     if (safetyArrivalTimerRef.current) clearTimeout(safetyArrivalTimerRef.current);
     safetyArrivalTimerRef.current = setTimeout(() => {
       setMovementPendingArrival(false);
-    }, 4500);
+    }, 10000);
     socket.emit('game_action', { roomId, action: 'roll_dice', payload: { playerId: activePlayerId } });
   };
 
@@ -435,8 +472,14 @@ export default function BoardBrawlArenaPage() {
     socket.emit('game_action', { roomId, action: 'end_turn', payload: { playerId: activePlayerId } });
   };
 
+  const lastTomatoThrowRef = useRef(0);
   const handleThrowTomato = (targetPlayerId) => {
     if (!activePlayerId || activePlayerId === targetPlayerId) return;
+    const now = Date.now();
+    // Strict 800ms click debounce to prevent runaway streams or rapid-fire loops
+    if (now - lastTomatoThrowRef.current < 800) return;
+    lastTomatoThrowRef.current = now;
+
     socket.emit('game_action', {
       roomId,
       action: 'throw_tomato',
@@ -552,6 +595,48 @@ export default function BoardBrawlArenaPage() {
     }
   };
 
+  const handleOpenTradeWith = (target) => {
+    sounds.playBuy();
+    setTradeTargetPlayer(target);
+    setIsTradeModalOpen(true);
+  };
+
+  const handleProposeTrade = ({ proposerId, targetId, offer }) => {
+    socket.emit('trade_propose', {
+      roomId,
+      proposerId,
+      targetId,
+      offer,
+    });
+  };
+
+  const handleCounterTrade = (tradeId, updatedOffer) => {
+    socket.emit('trade_counter', {
+      roomId,
+      playerId: activePlayerId,
+      tradeId,
+      updatedOffer,
+    });
+  };
+
+  const handleRespondTrade = (tradeId, response) => {
+    socket.emit('trade_respond', {
+      roomId,
+      playerId: activePlayerId,
+      tradeId,
+      response,
+    });
+  };
+
+  const handleCancelTrade = (tradeId) => {
+    socket.emit('trade_cancel', {
+      roomId,
+      playerId: activePlayerId,
+      tradeId,
+    });
+    setIsTradeModalOpen(false);
+  };
+
   const copyInviteLink = () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://nextgengames.gg';
     navigator.clipboard.writeText(`${origin}/game/board-brawl/${roomId}?mode=${modeQuery}`);
@@ -651,6 +736,39 @@ export default function BoardBrawlArenaPage() {
           />
         )}
 
+        {/* P2P Trade & Loan Desk Modal */}
+        <TradeModal
+          isOpen={isTradeModalOpen}
+          onClose={() => setIsTradeModalOpen(false)}
+          myPlayer={myPlayerObj}
+          targetPlayer={tradeTargetPlayer}
+          gameState={gameState}
+          onProposeTrade={handleProposeTrade}
+          onCounterTrade={handleCounterTrade}
+          onRespondTrade={handleRespondTrade}
+          onCancelTrade={handleCancelTrade}
+        />
+
+        {/* Incoming Trade Notification Toast */}
+        <TradeNotificationToast
+          activeTrade={gameState.activeTrade}
+          myPlayerId={myPlayerObj?.id}
+          players={gameState.players}
+          onOpenTradeDesk={() => {
+            if (gameState.activeTrade) {
+              const otherPartyId = gameState.activeTrade.proposerId === myPlayerObj?.id
+                ? gameState.activeTrade.targetId
+                : gameState.activeTrade.proposerId;
+              const rival = gameState.players.find(p => p.id === otherPartyId);
+              if (rival) {
+                setTradeTargetPlayer(rival);
+                setIsTradeModalOpen(true);
+              }
+            }
+          }}
+          onDecline={(tradeId) => handleRespondTrade(tradeId, 'decline')}
+        />
+
         {/* Victory Podium */}
         {gameState.status === 'finished' && (
           <VictoryPodium
@@ -677,10 +795,12 @@ export default function BoardBrawlArenaPage() {
           <LobbyView
             players={gameState.players}
             user={user}
+            isHost={isHost}
             roomId={roomId}
             mode={gameState.mode}
             onChangeMode={handleChangeMode}
             onAddBot={handleAddBot}
+            onRemovePlayer={handleRemovePlayer}
             onStartGame={handleStartGame}
             onChangeCharacter={handleSelectCharacter}
             onChangeColor={handleSelectColor}
@@ -704,7 +824,7 @@ export default function BoardBrawlArenaPage() {
           }}>
             {/* Top-Left Home / Exit Button */}
             <button
-              onClick={() => router.push('/games')}
+              onClick={() => router.push('/browsergames')}
               title="Return to Games Hub"
               style={{
                 position: 'absolute',
@@ -735,7 +855,7 @@ export default function BoardBrawlArenaPage() {
                 setShowInGameShop(false);
                 setShowSettingsModal(true);
               }}
-              title="Game Settings"
+              title={t('gameSettings')}
               style={{
                 position: 'absolute',
                 top: '16px',
@@ -783,8 +903,10 @@ export default function BoardBrawlArenaPage() {
                     isCompact={total > 4}
                     onThrowTomato={handleThrowTomato}
                     canTomato={myPlayerObj?.freeTomatoes > 0 || (myPlayerObj?.cash || 0) >= 50000}
+                    myBucketCount={myPlayerObj?.freeTomatoes || 0}
                     activeReaction={playerReactions[player.id]}
                     onSendReaction={(emoji) => handleSendReaction(player.id, emoji)}
+                    onOpenTrade={handleOpenTradeWith}
                   />
                 );
               });
@@ -911,6 +1033,40 @@ export default function BoardBrawlArenaPage() {
                   </div>
                 </div>
               )}
+
+              {/* 3. Tomato Bucket HUD Capsule */}
+              {myPlayerObj && (
+                <div
+                  title={`Tomato Bucket: ${myPlayerObj.freeTomatoes || 0} Free ${(myPlayerObj.cash || 0) >= 50000 ? '(Extra throws: 50,000 CR)' : '(50,000 CR needed for extras)'}`}
+                  style={{
+                    background: 'rgba(15, 23, 42, 0.88)',
+                    backdropFilter: 'blur(12px)',
+                    border: (myPlayerObj.freeTomatoes || 0) > 0 ? '1.5px solid #ef4444' : '1.5px solid rgba(255, 255, 255, 0.16)',
+                    borderRadius: '16px',
+                    padding: '6px 14px',
+                    boxShadow: (myPlayerObj.freeTomatoes || 0) > 0 ? '0 0 16px rgba(239, 68, 68, 0.4)' : '0 4px 14px rgba(0, 0, 0, 0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '7px',
+                  }}
+                >
+                  <span style={{ fontSize: '18px', filter: 'drop-shadow(0 2px 4px rgba(239, 68, 68, 0.5))' }}>🍅</span>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{
+                      fontSize: '11px',
+                      fontWeight: 900,
+                      color: (myPlayerObj.freeTomatoes || 0) > 0 ? '#fca5a5' : '#e2e8f0',
+                      letterSpacing: '0.04em',
+                      lineHeight: 1.1,
+                    }}>
+                      {(myPlayerObj.freeTomatoes || 0) > 0 ? `${myPlayerObj.freeTomatoes} FREE` : '50K CR'}
+                    </span>
+                    <span style={{ fontSize: '9px', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      BUCKET
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right Side Floating Utility Bar (Chat toggle, Music toggle) */}
@@ -929,7 +1085,7 @@ export default function BoardBrawlArenaPage() {
                   setShowSettingsModal(false);
                   setShowInGameShop(true);
                 }}
-                title="Open Cosmetics Shop"
+                title={t('shop')}
                 style={{
                   width: '46px',
                   height: '46px',
@@ -949,7 +1105,7 @@ export default function BoardBrawlArenaPage() {
 
               <button
                 onClick={() => setShowChatPanel(!showChatPanel)}
-                title="Toggle Match Chat"
+                title={t('chat')}
                 style={{
                   width: '46px',
                   height: '46px',
@@ -972,7 +1128,7 @@ export default function BoardBrawlArenaPage() {
                   const isPlaying = sounds.toggleMusic();
                   setMusicPlaying(isPlaying);
                 }}
-                title={musicPlaying ? "Mute Music" : "Play Music"}
+                title={musicPlaying ? t('muteMusic') : t('playMusic')}
                 style={{
                   width: '46px',
                   height: '46px',
@@ -995,8 +1151,8 @@ export default function BoardBrawlArenaPage() {
                   setShowInGameShop(false);
                   setShowSettingsModal(true);
                 }}
-                title="Open Game Settings"
-                aria-label="Game Settings"
+                title={t('openSettings')}
+                aria-label={t('gameSettings')}
                 style={{
                   width: '46px',
                   height: '46px',
@@ -1154,6 +1310,7 @@ export default function BoardBrawlArenaPage() {
               diceSkin={myPlayerObj?.diceSkin || equippedDiceSkin}
               centerContent={null}
               onTileClick={(tileId) => setInspectedTileId(tileId)}
+              onInspectTile={(tileId) => setInspectedTileId(tileId)}
               onPawnMovementStart={handlePawnMovementStart}
               onPawnMovementComplete={handlePawnMovementComplete}
             />
@@ -1167,8 +1324,8 @@ export default function BoardBrawlArenaPage() {
               onClose={() => setInspectedTileId(null)}
             />
 
-            {/* Floating In-Game Roll Control (Only on active player's roll turn) */}
-            {isMyTurn && gameState.turnState === 'roll' && (
+            {/* Floating In-Game Roll Control & Status Bar */}
+            {gameState.turnState === 'roll' && (
               <div style={{
                 position: 'absolute',
                 bottom: '36px',
@@ -1183,11 +1340,68 @@ export default function BoardBrawlArenaPage() {
                   onRoll={handleRollDice}
                   turnTimer={gameState.turnTimerRemaining}
                   isMyTurn={isMyTurn}
+                  activePlayerName={currentPlayer?.name}
                   diceSkin={myPlayerObj?.diceSkin || equippedDiceSkin}
                   isInJail={myPlayerObj?.islandTurns > 0}
                   onPayBail={handlePayBail}
                   canPayBail={(myPlayerObj?.cash || 0) >= 100000}
                 />
+              </div>
+            )}
+
+            {/* Fallback Action & Turn End Safeguard Button (When in Action phase) */}
+            {isMyTurn && gameState.turnState === 'action' && (
+              <div style={{
+                position: 'absolute',
+                bottom: '24px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 80,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                background: 'rgba(15, 23, 42, 0.94)',
+                backdropFilter: 'blur(16px)',
+                border: '2px solid #f59e0b',
+                padding: '8px 20px',
+                borderRadius: '16px',
+                boxShadow: '0 0 30px rgba(245, 158, 11, 0.5), 0 8px 32px rgba(0, 0, 0, 0.6)',
+                animation: 'fadeIn 0.25s ease',
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 900, color: '#fde047', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    DECISION ACTIVE ({gameState.turnTimerRemaining}s)
+                  </span>
+                  <span style={{ fontSize: '12px', color: '#cbd5e1', fontWeight: 700 }}>
+                    Buy, Upgrade, or Pass
+                  </span>
+                </div>
+
+                <button
+                  onClick={handleEndTurn}
+                  title="Pass this property action and end turn"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 18px',
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '10px',
+                    fontWeight: 900,
+                    fontSize: '13px',
+                    letterSpacing: '0.04em',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 10px rgba(245, 158, 11, 0.4)',
+                    transition: 'transform 0.1s ease',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.04)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  <span>PASS / END TURN</span>
+                  <ArrowRight size={14} />
+                </button>
               </div>
             )}
 
@@ -1237,9 +1451,12 @@ function PlayerCornerCard({
   isCompact = false,
   onThrowTomato,
   canTomato,
+  myBucketCount = 0,
   activeReaction,
   onSendReaction,
+  onOpenTrade,
 }) {
+  const { t } = useTranslation();
   const [showPicker, setShowPicker] = useState(false);
   const isBankrupt = player.isBankrupt;
   const activeChar = CHARACTERS.find(c => c.id === player.avatarToken) || CHARACTERS[0];
@@ -1431,7 +1648,7 @@ function PlayerCornerCard({
                 alignItems: 'center',
                 gap: '3px',
               }}>
-                {isBankrupt ? 'BANKRUPT' : (isCurrent ? `⏱️ ${timer}s left` : 'Waiting')}
+                {isBankrupt ? t('bankrupt') : (isCurrent ? `⏱️ ${timer}s ${t('timeLeft')}` : t('waiting'))}
               </span>
               {player.shieldActive && (
                 <span style={{
@@ -1471,36 +1688,96 @@ function PlayerCornerCard({
                   🍅 BLINDED
                 </span>
               )}
+              {isMe && (
+                <span style={{
+                  background: (player.freeTomatoes || 0) > 0 ? '#ef4444' : '#0284c7',
+                  color: '#ffffff',
+                  fontSize: '9px',
+                  fontWeight: 900,
+                  padding: '1px 5px',
+                  borderRadius: '6px',
+                  boxShadow: '0 0 6px rgba(239, 68, 68, 0.4)',
+                }}>
+                  🍅 BUCKET: {player.freeTomatoes || 0} FREE
+                </span>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Right action button: Tomato Sabotage */}
-        {!isMe && !isBankrupt && canTomato && (
-          <button
-            onClick={() => {
-              try { onThrowTomato?.(player.id); } catch (e) {}
-            }}
-            title={`Throw tomato at ${player.name}! (Free or 50,000 CR)`}
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              background: 'rgba(239, 68, 68, 0.15)',
-              border: '1.5px solid #ef4444',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '16px',
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)',
-              transition: 'transform 0.1s',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.15)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-          >
-            🍅
-          </button>
+        {/* Right action buttons: Trade & Tomato Sabotage */}
+        {!isMe && !isBankrupt && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {/* 🤝 Trade Button */}
+            <button
+              onClick={() => {
+                try { onOpenTrade?.(player); } catch (e) {}
+              }}
+              title={`Trade & negotiate with ${player.name}`}
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                background: 'rgba(0, 240, 255, 0.15)',
+                border: '1.5px solid #00f0ff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '15px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0, 240, 255, 0.3)',
+                transition: 'transform 0.1s',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.15)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              🤝
+            </button>
+
+            {/* Tomato Sabotage */}
+            {canTomato && (
+              <button
+                onClick={() => {
+                  try { onThrowTomato?.(player.id); } catch (e) {}
+                }}
+                title={`Throw tomato at ${player.name}! (${myBucketCount > 0 ? `${myBucketCount} Free in Bucket` : 'Cost: 50,000 CR'})`}
+                style={{
+                  position: 'relative',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  border: '1.5px solid #ef4444',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '15px',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)',
+                  transition: 'transform 0.1s',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.15)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                <span>🍅</span>
+                <span style={{
+                  position: 'absolute',
+                  top: '-6px',
+                  right: '-6px',
+                  background: myBucketCount > 0 ? '#ef4444' : '#0284c7',
+                  color: '#ffffff',
+                  fontSize: '8px',
+                  fontWeight: 900,
+                  padding: '1px 4px',
+                  borderRadius: '999px',
+                  lineHeight: 1,
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
+                }}>
+                  {myBucketCount > 0 ? `x${myBucketCount}` : '50k'}
+                </span>
+              </button>
+            )}
+          </div>
         )}
       </div>
 

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { TILES } from '@/lib/board-brawl/types';
 import { sounds } from '@/lib/audio';
+import { useTranslation } from '@/lib/board-brawl/i18n';
 import { Zap, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
 
 const LANDMARK_ICONS = {
@@ -37,6 +38,7 @@ export default function ActionModal({
   onEndTurn,
   turnTimer,
 }) {
+  const { t } = useTranslation();
   const tile = TILES[currentTileId];
 
   // Defensive safety: If not a city tile, automatically complete turn action so human is never stuck!
@@ -171,7 +173,7 @@ export default function ActionModal({
           textTransform: 'uppercase',
           textShadow: '0 2px 4px rgba(0,0,0,0.35)',
         }}>
-          {tile.name}
+          {t(tile.name)}
         </h2>
         <div style={{
           fontSize: '11px',
@@ -266,7 +268,7 @@ export default function ActionModal({
               boxShadow: selectedTier === 1 ? '0 6px 14px rgba(37, 99, 235, 0.2)' : 'none',
             }}
           >
-            <div style={{ fontSize: '10px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Plot</div>
+            <div style={{ fontSize: '10px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>{t('plot')}</div>
             <div style={{ fontSize: '20px', margin: '4px 0' }}>🌱</div>
             <div style={{ fontSize: '11px', fontWeight: 900, color: '#0f172a' }}>{Math.round(tile.price / 1000)}K CR</div>
           </div>
@@ -286,7 +288,7 @@ export default function ActionModal({
               boxShadow: selectedTier === 2 ? '0 6px 14px rgba(16, 185, 129, 0.2)' : 'none',
             }}
           >
-            <div style={{ fontSize: '10px', fontWeight: 800, color: '#059669', textTransform: 'uppercase' }}>Cottage</div>
+            <div style={{ fontSize: '10px', fontWeight: 800, color: '#059669', textTransform: 'uppercase' }}>{t('cottage')}</div>
             <div style={{ fontSize: '20px', margin: '4px 0' }}>🏡</div>
             <div style={{ fontSize: '11px', fontWeight: 900, color: '#0f172a' }}>
               {Math.round((prop.ownerId ? tile.housePrice : tile.price + tile.housePrice) / 1000)}K CR
@@ -308,7 +310,7 @@ export default function ActionModal({
               boxShadow: selectedTier === 3 ? '0 6px 14px rgba(249, 115, 22, 0.2)' : 'none',
             }}
           >
-            <div style={{ fontSize: '10px', fontWeight: 800, color: '#ea580c', textTransform: 'uppercase' }}>Hotel</div>
+            <div style={{ fontSize: '10px', fontWeight: 800, color: '#ea580c', textTransform: 'uppercase' }}>{t('hotel')}</div>
             <div style={{ fontSize: '20px', margin: '4px 0' }}>🏢</div>
             <div style={{ fontSize: '11px', fontWeight: 900, color: '#0f172a' }}>
               {Math.round((prop.ownerId ? tile.housePrice : tile.price + tile.housePrice * 2) / 1000)}K CR
@@ -331,7 +333,7 @@ export default function ActionModal({
               position: 'relative',
             }}
           >
-            <div style={{ fontSize: '9px', fontWeight: 900, color: '#ca8a04', textTransform: 'uppercase' }}>Landmark</div>
+            <div style={{ fontSize: '9px', fontWeight: 900, color: '#ca8a04', textTransform: 'uppercase' }}>{t('landmark')}</div>
             <div style={{ fontSize: '20px', margin: '4px 0' }}>👑</div>
             <div style={{ fontSize: '11px', fontWeight: 900, color: '#0f172a' }}>
               {Math.round((prop.ownerId ? tile.housePrice : tile.price + tile.housePrice * 3) / 1000)}K CR
@@ -355,7 +357,7 @@ export default function ActionModal({
             marginBottom: '14px',
           }}>
             <ShieldCheck size={14} />
-            <span>CANNOT BE BOUGHT OUT BY RIVALS!</span>
+            <span>{t('cannotBeBoughtOut')}</span>
           </div>
         )}
 
@@ -374,7 +376,7 @@ export default function ActionModal({
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ fontSize: '18px' }}>🪙</span>
             <div>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase' }}>Rent Yield</div>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase' }}>{t('rentYield')}</div>
               <div style={{ fontSize: '15px', fontWeight: 900, color: '#78350f' }}>{nextRent.toLocaleString()} CR</div>
             </div>
           </div>
@@ -418,7 +420,7 @@ export default function ActionModal({
                 transition: 'transform 0.1s ease',
               }}
             >
-              <span>BUY & UPGRADE ({costToBuild.toLocaleString()} Space Credits)</span>
+              <span>{t('buyAndUpgrade')} ({costToBuild.toLocaleString()} Space Credits)</span>
             </button>
           )}
 
@@ -440,7 +442,7 @@ export default function ActionModal({
                 boxShadow: canAfford ? '0 10px 20px -5px rgba(37, 99, 235, 0.4)' : 'none',
               }}
             >
-              <span>UPGRADE LEVEL ({tile.housePrice.toLocaleString()} Space Credits)</span>
+              <span>{t('upgradeLevel')} ({tile.housePrice.toLocaleString()} Space Credits)</span>
             </button>
           )}
 
@@ -456,7 +458,7 @@ export default function ActionModal({
                 borderRadius: '10px',
                 textAlign: 'center',
               }}>
-                Owned by {rivalOwner?.name || 'Rival'}! Paid rent: {currentRent.toLocaleString()} Space Credits
+                {t('ownedBy', { owner: rivalOwner?.name || 'Rival', rent: currentRent.toLocaleString() })}
               </div>
 
               {!prop.isLandmark && (
@@ -481,7 +483,7 @@ export default function ActionModal({
                   }}
                 >
                   <Zap size={18} />
-                  <span>HOSTILE BUYOUT 2X ({buyoutCost.toLocaleString()} Space Credits)</span>
+                  <span>{t('hostileBuyout2x')} ({buyoutCost.toLocaleString()} Space Credits)</span>
                 </button>
               )}
             </>
@@ -506,7 +508,7 @@ export default function ActionModal({
               gap: '6px',
             }}
           >
-            <span>PASS</span>
+            <span>{t('pass')}</span>
             <ArrowRight size={15} />
           </button>
         </div>

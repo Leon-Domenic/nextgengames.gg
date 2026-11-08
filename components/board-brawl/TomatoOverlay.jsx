@@ -9,221 +9,272 @@ export default function TomatoOverlay({
   players = [],
   onVictimImpact,
 }) {
-  const [flight, setFlight] = useState(null);
+  const [activeProjectile, setActiveProjectile] = useState(null);
   const [cardSplat, setCardSplat] = useState(null);
-  const [screenSplatOpacity, setScreenSplatOpacity] = useState(0);
+  const [screenSplat, setScreenSplat] = useState(null);
   const [wipePercent, setWipePercent] = useState(0);
 
   const wipeCounterRef = useRef(0);
-  const flightTimerRef = useRef(null);
+  const animFrameRef = useRef(null);
   const cardSplatTimerRef = useRef(null);
+  const screenSplatTimerRef = useRef(null);
+  const trailPositionsRef = useRef([]);
 
-  // Trigger flight from initiator card to target card
   useEffect(() => {
     if (!splatEvent || !splatEvent.fromPlayerId || !splatEvent.targetPlayerId) return;
 
-    // Check if the current client is the victim
-    const isVictim = !!(
+    // Check if the local client is the target/victim
+    const isVictim = Boolean(
       currentUserId &&
       (splatEvent.targetPlayerId === currentUserId || splatEvent.targetId === currentUserId)
     );
-
-    // Resolve Thrower DOM Card
-    const fromCard = typeof document !== 'undefined'
-      ? document.getElementById(`player-card-${splatEvent.fromPlayerId}`)
-      : null;
-
-    // Resolve Target DOM Card
-    const targetCard = typeof document !== 'undefined'
-      ? document.getElementById(`player-card-${splatEvent.targetPlayerId}`)
-      : null;
 
     // Viewport dimensions
     const vw = typeof window !== 'undefined' ? window.innerWidth : 1200;
     const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
 
-    // Starting Coordinates
-    let sX = vw / 2;
-    let sY = vh - 60;
+    // 1. Resolve Thrower DOM Card coordinates
+    const fromCard = typeof document !== 'undefined'
+      ? document.getElementById(`player-card-${splatEvent.fromPlayerId}`)
+      : null;
+
+    let sX = vw * 0.15;
+    let sY = vh * 0.85;
     if (fromCard) {
       const r = fromCard.getBoundingClientRect();
       sX = r.left + r.width / 2;
       sY = r.top + r.height / 2;
     }
 
-    // Ending Coordinates
+    // 2. Resolve Target DOM Card coordinates
+    const targetCard = typeof document !== 'undefined'
+      ? document.getElementById(`player-card-${splatEvent.targetPlayerId}`)
+      : null;
+
     let eX = vw / 2;
     let eY = vh / 2;
     if (isVictim) {
-      // Victim sees it hurtling straight into their screen center / camera
+      // Victim sees the tomato hurtling directly straight into the center of their screen/camera
       eX = vw / 2;
       eY = vh / 2;
     } else if (targetCard) {
       const r = targetCard.getBoundingClientRect();
       eX = r.left + r.width / 2;
       eY = r.top + r.height / 2;
+    } else {
+      eX = vw * 0.8;
+      eY = vh * 0.2;
     }
 
-    // Parabolic Arc Apex (curved upward trajectory)
+    // 3. Parabolic Quadratic Bézier Control Point (Apex high above the midpoint)
     const mX = (sX + eX) / 2;
     const distance = Math.hypot(eX - sX, eY - sY);
-    const arcHeight = Math.max(140, distance * 0.35);
+    const arcHeight = Math.max(160, distance * 0.38);
     const mY = Math.min(sY, eY) - arcHeight;
 
-    // Audio cue
+    // Play initial swoosh / throw audio
     try {
       sounds.playTomatoThrow?.();
     } catch (e) {}
 
-    const flightDuration = 700; // ms
+    // Initialize animation state
+    const duration = isVictim ? 620 : 680; // ms
+    const startTime = performance.now();
+    trailPositionsRef.current = [];
 
-    setFlight({
-      active: true,
-      startX: sX,
-      startY: sY,
-      midX: mX,
-      midY: mY,
-      endX: eX,
-      endY: eY,
-      isVictim,
-      targetCard,
-      targetPlayerName: splatEvent.targetPlayerName || 'Opponent',
-      fromPlayerName: splatEvent.fromPlayerName || 'Player',
-    });
+    // Cancel any previous in-flight animation
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
 
-    if (flightTimerRef.current) clearTimeout(flightTimerRef.current);
+    const animateTrajectory = (now) => {
+      const elapsed = now - startTime;
+      const t = Math.min(1.0, elapsed / duration);
 
-    flightTimerRef.current = setTimeout(() => {
-      setFlight(null);
+      // Quadratic Bézier: B(t) = (1-t)^2 * P0 + 2(1-t)t * P1 + t^2 * P2
+      const invT = 1.0 - t;
+      const curX = invT * invT * sX + 2 * invT * t * mX + t * t * eX;
+      const curY = invT * invT * sY + 2 * invT * t * mY + t * t * eY;
 
-      // Play impact audio
-      try {
-        sounds.playTomatoSplat?.();
-      } catch (e) {}
-
+      // 3D rotation & dynamic scale
+      const rotationDeg = t * 720;
+      let curScale = 0.8;
       if (isVictim) {
-        // Full screen shake and dripping decal for the victim
-        try {
-          onVictimImpact?.();
-        } catch (e) {}
-        setScreenSplatOpacity(1);
-        setWipePercent(0);
-        wipeCounterRef.current = 0;
+        // Zooms from normal size up to massive in-your-face impact scale
+        curScale = 0.8 + t * t * 3.2;
       } else {
-        // Localized card splat burst on the target's card
-        if (targetCard) {
+        // Rises to 1.35 at apex, drops to 1.0 on impact
+        curScale = 0.75 + Math.sin(t * Math.PI) * 0.6;
+      }
+
+      // Record motion trail points (max 5)
+      trailPositionsRef.current.push({ x: curX, y: curY, scale: curScale * 0.7 });
+      if (trailPositionsRef.current.length > 5) {
+        trailPositionsRef.current.shift();
+      }
+
+      setActiveProjectile({
+        x: curX,
+        y: curY,
+        rotation: rotationDeg,
+        scale: curScale,
+        trails: [...trailPositionsRef.current],
+        isVictim,
+      });
+
+      if (t < 1.0) {
+        animFrameRef.current = requestAnimationFrame(animateTrajectory);
+      } else {
+        // === IMPACT UPON ARRIVAL ===
+        setActiveProjectile(null);
+        trailPositionsRef.current = [];
+
+        // Play squish impact sound
+        try {
+          sounds.playTomatoSplat?.();
+        } catch (e) {}
+
+        if (isVictim) {
+          // Trigger severe screen shake
           try {
+            onVictimImpact?.();
+          } catch (e) {}
+
+          // Severe impact splatter covering majority of screen
+          setScreenSplat({
+            active: true,
+            slidingDown: false,
+            fading: false,
+          });
+          setWipePercent(0);
+          wipeCounterRef.current = 0;
+
+          // Lasts 2.3 seconds, then ketchup slides down and fades out
+          if (screenSplatTimerRef.current) clearTimeout(screenSplatTimerRef.current);
+          screenSplatTimerRef.current = setTimeout(() => {
+            setScreenSplat(prev => prev ? { ...prev, slidingDown: true } : null);
+            setTimeout(() => {
+              setScreenSplat(prev => prev ? { ...prev, fading: true } : null);
+              setTimeout(() => {
+                setScreenSplat(null);
+              }, 700);
+            }, 600);
+          }, 2400);
+        } else {
+          // Wobble the target player card on impact
+          if (targetCard) {
             targetCard.classList.add('tomato-wobble');
             setTimeout(() => targetCard.classList.remove('tomato-wobble'), 500);
-          } catch (e) {}
+          }
+
+          // Explosive splat with dripping ketchup on the target's avatar
+          setCardSplat({
+            active: true,
+            x: eX,
+            y: eY,
+            targetName: splatEvent.targetPlayerName || 'Opponent',
+          });
+
+          if (cardSplatTimerRef.current) clearTimeout(cardSplatTimerRef.current);
+          cardSplatTimerRef.current = setTimeout(() => {
+            setCardSplat(null);
+          }, 2600);
         }
-
-        setCardSplat({
-          active: true,
-          x: eX,
-          y: eY,
-          targetName: splatEvent.targetPlayerName,
-        });
-
-        if (cardSplatTimerRef.current) clearTimeout(cardSplatTimerRef.current);
-        cardSplatTimerRef.current = setTimeout(() => {
-          setCardSplat(null);
-        }, 2800);
       }
-    }, flightDuration);
+    };
+
+    animFrameRef.current = requestAnimationFrame(animateTrajectory);
 
     return () => {
-      if (flightTimerRef.current) clearTimeout(flightTimerRef.current);
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (cardSplatTimerRef.current) clearTimeout(cardSplatTimerRef.current);
+      if (screenSplatTimerRef.current) clearTimeout(screenSplatTimerRef.current);
     };
   }, [splatEvent, currentUserId, onVictimImpact]);
 
-  // Screen Splat Auto-fadeout for victim
-  useEffect(() => {
-    if (screenSplatOpacity <= 0) return;
-
-    const timer = setTimeout(() => {
-      const interval = setInterval(() => {
-        setScreenSplatOpacity((prev) => {
-          if (prev <= 0.05) {
-            clearInterval(interval);
-            return 0;
-          }
-          return prev - 0.05;
-        });
-      }, 100);
-      return () => clearInterval(interval);
-    }, 4000);
-
-    return () => clearTimeout(timer);
-  }, [screenSplatOpacity]);
-
-  // Interactive wipe mechanic: drag/swipe cursor to clean
+  // Interactive wipe mechanic: swipe/drag cursor across screen to clean off early
   const handleWipeInteraction = () => {
-    if (screenSplatOpacity <= 0) return;
+    if (!screenSplat || !screenSplat.active) return;
     wipeCounterRef.current += 1;
-    const progress = Math.min(100, Math.floor(wipeCounterRef.current * 4));
+    const progress = Math.min(100, Math.floor(wipeCounterRef.current * 5));
     setWipePercent(progress);
 
     if (progress >= 100) {
-      setScreenSplatOpacity(0);
+      setScreenSplat(null);
+      if (screenSplatTimerRef.current) clearTimeout(screenSplatTimerRef.current);
     }
   };
 
   return (
     <>
-      {/* 1. Real Trajectory Flight Projectile */}
-      {flight && flight.active && (
+      {/* 1. Quadratic Bézier Parabolic Projectile Flight */}
+      {activeProjectile && (
         <div
           style={{
             position: 'fixed',
-            left: 0,
-            top: 0,
-            zIndex: 99998,
+            inset: 0,
             pointerEvents: 'none',
-            '--sX': `${flight.startX}px`,
-            '--sY': `${flight.startY}px`,
-            '--mX': `${flight.midX}px`,
-            '--mY': `${flight.midY}px`,
-            '--eX': `${flight.endX}px`,
-            '--eY': `${flight.endY}px`,
-            '--mScale': flight.isVictim ? '2.0' : '1.3',
-            '--eScale': flight.isVictim ? '4.2' : '0.9',
-            animation: 'tomatoTrajectory 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards',
+            zIndex: 99998,
+            overflow: 'visible',
           }}
         >
-          {/* Animated 3D-styled Tomato with Red Glow & Shadow */}
-          <div style={{
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            {/* Motion Blur Tail Streak */}
-            <div style={{
-              position: 'absolute',
-              width: '60px',
-              height: '24px',
-              borderRadius: '999px',
-              background: 'radial-gradient(ellipse at center, rgba(239, 68, 68, 0.6) 0%, transparent 80%)',
-              filter: 'blur(6px)',
-              transform: 'scale(1.4)',
-              zIndex: -1,
-            }} />
+          {/* Motion Trail Particles */}
+          {activeProjectile.trails.map((pt, idx) => {
+            const trailOpacity = (idx + 1) / activeProjectile.trails.length * 0.45;
+            return (
+              <div
+                key={`trail-${idx}`}
+                style={{
+                  position: 'absolute',
+                  left: pt.x,
+                  top: pt.y,
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '50%',
+                  background: 'radial-gradient(circle, rgba(239, 68, 68, 0.8) 0%, rgba(220, 38, 38, 0.2) 65%, transparent 100%)',
+                  transform: `translate(-50%, -50%) scale(${pt.scale * 0.7})`,
+                  opacity: trailOpacity,
+                  filter: 'blur(3px)',
+                }}
+              />
+            );
+          })}
 
-            {/* Glowing Juicy Tomato */}
-            <span style={{
-              fontSize: '62px',
-              display: 'inline-block',
-              filter: 'drop-shadow(0 8px 16px rgba(220, 38, 38, 0.8))',
+          {/* Main 3D Spinning Tomato Sprite */}
+          <div
+            style={{
+              position: 'absolute',
+              left: activeProjectile.x,
+              top: activeProjectile.y,
+              transform: `translate(-50%, -50%) scale(${activeProjectile.scale}) rotate(${activeProjectile.rotation}deg)`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              filter: 'drop-shadow(0 10px 22px rgba(220, 38, 38, 0.85))',
               userSelect: 'none',
-            }}>
+              willChange: 'transform, left, top',
+            }}
+          >
+            {/* Speed Streak Flare */}
+            <div
+              style={{
+                position: 'absolute',
+                width: '70px',
+                height: '30px',
+                borderRadius: '999px',
+                background: 'radial-gradient(ellipse, rgba(239, 68, 68, 0.7) 0%, transparent 75%)',
+                filter: 'blur(5px)',
+                zIndex: -1,
+                transform: 'scale(1.5)',
+              }}
+            />
+
+            <span style={{ fontSize: '56px', display: 'inline-block', lineHeight: 1 }}>
               🍅
             </span>
           </div>
         </div>
       )}
 
-      {/* 2. Localized Splat Burst on Target Card (When watching other players get hit) */}
+      {/* 2. Target Player Card Splat with Dripping Ketchup */}
       {cardSplat && cardSplat.active && (
         <div
           style={{
@@ -233,35 +284,52 @@ export default function TomatoOverlay({
             transform: 'translate(-50%, -50%)',
             zIndex: 99997,
             pointerEvents: 'none',
-            animation: 'cardSplatAnimation 2.8s ease forwards',
+            animation: 'cardSplatPop 2.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
           }}
         >
-          {/* Dripping Splatter Stamp */}
-          <div style={{ position: 'relative', width: '220px', height: '180px' }}>
-            <svg viewBox="0 0 200 160" style={{ width: '100%', height: '100%', filter: 'drop-shadow(0 4px 14px rgba(0,0,0,0.6))' }}>
+          <div style={{ position: 'relative', width: '240px', height: '200px' }}>
+            <svg
+              viewBox="0 0 200 170"
+              style={{
+                width: '100%',
+                height: '100%',
+                filter: 'drop-shadow(0 6px 18px rgba(0, 0, 0, 0.65))',
+              }}
+            >
+              {/* Outer viscous splash base */}
               <path
-                d="M 100,30 C 130,10 160,25 170,55 C 185,85 195,115 175,135 C 150,155 120,140 100,150 C 75,160 50,145 35,125 C 20,100 15,65 40,45 C 65,25 80,45 100,30 Z"
+                d="M 100,25 C 135,5 168,22 178,54 C 194,86 200,118 180,140 C 152,162 118,145 98,156 C 72,168 44,150 28,128 C 12,100 8,62 36,40 C 64,18 80,42 100,25 Z"
+                fill="#991b1b"
+              />
+              {/* Mid juicy tomato pulp layer */}
+              <path
+                d="M 96,38 C 124,20 152,36 158,64 C 170,92 160,120 138,128 C 116,134 100,122 82,128 C 60,134 44,112 38,90 C 32,68 54,50 76,46 C 88,40 92,50 96,38 Z"
                 fill="#dc2626"
               />
+              {/* Inner bright ketchup highlight */}
               <path
-                d="M 95,45 C 120,30 145,45 150,70 C 160,95 150,120 130,125 C 110,130 95,120 80,125 C 60,130 45,110 40,90 C 35,70 55,55 75,50 C 85,45 90,55 95,45 Z"
+                d="M 98,52 C 118,38 138,48 142,68 C 148,88 138,106 122,112 C 108,116 96,108 82,112 C 68,116 58,100 54,84 C 50,68 66,56 82,54 Z"
                 fill="#ef4444"
               />
-              {/* Seeds */}
-              <circle cx="80" cy="80" r="3.5" fill="#fef08a" />
-              <circle cx="120" cy="70" r="3" fill="#fef08a" />
-              <circle cx="105" cy="100" r="4" fill="#fef08a" />
-              <circle cx="140" cy="105" r="3" fill="#fef08a" />
-              {/* Drips */}
-              <rect x="85" y="140" width="7" height="25" rx="3.5" fill="#b91c1c" />
-              <rect x="135" y="130" width="5" height="30" rx="2.5" fill="#b91c1c" />
+
+              {/* Scattered yellow tomato seeds */}
+              <circle cx="76" cy="74" r="4" fill="#fef08a" />
+              <circle cx="122" cy="65" r="3.5" fill="#fef08a" />
+              <circle cx="102" cy="98" r="4.5" fill="#fef08a" />
+              <circle cx="140" cy="102" r="3.5" fill="#fef08a" />
+              <circle cx="62" cy="98" r="3" fill="#fef08a" />
+
+              {/* Viscous Running Ketchup Drips */}
+              <rect x="80" y="145" width="8" height="32" rx="4" fill="#7f1d1d" className="drip-slide-1" />
+              <rect x="132" y="136" width="6.5" height="38" rx="3.25" fill="#7f1d1d" className="drip-slide-2" />
+              <rect x="48" y="120" width="6" height="24" rx="3" fill="#7f1d1d" className="drip-slide-3" />
             </svg>
           </div>
         </div>
       )}
 
-      {/* 3. Full-Screen Viscous Tomato Splatter Decal on Victim's Screen */}
-      {screenSplatOpacity > 0 && (
+      {/* 3. Severe Impact Screen Splatter (Target's Screen Covered with Juicy Viscous Decal) */}
+      {screenSplat && screenSplat.active && (
         <div
           onMouseMove={handleWipeInteraction}
           onTouchMove={handleWipeInteraction}
@@ -273,102 +341,133 @@ export default function TomatoOverlay({
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            background: `radial-gradient(circle at 50% 50%, rgba(220, 20, 40, ${screenSplatOpacity * 0.78}) 0%, rgba(180, 10, 30, ${screenSplatOpacity * 0.5}) 50%, transparent 80%)`,
-            opacity: screenSplatOpacity,
-            transition: 'opacity 0.2s ease',
+            background: `radial-gradient(circle at 50% 50%, rgba(185, 28, 28, ${0.85 * (1 - wipePercent / 100)}) 0%, rgba(127, 29, 29, ${0.65 * (1 - wipePercent / 100)}) 55%, transparent 90%)`,
+            backdropFilter: `blur(${Math.max(0, (1 - wipePercent / 100) * 8)}px)`,
             cursor: 'grab',
             userSelect: 'none',
-            backdropFilter: `blur(${Math.max(0, (1 - wipePercent / 100) * 8)}px)`,
+            pointerEvents: 'auto',
+            transform: screenSplat.slidingDown ? 'translateY(120px)' : 'translateY(0)',
+            opacity: screenSplat.fading ? 0 : 1,
+            transition: 'transform 0.8s ease-in, opacity 0.7s ease-out',
           }}
         >
-          {/* Central Splat Graphic with Seeds & Thick Drips */}
-          <div style={{
-            position: 'relative',
-            width: '680px',
-            maxWidth: '92vw',
-            height: '460px',
-            pointerEvents: 'none',
-          }}>
-            <svg viewBox="0 0 400 300" style={{ width: '100%', height: '100%', filter: 'drop-shadow(0 12px 30px rgba(0,0,0,0.85))' }}>
+          {/* Massive Screen-Covering Juicy Splat SVG with Running Ketchup Drips */}
+          <div
+            style={{
+              position: 'relative',
+              width: '92vw',
+              maxWidth: '920px',
+              height: '70vh',
+              maxHeight: '620px',
+              pointerEvents: 'none',
+              animation: 'massiveSplatImpact 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards',
+            }}
+          >
+            <svg
+              viewBox="0 0 500 380"
+              style={{
+                width: '100%',
+                height: '100%',
+                filter: 'drop-shadow(0 20px 45px rgba(0, 0, 0, 0.9))',
+              }}
+            >
+              {/* Base Thick Deep-Red Visceral Splat */}
               <path
-                d="M 200,60 C 230,20 280,30 300,70 C 330,120 380,140 370,180 C 360,230 310,250 270,260 C 230,270 210,290 190,280 C 150,260 120,290 90,260 C 50,230 30,190 40,150 C 50,110 80,70 120,80 C 150,90 170,100 200,60 Z"
+                d="M 250,45 C 310,-10 390,15 420,70 C 460,135 520,165 500,225 C 485,285 410,315 360,325 C 300,340 270,370 240,355 C 190,330 150,375 110,335 C 50,295 20,240 35,185 C 48,130 90,80 145,95 C 185,108 215,115 250,45 Z"
+                fill="#7f1d1d"
+              />
+
+              {/* Mid Layer Juicy Crimson Sauce */}
+              <path
+                d="M 235,70 C 285,30 355,50 375,95 C 405,145 450,175 425,225 C 400,270 345,285 305,280 C 255,270 225,300 200,285 C 160,265 130,295 100,265 C 60,225 45,185 60,145 C 75,105 120,105 165,115 C 200,125 215,95 235,70 Z"
                 fill="#b91c1c"
               />
+
+              {/* Top Fresh Puree & Highlights */}
               <path
-                d="M 180,90 C 210,50 260,70 270,110 C 280,150 330,170 310,200 C 290,230 250,240 220,230 C 180,220 160,240 140,230 C 110,220 90,190 100,160 C 110,130 150,130 180,90 Z"
-                fill="#dc2626"
-              />
-              <path
-                d="M 190,110 C 210,85 240,95 245,120 C 250,145 280,155 265,175 C 250,195 220,200 195,195 C 175,190 160,205 145,195 C 125,185 115,165 125,145 C 135,125 165,125 190,110 Z"
+                d="M 240,95 C 275,60 325,75 340,115 C 365,155 395,175 375,215 C 350,250 310,255 275,250 C 240,245 220,265 195,255 C 165,240 145,260 125,240 C 95,210 90,175 105,145 C 120,115 155,115 190,125 C 215,130 225,110 240,95 Z"
                 fill="#ef4444"
               />
 
-              {/* Yellowish-white seeds */}
-              <circle cx="160" cy="140" r="7" fill="#fef08a" />
-              <circle cx="240" cy="120" r="6" fill="#fef08a" />
-              <circle cx="210" cy="180" r="8" fill="#fef08a" />
-              <circle cx="280" cy="190" r="6" fill="#fef08a" />
-              <circle cx="130" cy="180" r="5" fill="#fef08a" />
-              <circle cx="190" cy="110" r="7" fill="#fef08a" />
+              {/* Concentrated Yellow Seeds */}
+              <circle cx="180" cy="160" r="9" fill="#fef08a" />
+              <circle cx="310" cy="135" r="8" fill="#fef08a" />
+              <circle cx="265" cy="215" r="10" fill="#fef08a" />
+              <circle cx="360" cy="225" r="8" fill="#fef08a" />
+              <circle cx="145" cy="225" r="7.5" fill="#fef08a" />
+              <circle cx="230" cy="135" r="8.5" fill="#fef08a" />
+              <circle cx="340" cy="170" r="7" fill="#fef08a" />
+              <circle cx="205" cy="245" r="8" fill="#fef08a" />
+              <circle cx="290" cy="175" r="9.5" fill="#fef08a" />
 
-              {/* Viscous Running Drips */}
-              <rect x="178" y="270" width="14" height="55" rx="7" fill="#991b1b" />
-              <rect x="250" y="250" width="9" height="70" rx="4.5" fill="#991b1b" />
-              <rect x="108" y="240" width="12" height="45" rx="6" fill="#991b1b" />
-              <rect x="315" y="220" width="8" height="35" rx="4" fill="#991b1b" />
+              {/* Viscous Dripping Ketchup Running Down the Screen */}
+              <rect x="220" y="340" width="22" height="90" rx="11" fill="#7f1d1d" className="drip-slide-heavy-1" />
+              <rect x="330" y="310" width="16" height="110" rx="8" fill="#7f1d1d" className="drip-slide-heavy-2" />
+              <rect x="130" y="320" width="18" height="80" rx="9" fill="#7f1d1d" className="drip-slide-heavy-3" />
+              <rect x="420" y="270" width="13" height="65" rx="6.5" fill="#7f1d1d" className="drip-slide-heavy-4" />
+              <rect x="70" y="270" width="14" height="60" rx="7" fill="#7f1d1d" className="drip-slide-heavy-5" />
+
+              {/* Radial Splatter Droplets */}
+              <circle cx="45" cy="80" r="12" fill="#b91c1c" />
+              <circle cx="475" cy="95" r="14" fill="#b91c1c" />
+              <circle cx="495" cy="265" r="11" fill="#b91c1c" />
+              <circle cx="25" cy="265" r="10" fill="#b91c1c" />
+              <circle cx="260" cy="15" r="13" fill="#b91c1c" />
             </svg>
           </div>
 
-          {/* Interactive Wipe Prompt */}
-          <div style={{
-            background: 'rgba(15, 23, 42, 0.92)',
-            border: '2px solid #ef4444',
-            padding: '14px 28px',
-            borderRadius: '24px',
-            color: '#fff',
-            fontWeight: 900,
-            fontSize: '17px',
-            textAlign: 'center',
-            boxShadow: '0 0 35px rgba(239, 68, 68, 0.7)',
-            marginTop: '-30px',
-            pointerEvents: 'none',
-            letterSpacing: '0.02em',
-          }}>
-            🍅 YOU GOT DIRECTLY SPLATTERED!
-            <div style={{ fontSize: '13px', fontWeight: 700, color: '#fca5a5', marginTop: '6px' }}>
-              👉 SWIPE OR DRAG YOUR CURSOR ACROSS SCREEN TO WIPE IT OFF ({wipePercent}%)!
+          {/* Interactive Screen Banner Prompt */}
+          <div
+            style={{
+              background: 'rgba(15, 23, 42, 0.94)',
+              border: '2px solid #ef4444',
+              padding: '14px 32px',
+              borderRadius: '24px',
+              color: '#ffffff',
+              fontWeight: 900,
+              fontSize: '18px',
+              textAlign: 'center',
+              boxShadow: '0 0 40px rgba(239, 68, 68, 0.8), 0 10px 30px rgba(0, 0, 0, 0.7)',
+              marginTop: '-20px',
+              pointerEvents: 'none',
+              letterSpacing: '0.04em',
+            }}
+          >
+            🍅 DIRECT HIT! YOUR SCREEN IS SPLATTERED!
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#fca5a5', marginTop: '5px' }}>
+              👉 Swipe/drag cursor to wipe it off early ({wipePercent}%) or wait for ketchup to slide down
             </div>
           </div>
         </div>
       )}
 
-      {/* Trajectory & Splat Animations */}
+      {/* Global CSS for Wobble, Drip Slides & Explosive Pop */}
       <style jsx global>{`
-        @keyframes tomatoTrajectory {
+        @keyframes massiveSplatImpact {
           0% {
-            transform: translate3d(calc(var(--sX) - 31px), calc(var(--sY) - 31px), 0) scale(0.5) rotate(0deg);
-            opacity: 0.8;
+            transform: scale(0.2) rotate(-8deg);
+            opacity: 0;
           }
-          45% {
-            transform: translate3d(calc(var(--mX) - 31px), calc(var(--mY) - 31px), 0) scale(var(--mScale)) rotate(360deg);
+          65% {
+            transform: scale(1.08) rotate(2deg);
             opacity: 1;
           }
           100% {
-            transform: translate3d(calc(var(--eX) - 31px), calc(var(--eY) - 31px), 0) scale(var(--eScale)) rotate(720deg);
+            transform: scale(1.0) rotate(0deg);
             opacity: 1;
           }
         }
 
-        @keyframes cardSplatAnimation {
+        @keyframes cardSplatPop {
           0% {
-            transform: translate(-50%, -50%) scale(0.3);
+            transform: translate(-50%, -50%) scale(0.25);
             opacity: 1;
           }
-          12% {
-            transform: translate(-50%, -50%) scale(1.15);
+          15% {
+            transform: translate(-50%, -50%) scale(1.22);
             opacity: 1;
           }
-          20% {
+          25% {
             transform: translate(-50%, -50%) scale(1.0);
             opacity: 1;
           }
@@ -377,20 +476,35 @@ export default function TomatoOverlay({
             opacity: 1;
           }
           100% {
-            transform: translate(-50%, -46%) scale(0.95);
+            transform: translate(-50%, -44%) scale(0.96);
             opacity: 0;
           }
         }
 
+        .drip-slide-heavy-1 {
+          animation: dripRun 2.2s ease-in infinite alternate;
+        }
+        .drip-slide-heavy-2 {
+          animation: dripRun 2.6s ease-in 0.2s infinite alternate;
+        }
+        .drip-slide-heavy-3 {
+          animation: dripRun 2.0s ease-in 0.4s infinite alternate;
+        }
+
+        @keyframes dripRun {
+          0% { height: 70px; }
+          100% { height: 130px; }
+        }
+
         .tomato-wobble {
-          animation: cardWobble 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both !important;
+          animation: cardWobble 0.48s cubic-bezier(0.36, 0.07, 0.19, 0.97) both !important;
         }
 
         @keyframes cardWobble {
-          10%, 90% { transform: translate3d(-2px, 0, 0) rotate(-1deg); }
-          20%, 80% { transform: translate3d(3px, 0, 0) rotate(1.5deg); }
-          30%, 50%, 70% { transform: translate3d(-4px, 0, 0) rotate(-2deg); }
-          40%, 60% { transform: translate3d(4px, 0, 0) rotate(2deg); }
+          10%, 90% { transform: translate3d(-3px, 0, 0) rotate(-1.5deg); }
+          20%, 80% { transform: translate3d(4px, 0, 0) rotate(2deg); }
+          30%, 50%, 70% { transform: translate3d(-5px, 0, 0) rotate(-2.5deg); }
+          40%, 60% { transform: translate3d(5px, 0, 0) rotate(2.5deg); }
         }
       `}</style>
     </>

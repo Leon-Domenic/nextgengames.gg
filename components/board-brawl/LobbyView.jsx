@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { CHARACTERS } from '@/lib/board-brawl/characters';
 import { DICE_SKIN_MAP, DICE_SKINS } from '@/lib/board-brawl/diceSkins';
 import { sounds } from '@/lib/audio';
@@ -9,7 +10,7 @@ import SettingsModal from '@/components/board-brawl/SettingsModal';
 import EmojiReactionPicker from '@/components/board-brawl/EmojiReactionPicker';
 import EmojiReactionBubble from '@/components/board-brawl/EmojiReactionBubble';
 import {
-  Users, Bot, Play, Copy, CheckCheck, Settings, ShoppingCart, ListChecks, X, Home,
+  Users, Bot, Play, Copy, CheckCheck, Settings, ShoppingCart, X, Home,
   ChevronLeft, ChevronRight, Volume2, VolumeX, Sparkles, Dices, ShoppingBag
 } from 'lucide-react';
 
@@ -27,10 +28,12 @@ const SLOT_COLORS = PLAYER_COLORS;
 export default function LobbyView({
   players = [],
   user,
+  isHost: propIsHost,
   roomId,
   mode = 'blitz',
   onChangeMode,
   onAddBot,
+  onRemovePlayer,
   onStartGame,
   onChangeCharacter,
   onChangeColor,
@@ -41,8 +44,9 @@ export default function LobbyView({
   playerReactions = {},
   onSendReaction,
 }) {
-  const isHost = players[0]?.id === user?.id || (players.length > 0 && !players[0]?.isBot);
-  const myPlayer = players.find(p => p.id === user?.id) || players[0];
+  const myPlayer = players.find(p => p.id === user?.id)
+    || (players.filter(p => !p.isBot).length === 1 ? players.filter(p => !p.isBot)[0] : players[0]);
+  const isHost = propIsHost !== undefined ? propIsHost : Boolean(myPlayer && players[0] && myPlayer.id === players[0].id);
   const myCharIndex = CHARACTERS.findIndex(c => c.id === myPlayer?.avatarToken);
   const [currentCharIdx, setCurrentCharIdx] = useState(myCharIndex >= 0 ? myCharIndex : 0);
   const [showShop, setShowShop] = useState(false);
@@ -67,8 +71,10 @@ export default function LobbyView({
     }
   };
 
-  // We support up to 6 slots in tabletop format
-  const slots = [0, 1, 2, 3, 4, 5];
+  // Dynamic slots calculation (up to 6 players maximum)
+  const maxSlots = 6;
+  const hasOpenSlot = players.length < maxSlots;
+  const totalCards = players.length + (hasOpenSlot ? 1 : 0);
 
   return (
     <div style={{
@@ -121,8 +127,9 @@ export default function LobbyView({
       }}>
         {/* Left: Home + User Profile Capsule */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <a
-            href="/games"
+          <Link
+            href="/browsergames"
+            title="Return to Games Hub"
             style={{
               width: '46px',
               height: '46px',
@@ -136,10 +143,13 @@ export default function LobbyView({
               boxShadow: '0 4px 12px rgba(2, 132, 199, 0.4)',
               cursor: 'pointer',
               textDecoration: 'none',
+              transition: 'transform 0.1s ease',
             }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
             <Home size={24} />
-          </a>
+          </Link>
 
           {/* Profile Capsule */}
           <div style={{
@@ -256,21 +266,7 @@ export default function LobbyView({
             </span>
           </button>
 
-          <div style={{
-            width: '42px',
-            height: '42px',
-            borderRadius: '12px',
-            background: '#0284c7',
-            border: '2px solid #38bdf8',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#fff',
-            cursor: 'pointer',
-            boxShadow: '0 4px 10px rgba(2, 132, 199, 0.3)',
-          }}>
-            <ListChecks size={20} />
-          </div>
+          {/* Settings Button */}
           <button
             onClick={() => {
               sounds.playBuild();
@@ -293,11 +289,16 @@ export default function LobbyView({
               boxShadow: '0 4px 10px rgba(2, 132, 199, 0.3)',
               transition: 'transform 0.1s ease',
             }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
             <Settings size={20} />
           </button>
-          <a
-            href="/games"
+
+          {/* Close / Leave Button */}
+          <Link
+            href="/browsergames"
+            title="Leave Lobby"
             style={{
               width: '42px',
               height: '42px',
@@ -311,10 +312,13 @@ export default function LobbyView({
               cursor: 'pointer',
               boxShadow: '0 4px 10px rgba(225, 29, 72, 0.4)',
               textDecoration: 'none',
+              transition: 'transform 0.1s ease',
             }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
             <X size={22} />
-          </a>
+          </Link>
         </div>
       </div>
 
@@ -483,18 +487,41 @@ export default function LobbyView({
         </div>
       </div>
 
-      {/* 3. Up to 6 Character Pedestal Cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
-        gap: '14px',
-        flex: 1,
-        marginBottom: '24px',
-      }}>
-        {slots.map((slotIdx) => {
-          const player = players[slotIdx];
-          const isSlotOccupied = !!player;
-          const isMe = player && player.id === user?.id;
+      {/* Dynamic Player Grid responsive styling */}
+      <style>{`
+        .lobby-player-grid {
+          display: grid;
+          grid-template-columns: repeat(${totalCards}, minmax(0, 1fr));
+          gap: ${totalCards >= 6 ? '10px' : (totalCards >= 4 ? '12px' : '16px')};
+          width: 100%;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @media (max-width: 1024px) {
+          .lobby-player-grid {
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important;
+            gap: 12px !important;
+          }
+        }
+        @media (max-width: 640px) {
+          .lobby-player-grid {
+            grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)) !important;
+            gap: 10px !important;
+          }
+        }
+      `}</style>
+
+      {/* 3. Up to 6 Character Pedestal Cards (Dynamic) */}
+      <div
+        className="lobby-player-grid"
+        style={{
+          flex: 1,
+          marginBottom: '24px',
+          maxWidth: totalCards <= 2 ? '540px' : (totalCards === 3 ? '780px' : (totalCards === 4 ? '1020px' : '100%')),
+          margin: '0 auto 24px auto',
+        }}
+      >
+        {players.map((player, slotIdx) => {
+          const isMe = Boolean(player && (player.id === user?.id || player.id === myPlayer?.id));
           const playerColorHex = player?.avatarColor || PLAYER_COLORS[slotIdx % PLAYER_COLORS.length].hex;
           const colorObj = PLAYER_COLORS.find(c => c.hex.toLowerCase() === playerColorHex.toLowerCase()) || {
             name: 'Player',
@@ -510,105 +537,6 @@ export default function LobbyView({
             ? (DICE_SKIN_MAP[equippedDiceSkin] || DICE_SKINS[0])
             : (player?.diceSkin ? (DICE_SKIN_MAP[player.diceSkin] || DICE_SKINS[slotIdx % DICE_SKINS.length]) : DICE_SKINS[slotIdx % DICE_SKINS.length]);
 
-          if (!isSlotOccupied) {
-            // Empty Slot Card (with + ADD BOT & + INVITE FRIEND buttons)
-            return (
-              <div
-                key={`empty-slot-${slotIdx}`}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.45)',
-                  border: '2px dashed rgba(148, 163, 184, 0.6)',
-                  borderRadius: '20px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '24px 16px',
-                  minHeight: '430px',
-                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.04)',
-                }}
-              >
-                <div style={{
-                  width: '72px',
-                  height: '72px',
-                  borderRadius: '50%',
-                  background: 'rgba(255, 255, 255, 0.8)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '32px',
-                  marginBottom: '16px',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.06)',
-                }}>
-                  👤
-                </div>
-
-                <div style={{
-                  fontSize: '15px',
-                  fontWeight: 900,
-                  color: '#64748b',
-                  marginBottom: '20px',
-                  textTransform: 'uppercase',
-                }}>
-                  Slot {slotIdx + 1} Open
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', maxWidth: '180px' }}>
-                  <button
-                    onClick={onAddBot}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      padding: '12px 14px',
-                      background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                      border: '2px solid #38bdf8',
-                      borderRadius: '12px',
-                      color: '#ffffff',
-                      fontSize: '13px',
-                      fontWeight: 900,
-                      cursor: 'pointer',
-                      boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)',
-                      transition: 'transform 0.1s',
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-                  >
-                    <Bot size={16} />
-                    + ADD BOT
-                  </button>
-
-                  <button
-                    onClick={onCopyLink}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      padding: '10px 14px',
-                      background: 'rgba(255, 255, 255, 0.9)',
-                      border: '2px solid #cbd5e1',
-                      borderRadius: '12px',
-                      color: '#334155',
-                      fontSize: '12px',
-                      fontWeight: 800,
-                      cursor: 'pointer',
-                      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)',
-                      transition: 'transform 0.1s',
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-                  >
-                    <Copy size={14} />
-                    INVITE
-                  </button>
-                </div>
-              </div>
-            );
-          }
-
-          // Occupied Slot Card (Matches Business Tour Pedestal Standee Card)
           return (
             <div
               key={player.id}
@@ -624,15 +552,16 @@ export default function LobbyView({
                   ? '0 12px 30px rgba(2, 132, 199, 0.25), 0 0 0 2px #38bdf8'
                   : '0 8px 24px rgba(0, 0, 0, 0.08)',
                 position: 'relative',
+                transition: 'all 0.25s ease',
               }}
             >
-              {/* Card Header Ribbon with Avatar & Username */}
+              {/* Card Header Ribbon with Avatar, Username & Remove Button */}
               <div style={{
                 background: slotColor.headerBg,
-                padding: '10px 14px',
+                padding: totalCards >= 6 ? '8px 10px' : '10px 14px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '10px',
+                gap: totalCards >= 6 ? '8px' : '10px',
                 borderBottom: '2px solid rgba(0, 0, 0, 0.1)',
                 borderTopLeftRadius: '17px',
                 borderTopRightRadius: '17px',
@@ -641,15 +570,15 @@ export default function LobbyView({
                   onClick={() => setActivePickerSlot(activePickerSlot === slotIdx ? null : slotIdx)}
                   title="Click avatar to react with emoji"
                   style={{
-                    width: '36px',
-                    height: '36px',
+                    width: totalCards >= 6 ? '32px' : '36px',
+                    height: totalCards >= 6 ? '32px' : '36px',
                     borderRadius: '10px',
                     background: '#1e293b',
                     border: '2px solid #ffffff',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '18px',
+                    fontSize: totalCards >= 6 ? '16px' : '18px',
                     boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)',
                     flexShrink: 0,
                     cursor: 'pointer',
@@ -673,25 +602,29 @@ export default function LobbyView({
                   <EmojiReactionBubble reaction={playerReactions?.[player.id]} position="top-left" />
                 </div>
 
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: '14px',
-                    fontWeight: 900,
-                    color: '#ffffff',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    textShadow: '0 1px 2px rgba(0,0,0,0.4)',
-                    textTransform: 'uppercase',
-                  }}>
+                <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                  <div
+                    title={player.name}
+                    style={{
+                      fontSize: totalCards >= 6 ? '12px' : '14px',
+                      fontWeight: 900,
+                      color: '#ffffff',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      textShadow: '0 1px 2px rgba(0,0,0,0.4)',
+                      textTransform: 'uppercase',
+                    }}
+                  >
                     {player.name}
                   </div>
-                  <div style={{ fontSize: '11px', color: '#fef08a', fontWeight: 800 }}>
+                  <div style={{ fontSize: '10px', color: '#fef08a', fontWeight: 800 }}>
                     {isMe ? 'YOU' : (player.isBot ? 'SMART AI BOT' : 'PLAYER')}
                   </div>
                 </div>
 
-                {isMe && (
+                {/* Right: P1 Badge or Host Kick/Remove Button */}
+                {isMe ? (
                   <div style={{
                     background: '#0284c7',
                     border: '1.5px solid #ffffff',
@@ -700,9 +633,50 @@ export default function LobbyView({
                     fontSize: '10px',
                     color: '#fff',
                     fontWeight: 900,
+                    letterSpacing: '0.04em',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                    flexShrink: 0,
                   }}>
                     P1
                   </div>
+                ) : (
+                  isHost && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        sounds.playBuy();
+                        onRemovePlayer?.(player.id);
+                      }}
+                      title={player.isBot ? `Remove ${player.name} (Bot)` : `Kick ${player.name}`}
+                      aria-label={`Remove ${player.name}`}
+                      style={{
+                        marginLeft: 'auto',
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '8px',
+                        background: 'rgba(239, 68, 68, 0.9)',
+                        border: '1.5px solid #ffffff',
+                        color: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 6px rgba(0, 0, 0, 0.25)',
+                        transition: 'all 0.15s ease',
+                        flexShrink: 0,
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#dc2626';
+                        e.currentTarget.style.transform = 'scale(1.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'rgba(239, 68, 68, 0.9)';
+                        e.currentTarget.style.transform = 'scale(1)';
+                      }}
+                    >
+                      <X size={15} strokeWidth={2.8} />
+                    </button>
+                  )
                 )}
               </div>
 
@@ -715,7 +689,7 @@ export default function LobbyView({
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '16px',
+                padding: totalCards >= 6 ? '12px 6px' : '16px 10px',
                 borderBottomLeftRadius: '17px',
                 borderBottomRightRadius: '17px',
               }}>
@@ -723,7 +697,7 @@ export default function LobbyView({
                 <div style={{
                   position: 'absolute',
                   bottom: '36px',
-                  width: '120px',
+                  width: totalCards >= 6 ? '100px' : '120px',
                   height: '24px',
                   borderRadius: '50%',
                   background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 70%)',
@@ -736,11 +710,11 @@ export default function LobbyView({
                     title="Previous Character"
                     style={{
                       position: 'absolute',
-                      left: '8px',
+                      left: '6px',
                       top: '50%',
                       transform: 'translateY(-50%)',
-                      width: '32px',
-                      height: '32px',
+                      width: '30px',
+                      height: '30px',
                       borderRadius: '50%',
                       background: 'rgba(255, 255, 255, 0.9)',
                       border: '2px solid #cbd5e1',
@@ -753,7 +727,7 @@ export default function LobbyView({
                       color: '#334155',
                     }}
                   >
-                    <ChevronLeft size={20} />
+                    <ChevronLeft size={18} />
                   </button>
                 )}
 
@@ -765,6 +739,7 @@ export default function LobbyView({
                   alignItems: 'center',
                   marginBottom: '10px',
                   zIndex: 2,
+                  width: '100%',
                 }}>
                   {/* Standee Character Avatar Big Icon (Click to React) */}
                   <div
@@ -772,17 +747,17 @@ export default function LobbyView({
                     title="Click avatar to react with emoji"
                     style={{
                       position: 'relative',
-                      width: '100px',
-                      height: '100px',
-                      borderRadius: '24px',
+                      width: totalCards >= 6 ? '82px' : '96px',
+                      height: totalCards >= 6 ? '82px' : '96px',
+                      borderRadius: totalCards >= 6 ? '20px' : '24px',
                       background: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)',
                       border: `4px solid ${slotColor.hex}`,
                       boxShadow: `0 8px 20px ${slotColor.hex}44`,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '54px',
-                      marginBottom: '12px',
+                      fontSize: totalCards >= 6 ? '44px' : '52px',
+                      marginBottom: '10px',
                       cursor: 'pointer',
                       transition: 'transform 0.15s ease',
                     }}
@@ -790,19 +765,19 @@ export default function LobbyView({
                     onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                   >
                     {activeChar?.avatar ? (
-                    <img
-                      src={activeChar.avatar}
-                      alt={activeChar.name}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        borderRadius: '8px',
-                      }}
-                    />
-                  ) : (
-                    activeChar?.icon || '🎩'
-                  )}
+                      <img
+                        src={activeChar.avatar}
+                        alt={activeChar.name}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          borderRadius: '8px',
+                        }}
+                      />
+                    ) : (
+                      activeChar?.icon || '🎩'
+                    )}
 
                     {/* Reaction Bubble Displayed Next to Avatar */}
                     <EmojiReactionBubble reaction={playerReactions?.[player.id]} position="pedestal" />
@@ -818,8 +793,18 @@ export default function LobbyView({
                   </div>
 
                   {/* Character Name & Role Title */}
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '15px', fontWeight: 900, color: '#1e293b' }}>
+                  <div style={{ textAlign: 'center', width: '100%', padding: '0 4px' }}>
+                    <div
+                      title={activeChar?.name}
+                      style={{
+                        fontSize: totalCards >= 6 ? '13px' : '15px',
+                        fontWeight: 900,
+                        color: '#1e293b',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
                       {activeChar?.name || 'Tycoon'}
                     </div>
                     <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b' }}>
@@ -827,20 +812,20 @@ export default function LobbyView({
                     </div>
                   </div>
 
-                  {/* 6 Selectable Distinct Player Colors */}
+                  {/* Selectable Distinct Player Colors */}
                   {isMe ? (
                     <div style={{
-                      marginTop: '12px',
+                      marginTop: '10px',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
-                      gap: '5px',
+                      gap: '4px',
                       zIndex: 3,
                     }}>
-                      <div style={{ fontSize: '10px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      <div style={{ fontSize: '9px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                         Pawn & Property Color
                       </div>
-                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                      <div style={{ display: 'flex', gap: '5px', justifyContent: 'center' }}>
                         {PLAYER_COLORS.map((col) => {
                           const isSelected = playerColorHex.toLowerCase() === col.hex.toLowerCase();
                           return (
@@ -852,8 +837,8 @@ export default function LobbyView({
                               }}
                               title={`${col.name} (${col.hex})`}
                               style={{
-                                width: '26px',
-                                height: '26px',
+                                width: totalCards >= 6 ? '20px' : '24px',
+                                height: totalCards >= 6 ? '20px' : '24px',
                                 borderRadius: '50%',
                                 background: col.hex,
                                 border: isSelected ? '3px solid #ffffff' : '2px solid rgba(0,0,0,0.15)',
@@ -870,7 +855,7 @@ export default function LobbyView({
                       </div>
                     </div>
                   ) : (
-                    <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px', zIndex: 3 }}>
+                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px', zIndex: 3 }}>
                       <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: playerColorHex, border: '2px solid #ffffff', boxShadow: `0 0 6px ${playerColorHex}` }} />
                       <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748b' }}>{colorObj.name}</span>
                     </div>
@@ -884,11 +869,11 @@ export default function LobbyView({
                     title="Next Character"
                     style={{
                       position: 'absolute',
-                      right: '8px',
+                      right: '6px',
                       top: '50%',
                       transform: 'translateY(-50%)',
-                      width: '32px',
-                      height: '32px',
+                      width: '30px',
+                      height: '30px',
                       borderRadius: '50%',
                       background: 'rgba(255, 255, 255, 0.9)',
                       border: '2px solid #cbd5e1',
@@ -901,7 +886,7 @@ export default function LobbyView({
                       color: '#334155',
                     }}
                   >
-                    <ChevronRight size={20} />
+                    <ChevronRight size={18} />
                   </button>
                 )}
 
@@ -915,7 +900,7 @@ export default function LobbyView({
                     position: 'absolute',
                     bottom: '10px',
                     right: '10px',
-                    padding: '4px 8px',
+                    padding: '3px 7px',
                     borderRadius: '12px',
                     background: activeDiceSkin.badgeBg || '#dc2626',
                     border: '1.5px solid #ffffff',
@@ -923,7 +908,7 @@ export default function LobbyView({
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px',
-                    fontSize: '11px',
+                    fontSize: '10px',
                     fontWeight: 900,
                     color: '#ffffff',
                     cursor: isMe ? 'pointer' : 'default',
@@ -938,12 +923,125 @@ export default function LobbyView({
                   }}
                 >
                   <span>{activeDiceSkin.icon || '🎲'}</span>
-                  <span>{activeDiceSkin.name}</span>
+                  <span style={{ maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeDiceSkin.name}</span>
                 </div>
               </div>
             </div>
           );
         })}
+
+        {/* If fewer than 6 players, render 1 dynamic "+ ADD BOT / INVITE" card */}
+        {hasOpenSlot && (
+          <div
+            key={`empty-slot-${players.length}`}
+            style={{
+              background: 'rgba(255, 255, 255, 0.55)',
+              border: '2px dashed rgba(56, 189, 248, 0.7)',
+              borderRadius: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: totalCards >= 6 ? '20px 10px' : '24px 16px',
+              minHeight: '430px',
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.04)',
+              transition: 'all 0.25s ease',
+            }}
+          >
+            <div style={{
+              width: totalCards >= 6 ? '60px' : '72px',
+              height: totalCards >= 6 ? '60px' : '72px',
+              borderRadius: '50%',
+              background: 'rgba(255, 255, 255, 0.85)',
+              border: '2px solid #bae6fd',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: totalCards >= 6 ? '26px' : '32px',
+              marginBottom: '16px',
+              boxShadow: '0 4px 12px rgba(2, 132, 199, 0.1)',
+            }}>
+              👤
+            </div>
+
+            <div style={{
+              fontSize: totalCards >= 6 ? '13px' : '15px',
+              fontWeight: 900,
+              color: '#0369a1',
+              marginBottom: '6px',
+              textTransform: 'uppercase',
+            }}>
+              Slot {players.length + 1} Open
+            </div>
+
+            <div style={{
+              fontSize: '11px',
+              fontWeight: 700,
+              color: '#64748b',
+              marginBottom: '20px',
+            }}>
+              {players.length}/6 Players Joined
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', maxWidth: '170px' }}>
+              <button
+                onClick={() => {
+                  sounds.playBuy();
+                  onAddBot?.();
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  padding: '12px 14px',
+                  background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                  border: '2px solid #38bdf8',
+                  borderRadius: '12px',
+                  color: '#ffffff',
+                  fontSize: '12px',
+                  fontWeight: 900,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)',
+                  transition: 'transform 0.1s',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <Bot size={16} />
+                + ADD BOT
+              </button>
+
+              <button
+                onClick={() => {
+                  sounds.playBuy();
+                  onCopyLink?.();
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  padding: '10px 14px',
+                  background: 'rgba(255, 255, 255, 0.95)',
+                  border: '2px solid #cbd5e1',
+                  borderRadius: '12px',
+                  color: '#334155',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)',
+                  transition: 'transform 0.1s',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                {copiedLink ? <CheckCheck size={14} color="#16a34a" /> : <Copy size={14} />}
+                {copiedLink ? 'COPIED!' : 'INVITE'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 4. Bottom Start Match & Controls Bar */}
