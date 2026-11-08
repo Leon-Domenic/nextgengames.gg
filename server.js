@@ -246,6 +246,10 @@ app.prepare().then(() => {
         game.skipFlight(payload.playerId);
       } else if (action === 'pay_bail') {
         game.payBail(payload.playerId);
+      } else if (action === 'sell_property_to_bank') {
+        game.sellPropertyToBank(payload.playerId, payload.tileId);
+      } else if (action === 'settle_debt') {
+        game.settleDebt(payload.playerId);
       } else if (action === 'declare_bankruptcy') {
         game.declareBankruptcy(payload.playerId, game.pendingDebt?.creditorId);
       } else if (action === 'throw_tomato') {

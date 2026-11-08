@@ -556,6 +556,33 @@ export default function BoardBrawlArenaPage() {
     });
   };
 
+  const handleSellPropertyToBank = (tileId) => {
+    if (!socket || !activePlayerId) return;
+    socket.emit('game_action', {
+      roomId,
+      action: 'sell_property_to_bank',
+      payload: { playerId: activePlayerId, tileId }
+    });
+  };
+
+  const handleSettleDebt = () => {
+    if (!socket || !activePlayerId) return;
+    socket.emit('game_action', {
+      roomId,
+      action: 'settle_debt',
+      payload: { playerId: activePlayerId }
+    });
+  };
+
+  const handleOpenEmergencyTrade = () => {
+    const creditor = gameState?.players?.find(p => p.id === gameState?.pendingDebt?.creditorId);
+    const opponent = creditor && creditor.id !== activePlayerId && !creditor.isBankrupt
+      ? creditor
+      : gameState?.players?.find(p => p.id !== activePlayerId && !p.isBankrupt);
+    setTradeTargetPlayer(opponent || null);
+    setIsTradeModalOpen(true);
+  };
+
   const handleSendChat = (e) => {
     e?.preventDefault();
     if (!chatInput.trim() || !user) return;
@@ -735,6 +762,10 @@ export default function BoardBrawlArenaPage() {
             creditor={gameState.players.find(p => p.id === gameState.pendingDebt?.creditorId)}
             properties={gameState.properties}
             onDeclareBankruptcy={handleDeclareBankruptcy}
+            onSellProperty={handleSellPropertyToBank}
+            onSettleDebt={handleSettleDebt}
+            onOpenTrade={handleOpenEmergencyTrade}
+            players={gameState.players}
             turnTimer={gameState.turnTimerRemaining}
           />
         )}

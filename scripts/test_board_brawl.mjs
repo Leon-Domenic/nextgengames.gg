@@ -93,4 +93,48 @@ game.checkWinConditions();
 console.log(`✔ Win Condition Triggered: Winner = ${game.winner?.name}, Reason = ${game.winReason}`);
 if (game.winner?.id !== 'u1') throw new Error('Line monopoly did not trigger win!');
 
+// 9. Test Property Sale to Bank (70% Valuation)
+const testGame2 = new BoardBrawlGame('TEST_ROOM_DEBT', { mode: 'classic' });
+testGame2.addPlayer(p1);
+testGame2.addPlayer(p2);
+testGame2.startGame();
+
+const debtor = testGame2.players.find(p => p.id === 'u2');
+const creditor = testGame2.players.find(p => p.id === 'u1');
+
+// Assign Athens (tile 3: price 120,000, housePrice: 60,000) at level 3 (2 houses) to Debtor
+testGame2.properties[3].ownerId = debtor.id;
+testGame2.properties[3].level = 3;
+const totalInvestment = TILES[3].price + (3 - 1) * TILES[3].housePrice; // 120,000 + 120,000 = 240,000
+const expectedRefund = Math.floor(totalInvestment * 0.70); // 168,000
+
+testGame2.turnState = 'debt';
+testGame2.pendingDebt = { debtorId: debtor.id, creditorId: creditor.id, amount: 200000 };
+
+debtor.cash = 50000; // Cannot pay debt yet (needs 200,000)
+const initialDebtorCash = debtor.cash;
+
+// Sell Athens to Bank
+const sellRes = testGame2.sellPropertyToBank(debtor.id, 3);
+console.log(`✔ Property sold to Bank at 70%: Refund = ${sellRes.refundValue} CR (Expected: ${expectedRefund} CR)`);
+if (sellRes.refundValue !== expectedRefund) throw new Error('Incorrect 70% refund calculation');
+if (debtor.cash !== initialDebtorCash + expectedRefund) throw new Error('Debtor cash not credited correctly');
+if (testGame2.properties[3].ownerId !== null) throw new Error('Property owner was not reset');
+if (testGame2.properties[3].level !== 0) throw new Error('Property level was not reset');
+
+// 10. Test Debt Settlement
+console.log(`Debtor cash after liquidation: ${debtor.cash} CR, Debt: ${testGame2.pendingDebt.amount} CR`);
+const creditorCashBefore = creditor.cash;
+const debtorCashBefore = debtor.cash;
+const debtAmount = testGame2.pendingDebt.amount;
+
+const settleRes = testGame2.settleDebt(debtor.id);
+console.log('✔ Settle Debt executed successfully:', settleRes);
+if (!settleRes) throw new Error('Debt settlement failed');
+if (testGame2.pendingDebt !== null) throw new Error('Pending debt was not cleared');
+if (debtor.cash !== debtorCashBefore - debtAmount) throw new Error('Debtor cash not deducted correctly');
+if (creditor.cash !== creditorCashBefore + debtAmount) throw new Error('Creditor cash not credited correctly');
+if (testGame2.turnState !== 'end_turn') throw new Error('Turn state should be end_turn upon debt settlement');
+
 console.log('\n⭐⭐ ALL ENGINE VERIFICATION TESTS PASSED FLAWLESSLY! ⭐⭐\n');
+process.exit(0);
