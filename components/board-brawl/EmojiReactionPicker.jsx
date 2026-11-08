@@ -119,7 +119,7 @@ export default function EmojiReactionPicker({
           <button
             key={emoji}
             onClick={() => {
-              sounds.playBuild?.();
+              sounds.playReactionEmoji?.(emoji);
               onSelectEmoji(emoji);
               onClose();
             }}

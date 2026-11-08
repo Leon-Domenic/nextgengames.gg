@@ -63,18 +63,18 @@ if (buyoutAttempt !== false) throw new Error('Landmark buyout was not blocked!')
 // 7. Test 4 Resorts System & Rent Progression
 console.log(`✔ Verifying 4 Resorts: [${RESORT_TILES.map(id => TILES[id].name).join(', ')}]`);
 if (RESORT_TILES.length !== 4) throw new Error('Expected 4 resort tiles');
-if (TILES[6].name !== 'Baltic Sands' || TILES[6].type !== 'resort') throw new Error('Tile 6 Baltic Sands mismatch');
-if (TILES[12].name !== 'Costa Brava' || TILES[12].type !== 'resort') throw new Error('Tile 12 Costa Brava mismatch');
-if (TILES[20].name !== 'Tropical Cove' || TILES[20].type !== 'resort') throw new Error('Tile 20 Tropical Cove mismatch');
-if (TILES[28].name !== 'Paradise Atoll' || TILES[28].type !== 'resort') throw new Error('Tile 28 Paradise Atoll mismatch');
+if (TILES[6].name !== 'Cyprus' || TILES[6].type !== 'resort') throw new Error('Tile 6 Cyprus mismatch');
+if (TILES[12].name !== 'Ibiza' || TILES[12].type !== 'resort') throw new Error('Tile 12 Ibiza mismatch');
+if (TILES[20].name !== 'Dubai' || TILES[20].type !== 'resort') throw new Error('Tile 20 Dubai mismatch');
+if (TILES[28].name !== 'Maldives' || TILES[28].type !== 'resort') throw new Error('Tile 28 Maldives mismatch');
 
-// Test buying a Resort (Tile 6: Baltic Sands, Price: 150,000 CR)
+// Test buying a Resort (Tile 6: Cyprus, Price: 150,000 CR)
 const alice = game.players.find(p => p.id === 'u1');
 alice.cash = 2000000;
 game.buyCity('u1', 6, 1);
-const baltic = game.properties[6];
-console.log(`✔ Resort 1 (Baltic Sands) purchased by Alice! Owner: ${baltic.ownerId}`);
-if (baltic.ownerId !== 'u1') throw new Error('Resort purchase failed');
+const cyprus = game.properties[6];
+console.log(`✔ Resort 1 (Cyprus) purchased by Alice! Owner: ${cyprus.ownerId}`);
+if (cyprus.ownerId !== 'u1') throw new Error('Resort purchase failed');
 
 // 8. Test Tomato Sabotage (3 Free + Cash Throws + 2500ms Cooldown)
 console.log('Alice free tomatoes initially:', alice.freeTomatoes);
@@ -361,15 +361,15 @@ prisoner.position = 8;
 prisoner.islandTurns = 3;
 const vipPassCard = {
   id: 'vip_escape_pass',
-  title: 'Island VIP Pass',
-  badge: 'VIP ESCAPE',
+  title: 'Prison Bail Pass',
+  badge: 'PRISON ESCAPE',
   rarity: 'RARE',
   icon: '🎟️',
   targetType: 'self',
 };
 prisoner.cards = [vipPassCard];
 
-console.log(`✔ Prisoner on Resort Island with ${prisoner.islandTurns} turns remaining and [${prisoner.cards[0].title}] in hand`);
+console.log(`✔ Prisoner in Prison with ${prisoner.islandTurns} turns remaining and [${prisoner.cards[0].title}] in hand`);
 
 // Verify VIP Pass is recognized as valid in P2P trade offer
 import { validateTrade } from '../lib/board-brawl/tradeEngine.js';

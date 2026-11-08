@@ -11,6 +11,7 @@ export default function ActionCardDock({
   myPlayer,
   gameState,
   onPlayCard,
+  onStartMapTargeting,
   disabled = false,
 }) {
   const [selectedCard, setSelectedCard] = useState(null);
@@ -19,6 +20,27 @@ export default function ActionCardDock({
   if (!cards || cards.length === 0) return null;
 
   const handleOpenCard = (card) => {
+    if (card.id === 'demolition_strike' && onStartMapTargeting) {
+      const oppTileIds = Object.keys(gameState?.properties || {}).filter((tId) => {
+        const prop = gameState.properties[tId];
+        const tile = TILES[tId];
+        return prop?.ownerId && prop.ownerId !== myPlayer?.id && tile?.type === 'city';
+      }).map(Number);
+
+      if (oppTileIds.length === 0) {
+        alert('No opponent cities found on the board to demolish!');
+        return;
+      }
+      try { sounds.playCardDraw?.(); } catch (e) {}
+      onStartMapTargeting({
+        cardId: card.id,
+        cardTitle: card.title,
+        type: 'demolition',
+        eligibleTileIds: oppTileIds,
+      });
+      setSelectedCard(null);
+      return;
+    }
     setSelectedCard(card);
     setTargetPayload({});
     try {
@@ -43,7 +65,8 @@ export default function ActionCardDock({
   // Pre-calculate target options
   const opponentCities = Object.keys(gameState?.properties || {}).filter((tId) => {
     const prop = gameState.properties[tId];
-    return prop.ownerId && prop.ownerId !== myPlayer?.id && (prop.level >= 2 || prop.festival);
+    const tile = TILES[tId];
+    return prop?.ownerId && prop.ownerId !== myPlayer?.id && tile?.type === 'city';
   });
 
   const unownedAffordableCities = Object.keys(gameState?.properties || {}).filter((tId) => {
@@ -314,41 +337,45 @@ export default function ActionCardDock({
 
               {selectedCard.id === 'demolition_strike' && (
                 <div>
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '8px' }}>
-                    Select Opponent City to Demolish:
+                  <div style={{ fontSize: '13px', fontWeight: 800, color: '#f87171', marginBottom: '8px' }}>
+                    Direct 3D Map Targeting:
                   </div>
-                  {opponentCities.length === 0 ? (
-                    <div style={{ fontSize: '12px', color: '#f87171' }}>No opponent cities with Level 2+ found!</div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '140px', overflowY: 'auto' }}>
-                      {opponentCities.map((tId) => {
-                        const tile = TILES[tId];
-                        const prop = gameState.properties[tId];
-                        const owner = gameState.players.find((p) => p.id === prop.ownerId);
-                        const isSelected = targetPayload.tileId === parseInt(tId);
-                        return (
-                          <button
-                            key={tId}
-                            onClick={() => setTargetPayload({ tileId: parseInt(tId) })}
-                            style={{
-                              padding: '8px 12px',
-                              borderRadius: '10px',
-                              border: isSelected ? '2px solid #ef4444' : '1px solid rgba(255,255,255,0.1)',
-                              background: isSelected ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255,255,255,0.05)',
-                              color: '#ffffff',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <span style={{ fontWeight: 800 }}>{tile.name} ({owner?.name})</span>
-                            <span style={{ fontSize: '12px', color: '#fca5a5' }}>Tier {prop.level} {prop.festival ? '🎪' : ''}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                  <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '14px' }}>
+                    Click any highlighted opponent city beacon directly on the 3D world map to demolish!
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (opponentCities.length === 0) {
+                        alert('No opponent cities found to demolish!');
+                        return;
+                      }
+                      onStartMapTargeting?.({
+                        cardId: selectedCard.id,
+                        cardTitle: selectedCard.title,
+                        type: 'demolition',
+                        eligibleTileIds: opponentCities.map(Number),
+                      });
+                      setSelectedCard(null);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      borderRadius: '12px',
+                      background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                      border: 'none',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      boxShadow: '0 4px 14px rgba(239, 68, 68, 0.4)',
+                    }}
+                  >
+                    <span>🎯 AIM & SELECT TARGET ON BOARD</span>
+                  </button>
                 </div>
               )}
 
@@ -431,7 +458,7 @@ export default function ActionCardDock({
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
                     {[
                       { id: 0, name: '🏁 START', note: '+$250 Salary' },
-                      { id: 8, name: '🏝️ RESORT', note: 'Resort Island' },
+                      { id: 8, name: '⛓️ PRISON', note: 'Prison Cell' },
                       { id: 16, name: '✈️ AIRPORT', note: 'Flight' },
                       { id: 24, name: '🍅 ARMORY', note: '+2 Tomatoes' },
                     ].map((dest) => (

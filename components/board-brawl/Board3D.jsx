@@ -13,6 +13,7 @@ import {
   createProceduralPawn,
   generateDiceMaterials,
   create3DStartMonument,
+  create3DPrisonMonument,
   create3DIslandMonument,
   create3DChampionshipMonument,
   create3DWorldTourMonument,
@@ -1153,6 +1154,31 @@ export default function Board3D({
       const intersects = getRaycastIntersects(e.clientX, e.clientY);
       const hit = resolveHitTile(intersects);
 
+      // Check if Map Targeting Mode is Active
+      if (targetingModeRef.current?.active) {
+        const eligibleList = targetingModeRef.current.eligibleTileIds || [];
+        const isEligible = hit && hit.tileId !== undefined && eligibleList.includes(hit.tileId);
+
+        if (isEligible) {
+          renderer.domElement.style.cursor = 'pointer';
+          if (lastHoveredTargetTileRef.current !== hit.tileId) {
+            lastHoveredTargetTileRef.current = hit.tileId;
+            try { sounds.playTargetHover?.(); } catch (err) {}
+          }
+          if (hit.tileMesh) {
+            const topMat = hit.tileMesh.material?.[2];
+            if (topMat?.emissive) {
+              topMat.emissiveIntensity = 0.65;
+            }
+          }
+          return;
+        } else {
+          lastHoveredTargetTileRef.current = null;
+          renderer.domElement.style.cursor = 'default';
+          return;
+        }
+      }
+
       if (hit && hit.tileMesh) {
         const hitMesh = hit.tileMesh;
         if (hoveredMeshRef.current !== hitMesh) {
@@ -1198,6 +1224,21 @@ export default function Board3D({
 
       const intersects = getRaycastIntersects(e.clientX, e.clientY);
       const hit = resolveHitTile(intersects);
+
+      // Direct 3D Board Map Targeting Click Interception
+      if (targetingModeRef.current?.active) {
+        if (hit && hit.tileId !== undefined && hit.tileId !== null) {
+          const tileId = hit.tileId;
+          const eligibleList = targetingModeRef.current.eligibleTileIds || [];
+          if (eligibleList.includes(tileId)) {
+            try { sounds.playTargetLock?.(); } catch (err) {}
+            targetingModeRef.current.onSelectTarget?.(tileId);
+            return;
+          }
+        }
+        return;
+      }
+
       if (hit && hit.tileId !== undefined && hit.tileId !== null) {
         const tileId = hit.tileId;
         const tileData = TILES.find((t) => t.id === tileId) || TILES[tileId];
@@ -1476,6 +1517,78 @@ export default function Board3D({
           entry.targetTile = toTile;
           entry.isMoving = false;
           onPawnMovementComplete?.(player.id, toTile);
+          return;
+        }
+
+        // Direct High-Altitude Parabolic Soaring Flight for World Tour
+        const isWorldTourFlight = fromTile === 16 || path.length > 12;
+        if (isWorldTourFlight) {
+          try { sounds.playFlightTakeoff?.(); } catch (err) {}
+          const targetCoords = getTile3DPos(toTile, TILES.length);
+          const startCoords = entry.group.position.clone();
+          const targetPos = new THREE.Vector3(
+            targetCoords.x + entry.subOffset.x,
+            0.35,
+            targetCoords.z + entry.subOffset.z
+          );
+
+          const flightDuration = 1800; // 1.8 seconds cinematic flight
+          const flightStartTime = performance.now();
+
+          const flightAnim = () => {
+            const now = performance.now();
+            const fp = Math.min(1.0, (now - flightStartTime) / flightDuration);
+
+            // Smooth cubic ease-in-out curve
+            const ease = fp < 0.5 ? 4 * fp * fp * fp : 1 - Math.pow(-2 * fp + 2, 3) / 2;
+            entry.group.position.lerpVectors(startCoords, targetPos, ease);
+
+            // Soaring vertical parabolic arc up to y = 8.5
+            const arcY = Math.sin(fp * Math.PI) * 8.5;
+            entry.group.position.y = 0.35 + arcY;
+
+            // Heading & Banking alignment
+            const dx = targetPos.x - startCoords.x;
+            const dz = targetPos.z - startCoords.z;
+            entry.group.rotation.y = Math.atan2(dx, dz);
+            entry.group.rotation.z = Math.sin(fp * Math.PI) * 0.25;
+
+            if (fp < 1.0) {
+              requestAnimationFrame(flightAnim);
+            } else {
+              entry.group.rotation.z = 0;
+              try { sounds.playPawnLand?.(); } catch (err) {}
+
+              // Landing impact squash-and-stretch
+              const origScaleY = entry.group.scale.y;
+              const origScaleXZ = entry.group.scale.x;
+              const landStartTime = performance.now();
+              const landDuration = 350;
+
+              const landAnim = () => {
+                const lNow = performance.now();
+                const lp = Math.min(1.0, (lNow - landStartTime) / landDuration);
+                const squash = Math.sin(lp * Math.PI) * 0.25;
+                entry.group.scale.y = origScaleY * (1.0 - squash);
+                entry.group.scale.x = origScaleXZ * (1.0 + squash * 0.5);
+                entry.group.scale.z = origScaleXZ * (1.0 + squash * 0.5);
+                entry.group.position.y = 0.35 - squash * 0.12;
+
+                if (lp < 1.0) {
+                  requestAnimationFrame(landAnim);
+                } else {
+                  entry.group.scale.set(origScaleXZ, origScaleY, origScaleXZ);
+                  entry.group.position.y = 0.35;
+                  entry.currentTile = toTile;
+                  entry.targetTile = toTile;
+                  entry.isMoving = false;
+                  onPawnMovementComplete?.(player.id, toTile);
+                }
+              };
+              landAnim();
+            }
+          };
+          requestAnimationFrame(flightAnim);
           return;
         }
 

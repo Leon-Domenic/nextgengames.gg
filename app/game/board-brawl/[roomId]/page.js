@@ -31,6 +31,7 @@ import {
   Users, Bot, Play, MessageSquare, Send, Sparkles, AlertCircle, Copy, CheckCheck,
   Volume2, VolumeX, Crown, ShieldAlert, X, ShoppingBag, Home, Settings, Clock, ArrowRight, Handshake
 } from 'lucide-react';
+import { TILES } from '@/lib/board-brawl/types';
 import { TOKEN_ICONS, CHARACTERS } from '@/lib/board-brawl/characters.js';
 import { useTranslation } from '@/lib/board-brawl/i18n';
 
@@ -69,7 +70,8 @@ export default function BoardBrawlArenaPage() {
   const [localMatchTimeRemaining, setLocalMatchTimeRemaining] = useState(1200);
   const [tradeTargetPlayer, setTradeTargetPlayer] = useState(null);
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
-  const [isThrowingTomato, setIsThrowingTomato] = useState(false);
+  const [isThrowingTomato, setIsThrowingTomato] = useState(false);
+  const [activeCardTargeting, setActiveCardTargeting] = useState(null);
 
   // Pawn Movement Arrival & Modal Deferral State
   const [movementPendingArrival, setMovementPendingArrival] = useState(false);
@@ -744,26 +746,169 @@ export default function BoardBrawlArenaPage() {
           />
         )}
 
-        {/* World Championship Festival Select Modal */}
-        {isMyTurn && gameState.turnState === 'festival_select' && !movementPendingArrival && (
-          <FestivalSelectModal
-            properties={gameState.properties}
-            myPlayer={myPlayerObj}
-            onSelectFestival={handleSetFestival}
-            onSkip={() => handleEndTurn(myPlayerObj?.id)}
-            turnTimer={gameState.turnTimerRemaining}
-          />
+        {/* Direct 3D World Map Targeting: World Tour Flight Control Map HUD */}
+        {isMyTurn && gameState.turnState === 'flight_select' && !movementPendingArrival && (
+          <div
+            style={{
+              position: 'fixed',
+              top: '78px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 75,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              padding: '12px 24px',
+              borderRadius: '20px',
+              background: 'rgba(15, 23, 42, 0.94)',
+              backdropFilter: 'blur(16px)',
+              border: '2px solid #38bdf8',
+              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.7), 0 0 28px rgba(56, 189, 248, 0.4)',
+              animation: 'fadeIn 0.25s ease-out',
+              color: '#ffffff',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '28px' }}>✈️</span>
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: 900, color: '#38bdf8', letterSpacing: '0.04em' }}>
+                  WORLD TOUR: Click any highlighted destination directly on the board to fly! (Ticket: 50,000 CR)
+                </div>
+                <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                  Choose unowned city/resort or your own property • Time Remaining: <span style={{ color: '#fef08a', fontWeight: 800 }}>{gameState.turnTimerRemaining}s</span>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={handleSkipFlight}
+              style={{
+                padding: '9px 18px',
+                borderRadius: '12px',
+                background: 'rgba(255, 255, 255, 0.12)',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                color: '#f8fafc',
+                fontWeight: 800,
+                fontSize: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                whiteSpace: 'nowrap',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'; }}
+            >
+              Skip Flight (Roll Dice)
+            </button>
+          </div>
         )}
 
-        {/* World Tour Flight Destination Select Modal */}
-        {isMyTurn && gameState.turnState === 'flight_select' && !movementPendingArrival && (
-          <WorldTourSelectModal
-            properties={gameState.properties}
-            myPlayer={myPlayerObj}
-            onSelectDestination={handleSelectFlightDestination}
-            onSkip={handleSkipFlight}
-            turnTimer={gameState.turnTimerRemaining}
-          />
+        {/* Direct 3D World Map Targeting: Demolition Strike Action Card Banner */}
+        {activeCardTargeting?.type === 'demolition' && (
+          <div
+            style={{
+              position: 'fixed',
+              top: '78px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 75,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              padding: '12px 24px',
+              borderRadius: '20px',
+              background: 'rgba(30, 10, 15, 0.95)',
+              backdropFilter: 'blur(16px)',
+              border: '2px solid #ef4444',
+              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.7), 0 0 28px rgba(239, 68, 68, 0.45)',
+              animation: 'fadeIn 0.25s ease-out',
+              color: '#ffffff',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '28px' }}>💣</span>
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: 900, color: '#f87171', letterSpacing: '0.04em' }}>
+                  DEMOLITION STRIKE: Click any opponent property directly on the board to demolish!
+                </div>
+                <div style={{ fontSize: '11px', color: '#fca5a5' }}>
+                  Destroys hosted festival or downgrades city tier by 1
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveCardTargeting(null)}
+              style={{
+                padding: '9px 18px',
+                borderRadius: '12px',
+                background: 'rgba(239, 68, 68, 0.25)',
+                border: '1px solid rgba(239, 68, 68, 0.45)',
+                color: '#fee2e2',
+                fontWeight: 800,
+                fontSize: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                whiteSpace: 'nowrap',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.4)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)'; }}
+            >
+              Cancel Selection
+            </button>
+          </div>
+        )}
+
+        {/* Direct 3D World Map Targeting: World Fair Festival Banner */}
+        {isMyTurn && gameState.turnState === 'festival_select' && !movementPendingArrival && (
+          <div
+            style={{
+              position: 'fixed',
+              top: '78px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 75,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              padding: '12px 24px',
+              borderRadius: '20px',
+              background: 'rgba(30, 25, 10, 0.95)',
+              backdropFilter: 'blur(16px)',
+              border: '2px solid #fbbf24',
+              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.7), 0 0 28px rgba(251, 191, 36, 0.45)',
+              animation: 'fadeIn 0.25s ease-out',
+              color: '#ffffff',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '28px' }}>🎪</span>
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: 900, color: '#fbbf24', letterSpacing: '0.04em' }}>
+                  WORLD FAIR FESTIVAL: Click one of your cities on the board to host (2x Rent)!
+                </div>
+                <div style={{ fontSize: '11px', color: '#fef08a' }}>
+                  Doubles all rent on the selected property • Time Remaining: <span style={{ fontWeight: 800 }}>{gameState.turnTimerRemaining}s</span>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => handleEndTurn(myPlayerObj?.id)}
+              style={{
+                padding: '9px 18px',
+                borderRadius: '12px',
+                background: 'rgba(251, 191, 36, 0.22)',
+                border: '1px solid rgba(251, 191, 36, 0.45)',
+                color: '#fef08a',
+                fontWeight: 800,
+                fontSize: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                whiteSpace: 'nowrap',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(251, 191, 36, 0.38)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(251, 191, 36, 0.22)'; }}
+            >
+              Skip Festival
+            </button>
+          </div>
         )}
 
         {/* Debt Liquidation / Insolvency Modal */}
