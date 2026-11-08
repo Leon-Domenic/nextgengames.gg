@@ -1,34 +1,10 @@
 import './globals.css';
+import { AuthProvider } from '@/components/AuthProvider';
+import Navbar from '@/components/Navbar';
 
 export const metadata = {
-  title: 'NextGenGames ★ Coming Soon | Next-Generation Tactical & Planetary Sandbox',
-  description:
-    'NextGenGames is forging the future of massive-scale tactical combat and procedural voxel sandboxes. Powered by Unreal Engine 5. Closed Alpha transmission imminent.',
-  keywords:
-    'NextGenGames, NextGen Games, RTS, Voxel, Unreal Engine 5, Strategy, Planetary Sandbox, Multiplayer, Sci-Fi, PC Gaming, Coming Soon',
-  openGraph: {
-    title: 'NextGenGames ★ Coming Soon | Next-Generation Tactical & Planetary Sandbox',
-    description:
-      'NextGenGames is forging the future of massive-scale tactical combat and procedural voxel sandboxes. Closed Alpha clearance opening soon.',
-    type: 'website',
-    url: 'https://nextgengames.gg',
-    siteName: 'NextGenGames',
-    images: [
-      {
-        url: '/combat-scene.png',
-        width: 1920,
-        height: 1080,
-        alt: 'NextGenGames Tactical Sandbox Teaser',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'NextGenGames ★ Coming Soon',
-    description:
-      'Next-generation voxel physics and tactical planetary warfare. Alpha clearance opening soon.',
-    images: ['/combat-scene.png'],
-  },
+  title: 'NextGenGames.gg ★ Multiplayer Party Gaming Hub & Board Brawl',
+  description: 'Browser-based multiplayer games to play with friends. Jump into Board Brawl with Business Tour sabotage, live chat, and 1-click party lobbies.',
 };
 
 export default function RootLayout({ children }) {
@@ -38,8 +14,11 @@ export default function RootLayout({ children }) {
         <link rel="icon" href="/favicon.ico" />
         <meta name="theme-color" content="#04060a" />
       </head>
-      <body>
-        {children}
+      <body style={{ margin: 0, padding: 0, background: '#060709', color: '#f0f4f8', minHeight: '100vh', fontFamily: 'var(--font-body, sans-serif)' }}>
+        <AuthProvider>
+          <Navbar />
+          <main>{children}</main>
+        </AuthProvider>
       </body>
     </html>
   );

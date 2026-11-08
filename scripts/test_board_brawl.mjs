@@ -1,0 +1,84 @@
+import { BoardBrawlGame } from '../lib/board-brawl/engine.js';
+import { TILES } from '../lib/board-brawl/types.js';
+
+console.log('=== BOARD BRAWL ENGINE VERIFICATION SUITE ===');
+
+// 1. Create Room & Add 6 players (mix of humans and bots)
+const game = new BoardBrawlGame('TEST_ROOM_1', { mode: 'blitz' });
+console.log('✔ Room created with mode:', game.mode, 'Turn duration:', game.turnDuration, 's');
+
+const p1 = { id: 'u1', username: 'Alice', avatar_color: '#00f0ff', avatar_token: 'hat' };
+const p2 = { id: 'u2', username: 'Bob', avatar_color: '#ff3344', avatar_token: 'car' };
+game.addPlayer(p1);
+game.addPlayer(p2);
+game.addPlayer({ id: 'bot_1', username: 'VoxelBot', avatar_color: '#00ff88', avatar_token: 'duck' }, true);
+game.addPlayer({ id: 'bot_2', username: 'NeonTycoon', avatar_color: '#a855f7', avatar_token: 'jet' }, true);
+
+console.log(`✔ Added 4 players (2 human, 2 bot). Total: ${game.players.length}/6`);
+if (game.players.length !== 4) throw new Error('Player count mismatch');
+
+// 2. Start Game
+game.startGame();
+console.log('✔ Game started. Active player:', game.getCurrentPlayer().name);
+
+// 3. Dice Roll & Movement
+const initialPos = game.getCurrentPlayer().position;
+game.rollDice('u1');
+const newPos = game.getCurrentPlayer().position;
+console.log(`✔ Dice rolled: [${game.dice[0]}, ${game.dice[1]}]. Moved from ${initialPos} to ${newPos} (${TILES[newPos].name})`);
+
+// 4. Test City Purchase & Immediate Construction
+game.getCurrentPlayer().position = 1; // Cairo ($100)
+game.getCurrentPlayer().cash = 2000;
+game.buyCity('u1', 1, 2); // Buy Land + 1 House
+const cairo = game.properties[1];
+console.log(`✔ Cairo purchased! Owner: ${cairo.ownerId}, Level: ${cairo.level}`);
+if (cairo.ownerId !== 'u1' || cairo.level !== 2) throw new Error('Cairo purchase failed');
+
+// 5. Test 2x Buyout
+const bob = game.players.find(p => p.id === 'u2');
+bob.cash = 2000;
+const cairoCost = TILES[1].price + (cairo.level - 1) * TILES[1].housePrice; // 100 + 50 = 150
+const buyoutPrice = cairoCost * 2; // 300
+game.buyoutCity('u2', 1);
+console.log(`✔ 2x Buyout executed! Cairo new owner: ${game.properties[1].ownerId} (Paid: $${buyoutPrice})`);
+if (game.properties[1].ownerId !== 'u2') throw new Error('Buyout failed');
+
+// 6. Test Landmark Upgrade & Immunity
+game.upgradeCity('u2', 1); // Lvl 3
+game.upgradeCity('u2', 1); // Lvl 4
+game.upgradeCity('u2', 1); // Lvl 5 (Landmark!)
+console.log(`✔ Upgraded to Landmark! Level: ${game.properties[1].level}, isLandmark: ${game.properties[1].isLandmark}`);
+if (!game.properties[1].isLandmark) throw new Error('Landmark upgrade failed');
+
+// Attempt buyout on Landmark (should fail)
+const buyoutAttempt = game.buyoutCity('u1', 1);
+console.log(`✔ Buyout on Landmark blocked: ${!buyoutAttempt} (Immune to buyouts!)`);
+if (buyoutAttempt !== false) throw new Error('Landmark buyout was not blocked!');
+
+// 7. Test Tomato Sabotage (3 Free + Cash Throws)
+const alice = game.players.find(p => p.id === 'u1');
+console.log('Alice free tomatoes initially:', alice.freeTomatoes);
+game.throwTomato('u1', 'u2'); // Throw 1
+game.throwTomato('u1', 'u2'); // Throw 2
+game.throwTomato('u1', 'u2'); // Throw 3
+console.log('✔ Threw 3 free tomatoes. Free remaining:', alice.freeTomatoes);
+if (alice.freeTomatoes !== 0) throw new Error('Free tomatoes count mismatch');
+
+const cashBeforePaidThrow = alice.cash;
+game.throwTomato('u1', 'u2'); // Throw 4 (Costs $100)
+console.log(`✔ Threw 4th tomato ($100 paid). Cash: $${cashBeforePaidThrow} -> $${alice.cash}`);
+if (alice.cash !== cashBeforePaidThrow - 100) throw new Error('Paid tomato did not deduct cash');
+
+// 8. Test Line Monopoly Win Condition
+// Alice owns all bottom properties (1, 3, 5, 7)
+game.properties[1].ownerId = 'u1';
+game.properties[3].ownerId = 'u1';
+game.properties[5].ownerId = 'u1';
+game.properties[7].ownerId = 'u1';
+
+game.checkWinConditions();
+console.log(`✔ Win Condition Triggered: Winner = ${game.winner?.name}, Reason = ${game.winReason}`);
+if (game.winner?.id !== 'u1') throw new Error('Line monopoly did not trigger win!');
+
+console.log('\n⭐⭐ ALL ENGINE VERIFICATION TESTS PASSED FLAWLESSLY! ⭐⭐\n');

@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  nextgengames:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nextgengames
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - DATA_DIR=/app/data
+      - JWT_SECRET=ngg-proxmox-production-secret-change-me-2026
+    volumes:
+      # Persistent SQLite database volume on Proxmox
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/auth/me"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

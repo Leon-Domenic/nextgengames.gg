@@ -1,15 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  turbopack: {
-    root: '.',
-  },
+  serverExternalPackages: ['better-sqlite3'],
   images: {
     remotePatterns: [],
     unoptimized: true,
   },
   async redirects() {
     return [
-      { source: '/game', destination: '/', permanent: false },
       { source: '/guides', destination: '/', permanent: false },
       { source: '/leaderboard', destination: '/', permanent: false },
       { source: '/lore', destination: '/', permanent: false },
