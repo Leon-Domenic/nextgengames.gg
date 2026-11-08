@@ -33,6 +33,8 @@ const CORNER_SLOT_THEMES = [
   { headerBg: '#059669', accent: '#34d399', name: 'Green' },
   { headerBg: '#d97706', accent: '#fbbf24', name: 'Yellow' },
   { headerBg: '#0284c7', accent: '#38bdf8', name: 'Blue' },
+  { headerBg: '#8b5cf6', accent: '#a78bfa', name: 'Violet' },
+  { headerBg: '#06b6d4', accent: '#22d3ee', name: 'Cyan' },
 ];
 
 export default function BoardBrawlArenaPage() {
@@ -609,74 +611,37 @@ export default function BoardBrawlArenaPage() {
               <Settings size={20} />
             </button>
 
-            {/* 4 Corner Player HUD Capsules (Business Tour Style) */}
-            {/* Slot 0: Top-Left */}
-            {gameState.players[0] && (
-              <PlayerCornerCard
-                player={gameState.players[0]}
-                isCurrent={gameState.activePlayerIndex === 0}
-                isMe={gameState.players[0].id === user?.id}
-                timer={gameState.turnTimerRemaining}
-                turnDuration={gameState.turnDuration || (gameState.mode === 'blitz' ? 15 : 30)}
-                theme={CORNER_SLOT_THEMES[0]}
-                position="top-left"
-                onThrowTomato={handleThrowTomato}
-                canTomato={myPlayerObj?.freeTomatoes > 0}
-                activeReaction={playerReactions[gameState.players[0].id]}
-                onSendReaction={(emoji) => handleSendReaction(gameState.players[0].id, emoji)}
-              />
-            )}
+            {/* Player HUD Capsules (Up to 6 Players Supported) */}
+            {(() => {
+              const total = gameState.players.length;
+              const positions = total <= 4
+                ? ['top-left', 'top-right', 'bottom-left', 'bottom-right']
+                : ['top-left', 'top-right', 'mid-left', 'mid-right', 'bottom-left', 'bottom-right'];
 
-            {/* Slot 1: Top-Right */}
-            {gameState.players[1] && (
-              <PlayerCornerCard
-                player={gameState.players[1]}
-                isCurrent={gameState.activePlayerIndex === 1}
-                isMe={gameState.players[1].id === user?.id}
-                timer={gameState.turnTimerRemaining}
-                turnDuration={gameState.turnDuration || (gameState.mode === 'blitz' ? 15 : 30)}
-                theme={CORNER_SLOT_THEMES[1]}
-                position="top-right"
-                onThrowTomato={handleThrowTomato}
-                canTomato={myPlayerObj?.freeTomatoes > 0}
-                activeReaction={playerReactions[gameState.players[1].id]}
-                onSendReaction={(emoji) => handleSendReaction(gameState.players[1].id, emoji)}
-              />
-            )}
+              return gameState.players.map((player, idx) => {
+                if (!player) return null;
+                const pos = positions[idx] || (idx % 2 === 0 ? 'mid-left' : 'mid-right');
+                const theme = CORNER_SLOT_THEMES[idx % CORNER_SLOT_THEMES.length];
 
-            {/* Slot 2: Bottom-Left */}
-            {gameState.players[2] && (
-              <PlayerCornerCard
-                player={gameState.players[2]}
-                isCurrent={gameState.activePlayerIndex === 2}
-                isMe={gameState.players[2].id === user?.id}
-                timer={gameState.turnTimerRemaining}
-                turnDuration={gameState.turnDuration || (gameState.mode === 'blitz' ? 15 : 30)}
-                theme={CORNER_SLOT_THEMES[2]}
-                position="bottom-left"
-                onThrowTomato={handleThrowTomato}
-                canTomato={myPlayerObj?.freeTomatoes > 0}
-                activeReaction={playerReactions[gameState.players[2].id]}
-                onSendReaction={(emoji) => handleSendReaction(gameState.players[2].id, emoji)}
-              />
-            )}
-
-            {/* Slot 3: Bottom-Right */}
-            {gameState.players[3] && (
-              <PlayerCornerCard
-                player={gameState.players[3]}
-                isCurrent={gameState.activePlayerIndex === 3}
-                isMe={gameState.players[3].id === user?.id}
-                timer={gameState.turnTimerRemaining}
-                turnDuration={gameState.turnDuration || (gameState.mode === 'blitz' ? 15 : 30)}
-                theme={CORNER_SLOT_THEMES[3]}
-                position="bottom-right"
-                onThrowTomato={handleThrowTomato}
-                canTomato={myPlayerObj?.freeTomatoes > 0}
-                activeReaction={playerReactions[gameState.players[3].id]}
-                onSendReaction={(emoji) => handleSendReaction(gameState.players[3].id, emoji)}
-              />
-            )}
+                return (
+                  <PlayerCornerCard
+                    key={player.id || `player-${idx}`}
+                    player={player}
+                    isCurrent={gameState.activePlayerIndex === idx}
+                    isMe={player.id === user?.id}
+                    timer={gameState.turnTimerRemaining}
+                    turnDuration={gameState.turnDuration || (gameState.mode === 'blitz' ? 15 : 30)}
+                    theme={theme}
+                    position={pos}
+                    isCompact={total > 4}
+                    onThrowTomato={handleThrowTomato}
+                    canTomato={myPlayerObj?.freeTomatoes > 0}
+                    activeReaction={playerReactions[player.id]}
+                    onSendReaction={(emoji) => handleSendReaction(player.id, emoji)}
+                  />
+                );
+              });
+            })()}
 
             {/* Top-Center Global Active Player & Turn Timer Pill */}
             {currentPlayer && !currentPlayer.isBankrupt && (
@@ -1038,7 +1003,7 @@ export default function BoardBrawlArenaPage() {
   );
 }
 
-// 4 Corner HUD Player Capsule Component (Exact Business Tour Recreation)
+// HUD Player Capsule Component (Supports 2-6 Players)
 function PlayerCornerCard({
   player,
   isCurrent,
@@ -1047,6 +1012,7 @@ function PlayerCornerCard({
   turnDuration = 15,
   theme,
   position,
+  isCompact = false,
   onThrowTomato,
   canTomato,
   activeReaction,
@@ -1060,6 +1026,8 @@ function PlayerCornerCard({
   const posStyles = {
     'top-left': { top: '16px', left: '16px' },
     'top-right': { top: '16px', right: '16px' },
+    'mid-left': { top: '50%', left: '16px', transform: 'translateY(-50%)' },
+    'mid-right': { top: '50%', right: '16px', transform: 'translateY(-50%)' },
     'bottom-left': { bottom: '16px', left: '16px' },
     'bottom-right': { bottom: '16px', right: '16px' },
   }[position] || { top: '16px', left: '16px' };
@@ -1070,7 +1038,7 @@ function PlayerCornerCard({
       style={{
         position: 'absolute',
         ...posStyles,
-        width: '260px',
+        width: isCompact ? '230px' : '260px',
         background: '#ffffff',
         border: isCurrent ? '3px solid #f59e0b' : `2px solid ${playerColor}55`,
         borderRadius: '16px',

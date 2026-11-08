@@ -299,7 +299,7 @@ export default function BrowserGamesHub() {
               borderTop: '1px solid rgba(255, 255, 255, 0.08)',
             }}>
               <div style={{ background: 'rgba(255, 255, 255, 0.04)', padding: '10px', borderRadius: '8px' }}>
-                <div style={{ fontSize: '18px', fontWeight: 900, color: '#00f0ff' }}>2-4</div>
+                <div style={{ fontSize: '18px', fontWeight: 900, color: '#00f0ff' }}>2-6</div>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Players</div>
               </div>
               <div style={{ background: 'rgba(255, 255, 255, 0.04)', padding: '10px', borderRadius: '8px' }}>

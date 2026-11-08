@@ -66,13 +66,13 @@ export default function LobbyView({
     }
   };
 
-  // We support up to 4 slots in standard Business Tour tabletop format
-  const slots = [0, 1, 2, 3];
+  // We support up to 6 slots in tabletop format
+  const slots = [0, 1, 2, 3, 4, 5];
 
   return (
     <div style={{
       width: '100%',
-      maxWidth: '1160px',
+      maxWidth: '1260px',
       margin: '0 auto',
       minHeight: 'calc(100vh - 80px)',
       display: 'flex',
@@ -424,11 +424,11 @@ export default function LobbyView({
         </div>
       </div>
 
-      {/* 3. 4 Character Pedestal Cards (Image 2 Business Tour Exact Layout) */}
+      {/* 3. Up to 6 Character Pedestal Cards */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: '20px',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+        gap: '14px',
         flex: 1,
         marginBottom: '24px',
       }}>
@@ -880,14 +880,14 @@ export default function LobbyView({
           }} />
           <span style={{ fontSize: '14px', fontWeight: 800, color: '#334155' }}>
             {players.length >= 2
-              ? `Table Ready (${players.length}/4 Players Joined)`
-              : `Waiting for Opponents (${players.length}/4 Joined - Add at least 1 Bot)`}
+              ? `Table Ready (${players.length}/6 Players Joined)`
+              : `Waiting for Opponents (${players.length}/6 Joined - Add at least 1 Bot)`}
           </span>
         </div>
 
         {/* Center / Right: Big Green START MATCH Button (Business Tour Style) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          {players.length < 4 && (
+          {players.length < 6 && (
             <button
               onClick={onAddBot}
               style={{
