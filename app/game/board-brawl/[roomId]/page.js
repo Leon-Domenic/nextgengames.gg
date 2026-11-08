@@ -8,7 +8,7 @@ import { sounds } from '@/lib/audio';
 import ScreenShakeWrapper from '@/components/board-brawl/ScreenShakeWrapper';
 import TomatoOverlay from '@/components/board-brawl/TomatoOverlay';
 import DiceRoller3D from '@/components/board-brawl/DiceRoller3D';
-import Board from '@/components/board-brawl/Board';
+import Board3D from '@/components/board-brawl/Board3D';
 import ActionModal from '@/components/board-brawl/ActionModal';
 import EmoteWheel from '@/components/board-brawl/EmoteWheel';
 import VictoryPodium from '@/components/board-brawl/VictoryPodium';
@@ -286,10 +286,11 @@ export default function BoardBrawlArenaPage() {
       }}>
         {/* Left: The Board Brawl Arena */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <Board
+          <Board3D
             properties={gameState.properties}
             players={gameState.players}
             activeTileId={currentPlayer?.position}
+            lastDiceResult={gameState.lastDiceResult}
             centerContent={
               gameState.status === 'waiting' ? (
                 /* Pre-Match Lobby View */
