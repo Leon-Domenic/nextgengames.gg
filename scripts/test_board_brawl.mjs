@@ -189,5 +189,210 @@ if (debtor.cash !== debtorCashBefore - debtAmount) throw new Error('Debtor cash 
 if (creditor.cash !== creditorCashBefore + debtAmount) throw new Error('Creditor cash not credited correctly');
 if (testGame2.turnState !== 'end_turn') throw new Error('Turn state should be end_turn upon debt settlement');
 
+// ==========================================
+// 14. TEST 10-SECOND LIGHTNING PUBLIC AUCTION
+// ==========================================
+console.log('\n--- 14. Testing 10-Second Lightning Public Auction ---');
+const auctionGame = new BoardBrawlGame('TEST_ROOM_AUCTION', { mode: 'blitz' });
+auctionGame.addPlayer(p1);
+auctionGame.addPlayer(p2);
+auctionGame.addPlayer({ id: 'bot_1', username: 'VoxelBot' }, true);
+auctionGame.startGame();
+
+// Prague (Tile 5: Price 140,000 CR)
+const pragueTile = TILES[5];
+const expectedStartBid = Math.floor(pragueTile.price * 0.5); // 70,000 CR
+auctionGame.startAuction(5);
+
+console.log(`✔ Auction started for ${pragueTile.name}: Active = ${auctionGame.auction?.active}, Start Bid = ${auctionGame.auction?.currentBid} CR (Expected: ${expectedStartBid} CR)`);
+if (!auctionGame.auction?.active) throw new Error('Auction did not start as active');
+if (auctionGame.auction?.currentBid !== expectedStartBid) throw new Error('Auction starting bid was not 50%');
+
+// Test Bid increments
+const alicePlayer = auctionGame.players.find(p => p.id === 'u1');
+const bobPlayer = auctionGame.players.find(p => p.id === 'u2');
+alicePlayer.cash = 1000000;
+bobPlayer.cash = 1000000;
+
+// Alice bids 80,000 CR
+const bid1Res = auctionGame.placeBid('u1', 80000);
+console.log('✔ Alice bid 80,000 CR:', bid1Res, `Highest bidder: ${auctionGame.auction.highestBidderName}`);
+if (!bid1Res || auctionGame.auction.currentBid !== 80000 || auctionGame.auction.highestBidderId !== 'u1') {
+  throw new Error('Alice bid failed to register');
+}
+
+// Low bid rejection (Bob attempts 75,000 CR, should fail)
+const lowBidRes = auctionGame.placeBid('u2', 75000);
+console.log('✔ Underbid (75k <= 80k) rejected:', !lowBidRes);
+if (lowBidRes) throw new Error('Underbid was not rejected');
+
+// Anti-snipe time extension check: Set timeLeft = 2, then Bob bids 90,000 CR
+auctionGame.auction.timeLeft = 2;
+const bid2Res = auctionGame.placeBid('u2', 90000);
+console.log(`✔ Anti-snipe triggered: Time extended to ${auctionGame.auction.timeLeft}s (Expected: 3s)`);
+if (!bid2Res || auctionGame.auction.timeLeft !== 3) {
+  throw new Error('Anti-snipe timer extension failed');
+}
+
+// Winner determination & Property transfer
+const bobCashBeforeWin = bobPlayer.cash;
+auctionGame.endAuction();
+console.log(`✔ Auction concluded! Winner: ${auctionGame.properties[5].ownerId}, Paid: ${bobCashBeforeWin - bobPlayer.cash} CR`);
+if (auctionGame.properties[5].ownerId !== 'u2') throw new Error('Property was not transferred to Bob');
+if (bobPlayer.cash !== bobCashBeforeWin - 90000) throw new Error('Bob cash was not deducted correctly');
+if (auctionGame.properties[5].level !== 1) throw new Error('Property level should be 1');
+if (auctionGame.auction !== null) throw new Error('Auction state was not cleared');
+
+// Test passed auction when no bids placed (Vienna, Tile 7: Price 160,000 CR)
+auctionGame.startAuction(7);
+console.log(`✔ Auction started for ${TILES[7].name} with 0 bids placed`);
+auctionGame.endAuction();
+console.log(`✔ Unbid property passed. Owner: ${auctionGame.properties[7].ownerId} (Expected: null)`);
+if (auctionGame.properties[7].ownerId !== null) throw new Error('Unbid property should remain unowned');
+
+// ==========================================
+// 15. TEST CENTRAL TAX JACKPOT POOL (COMMUNITY POT)
+// ==========================================
+console.log('\n--- 15. Testing Central Tax Jackpot Pool ---');
+const potGame = new BoardBrawlGame('TEST_ROOM_POT', { mode: 'blitz' });
+potGame.addPlayer(p1);
+potGame.addPlayer(p2);
+potGame.startGame();
+
+console.log('Initial Community Pot:', potGame.communityJackpot, 'CR (Expected: 100,000 CR)');
+if (potGame.communityJackpot !== 100000) throw new Error('Initial pot should be 100,000 CR');
+
+// 1. City Tax (Tile 4) accumulation: 50% of 120,000 CR = 60,000 CR
+const potAlice = potGame.players.find(p => p.id === 'u1');
+potAlice.cash = 1000000;
+potGame.evaluateTile(potAlice, 4, false);
+console.log(`✔ City Tax paid. Pot: ${potGame.communityJackpot} CR (Expected: 160,000 CR)`);
+if (potGame.communityJackpot !== 160000) throw new Error('City tax 50% was not added to community pot');
+
+// 2. Bail accumulation: 50% of 100,000 CR = 50,000 CR
+potAlice.islandTurns = 2;
+potGame.payBail('u1');
+console.log(`✔ Bail paid. Pot: ${potGame.communityJackpot} CR (Expected: 210,000 CR)`);
+if (potGame.communityJackpot !== 210000) throw new Error('Bail 50% was not added to community pot');
+
+// 3. Tomato refill accumulation: +25,000 CR on paid throw
+potAlice.freeTomatoes = 0;
+potAlice.lastTomatoThrowTime = 0;
+potAlice.cash = 500000;
+potGame.throwTomato('u1', 'u2');
+console.log(`✔ Paid tomato thrown. Pot: ${potGame.communityJackpot} CR (Expected: 235,000 CR)`);
+if (potGame.communityJackpot !== 235000) throw new Error('Tomato refill 25,000 CR was not added to community pot');
+
+// 4. Winning the Pot on World Fair (Tile 22) landing
+const potBob = potGame.players.find(p => p.id === 'u2');
+potBob.cash = 500000;
+const expectedPotWin = 235000;
+potGame.evaluateTile(potBob, 22, false);
+console.log(`✔ Bob landed on World Fair (Tile 22)! Cash: 500,000 -> ${potBob.cash} CR, New Pot: ${potGame.communityJackpot} CR`);
+if (potBob.cash !== 500000 + expectedPotWin) throw new Error('Bob did not receive community pot on World Fair landing');
+if (potGame.communityJackpot !== 100000) throw new Error('Pot did not reset to 100,000 CR after win');
+
+// 5. Winning the Pot on Snake Eyes (1-1)
+potGame.communityJackpot = 180000; // Add simulated taxes
+potAlice.cash = 1000000;
+potAlice.position = 5; // Start at Tile 5, roll 2 lands on Tile 7 (Vienna - neutral tile)
+// Trigger Snake Eyes roll (d1 = 1, d2 = 1)
+potGame.activePlayerIndex = 0;
+potGame.turnState = 'roll';
+potAlice.loadedRoll = 2; // Forces roll 1 + 1 (Snake Eyes)
+potGame.rollDice('u1');
+console.log(`✔ Alice rolled Snake Eyes [1, 1]! Cash: ${potAlice.cash} CR, Reset Pot: ${potGame.communityJackpot} CR`);
+if (potAlice.cash !== 1000000 + 180000) throw new Error('Alice did not receive jackpot on Snake Eyes');
+if (potGame.communityJackpot !== 100000) throw new Error('Pot did not reset to 100,000 CR after Snake Eyes win');
+
+// ==========================================
+// 16. TEST 3-DOUBLES SPEEDING ARREST
+// ==========================================
+console.log('\n--- 16. Testing 3-Doubles Speeding Arrest ---');
+const speedGame = new BoardBrawlGame('TEST_ROOM_SPEED', { mode: 'blitz' });
+speedGame.addPlayer(p1);
+speedGame.addPlayer(p2);
+speedGame.startGame();
+
+const speedPlayer = speedGame.getCurrentPlayer();
+speedPlayer.cash = 2000000;
+speedPlayer.position = 0;
+
+// Double 1: roll 4 (2+2)
+speedGame.turnState = 'roll';
+speedPlayer.loadedRoll = 4;
+speedGame.rollDice(speedPlayer.id);
+console.log(`✔ Roll 1 Doubles: doublesCount = ${speedGame.doublesCount}, turnState = ${speedGame.turnState}`);
+if (speedGame.doublesCount !== 1) throw new Error('First double was not recorded');
+if (speedGame.turnState !== 'roll' || speedGame.getCurrentPlayer().id !== speedPlayer.id) {
+  throw new Error('Player was not granted re-roll after 1st doubles');
+}
+
+// Double 2: roll 4 (2+2) starting from Tile 20 (lands on 24: Armory)
+speedPlayer.position = 20;
+speedPlayer.loadedRoll = 4;
+speedGame.rollDice(speedPlayer.id);
+console.log(`✔ Roll 2 Doubles: doublesCount = ${speedGame.doublesCount}, turnState = ${speedGame.turnState}`);
+if (speedGame.doublesCount !== 2) throw new Error('Second double was not recorded');
+if (speedGame.turnState !== 'roll' || speedGame.getCurrentPlayer().id !== speedPlayer.id) {
+  throw new Error('Player was not granted 2nd re-roll after 2nd doubles');
+}
+
+// Double 3: roll 4 (2+2) -> 3RD CONSECUTIVE DOUBLES = SPEEDING ARREST!
+speedPlayer.loadedRoll = 4;
+speedGame.rollDice(speedPlayer.id);
+console.log(`✔ Roll 3 Doubles: Position = ${speedPlayer.position} (${TILES[speedPlayer.position].name}), islandTurns = ${speedPlayer.islandTurns}, Active Player = ${speedGame.getCurrentPlayer().name}`);
+if (speedPlayer.position !== 8) throw new Error('Speeding arrest did not place player on Resort Island (Tile 8)');
+if (speedPlayer.islandTurns !== 3) throw new Error('Speeding arrest did not set islandTurns to 3');
+if (speedGame.doublesCount !== 0) throw new Error('doublesCount was not reset after arrest');
+if (speedGame.getCurrentPlayer().id === speedPlayer.id) throw new Error('Speeding arrest did not end turn immediately');
+
+// ==========================================
+// 17. TEST VIP ESCAPE PASS ACTION CARD & TRADING
+// ==========================================
+console.log('\n--- 17. Testing VIP Escape Pass Action Card & P2P Trade ---');
+const vipGame = new BoardBrawlGame('TEST_ROOM_VIP', { mode: 'blitz' });
+vipGame.addPlayer(p1);
+vipGame.addPlayer(p2);
+vipGame.startGame();
+
+const prisoner = vipGame.players.find(p => p.id === 'u1');
+prisoner.position = 8;
+prisoner.islandTurns = 3;
+const vipPassCard = {
+  id: 'vip_escape_pass',
+  title: 'Island VIP Pass',
+  badge: 'VIP ESCAPE',
+  rarity: 'RARE',
+  icon: '🎟️',
+  targetType: 'self',
+};
+prisoner.cards = [vipPassCard];
+
+console.log(`✔ Prisoner on Resort Island with ${prisoner.islandTurns} turns remaining and [${prisoner.cards[0].title}] in hand`);
+
+// Verify VIP Pass is recognized as valid in P2P trade offer
+import { validateTrade } from '../lib/board-brawl/tradeEngine.js';
+const tradeCheck = validateTrade(vipGame, {
+  proposerId: 'u1',
+  targetId: 'u2',
+  offer: {
+    proposerCardIds: ['vip_escape_pass'],
+    proposerCash: 0,
+    targetTileIds: [],
+    targetCardIds: [],
+    targetCash: 150000,
+  },
+});
+console.log(`✔ VIP Pass Trade Validation: Valid = ${tradeCheck.valid} (Expected: true)`);
+if (!tradeCheck.valid) throw new Error(`Trade validation failed: ${tradeCheck.error}`);
+
+// Redeem VIP Pass
+const vipRedeemRes = vipGame.playActionCard('u1', 'vip_escape_pass');
+console.log(`✔ VIP Pass Redeemed: Success = ${vipRedeemRes}, Island Turns = ${prisoner.islandTurns}, Cards Remaining = ${prisoner.cards.length}`);
+if (!vipRedeemRes) throw new Error('VIP Pass redemption failed');
+if (prisoner.islandTurns !== 0) throw new Error('VIP Pass did not clear islandTurns to 0');
+if (prisoner.cards.some(c => c.id === 'vip_escape_pass')) throw new Error('VIP Pass was not consumed from hand');
+
 console.log('\n⭐⭐ ALL ENGINE VERIFICATION TESTS PASSED FLAWLESSLY! ⭐⭐\n');
 process.exit(0);

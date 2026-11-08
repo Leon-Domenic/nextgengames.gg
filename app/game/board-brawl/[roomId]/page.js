@@ -10,6 +10,7 @@ import TomatoOverlay from '@/components/board-brawl/TomatoOverlay';
 import DiceRoller3D from '@/components/board-brawl/DiceRoller3D';
 import Board3D from '@/components/board-brawl/Board3D';
 import ActionModal from '@/components/board-brawl/ActionModal';
+import AuctionModal from '@/components/board-brawl/AuctionModal';
 import EmoteWheel from '@/components/board-brawl/EmoteWheel';
 import VictoryPodium from '@/components/board-brawl/VictoryPodium';
 import LobbyView from '@/components/board-brawl/LobbyView';
@@ -472,6 +473,17 @@ export default function BoardBrawlArenaPage() {
 
   const handleEndTurn = () => {
     socket.emit('game_action', { roomId, action: 'end_turn', payload: { playerId: activePlayerId } });
+  };
+
+  const handlePlaceBid = (amount) => {
+    socket.emit('game_action', {
+      roomId,
+      action: 'place_bid',
+      payload: {
+        playerId: activePlayerId,
+        amount,
+      },
+    });
   };
 
   const handleThrowTomato = (targetPlayerId) => {
@@ -958,6 +970,29 @@ export default function BoardBrawlArenaPage() {
               alignItems: 'center',
               gap: '10px',
             }}>
+              {/* Community Tax Jackpot Pool Capsule */}
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.22) 0%, rgba(180, 83, 9, 0.38) 100%)',
+                backdropFilter: 'blur(16px)',
+                border: '1.5px solid rgba(251, 191, 36, 0.6)',
+                borderRadius: '16px',
+                padding: '6px 14px',
+                boxShadow: '0 0 18px rgba(245, 158, 11, 0.3), 0 8px 25px rgba(0, 0, 0, 0.45)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}>
+                <span style={{ fontSize: '18px', filter: 'drop-shadow(0 0 6px #fbbf24)' }}>💰</span>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '9px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#fde68a' }}>
+                    COMMUNITY POT
+                  </span>
+                  <span style={{ fontSize: '14px', fontWeight: 900, fontFamily: 'monospace', color: '#ffffff', textShadow: '0 0 10px rgba(251, 191, 36, 0.8)' }}>
+                    {(gameState.communityJackpot || 100000).toLocaleString()} CR
+                  </span>
+                </div>
+              </div>
+
               {/* 1. Overall Match Countdown Timer (Top Middle Side of Board) */}
               <div style={{
                 background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.94) 0%, rgba(10, 15, 29, 0.98) 100%)',
@@ -1343,6 +1378,7 @@ export default function BoardBrawlArenaPage() {
               activeTileId={currentPlayer?.position}
               lastDiceResult={gameState.lastDiceResult}
               diceSkin={myPlayerObj?.diceSkin || equippedDiceSkin}
+              communityJackpot={gameState.communityJackpot || 100000}
               centerContent={null}
               onTileClick={(tileId) => setInspectedTileId(tileId)}
               onInspectTile={(tileId) => setInspectedTileId(tileId)}
@@ -1466,6 +1502,16 @@ export default function BoardBrawlArenaPage() {
                   turnTimer={gameState.turnTimerRemaining}
                 />
               </div>
+            )}
+
+            {/* Lightning Public Auction Modal */}
+            {gameState.auction && gameState.auction.active && (
+              <AuctionModal
+                auction={gameState.auction}
+                myPlayer={myPlayerObj}
+                players={gameState.players}
+                onPlaceBid={handlePlaceBid}
+              />
             )}
           </div>
         )}

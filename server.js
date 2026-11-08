@@ -254,6 +254,8 @@ app.prepare().then(() => {
         game.declareBankruptcy(payload.playerId, game.pendingDebt?.creditorId);
       } else if (action === 'throw_tomato') {
         game.throwTomato(payload.fromPlayerId, payload.targetPlayerId);
+      } else if (action === 'place_bid') {
+        game.placeBid(payload.playerId, payload.amount);
       } else if (action === 'end_turn') {
         game.completeTurnAction(payload.playerId);
       } else if (action === 'send_chat') {

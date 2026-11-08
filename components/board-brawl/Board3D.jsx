@@ -114,6 +114,7 @@ export default function Board3D({
   lastDiceResult = null,
   diceSkin = 'classic_red',
   centerContent = null,
+  communityJackpot = 100000,
   onRollDice,
   onBuyCity,
   onBuyoutCity,
@@ -1503,6 +1504,47 @@ export default function Board3D({
     }}>
       {/* 3D WebGL Canvas taking 100% of the screen */}
       <div ref={mountRef} style={{ width: '100%', height: '100%', cursor: 'default' }} />
+
+      {/* Floating Central Tax Jackpot Pool Badge (Center Grass Field) */}
+      <div style={{
+        position: 'absolute',
+        top: '28%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        zIndex: 10,
+        padding: '7px 18px',
+        borderRadius: '24px',
+        background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(20, 24, 39, 0.96) 100%)',
+        border: '1.5px solid #fbbf24',
+        boxShadow: '0 0 20px rgba(251, 191, 36, 0.4), 0 8px 25px rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '9px',
+        pointerEvents: 'none',
+        backdropFilter: 'blur(8px)',
+      }}>
+        <span style={{ fontSize: '18px', filter: 'drop-shadow(0 0 6px rgba(251, 191, 36, 0.8))' }}>💰</span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <span style={{
+            fontSize: '9px',
+            fontWeight: 900,
+            color: '#fde68a',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+          }}>
+            COMMUNITY POT
+          </span>
+          <span style={{
+            fontSize: '15px',
+            fontWeight: 900,
+            color: '#ffffff',
+            fontFamily: 'monospace',
+            textShadow: '0 0 10px rgba(251, 191, 36, 0.7)',
+          }}>
+            💰 JACKPOT: {(communityJackpot || 100000).toLocaleString()} CR
+          </span>
+        </div>
+      </div>
 
       {/* Floating Dice Result Square Badge (Above Grass Center) */}
       {lastDiceResult && (
