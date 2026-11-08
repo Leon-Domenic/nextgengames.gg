@@ -421,16 +421,6 @@ export default function BoardBrawlArenaPage() {
   };
 
   const handleSendReaction = (targetPlayerId, emoji) => {
-    if (!socket || !user) return;
-    socket.emit('game_action', {
-      roomId,
-      action: 'send_reaction',
-      payload: {
-        playerId: targetPlayerId,
-        sender: user.username,
-        emoji,
-      }
-    });
     sounds.playBuild?.();
     setPlayerReactions(prev => ({
       ...prev,
@@ -439,6 +429,17 @@ export default function BoardBrawlArenaPage() {
         timestamp: Date.now(),
       }
     }));
+    if (socket) {
+      socket.emit('game_action', {
+        roomId,
+        action: 'send_reaction',
+        payload: {
+          playerId: targetPlayerId,
+          sender: user?.username || myPlayerObj?.name || 'Player',
+          emoji,
+        }
+      });
+    }
   };
 
   const copyInviteLink = () => {
@@ -1173,16 +1174,18 @@ function PlayerCornerCard({
               flexShrink: 0,
               cursor: 'pointer',
               transition: 'transform 0.15s ease',
-              overflow: 'hidden',
+              overflow: 'visible',
             }}
             onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
             onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
-            {activeChar?.avatar ? (
-              <img src={activeChar.avatar} alt={activeChar.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              activeChar?.icon || '🎩'
-            )}
+            <div style={{ width: '100%', height: '100%', borderRadius: '10px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {activeChar?.avatar ? (
+                <img src={activeChar.avatar} alt={activeChar.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                activeChar?.icon || '🎩'
+              )}
+            </div>
 
             {/* Reaction Bubble Displayed Next to Avatar */}
             <EmojiReactionBubble reaction={activeReaction} position={position} />
