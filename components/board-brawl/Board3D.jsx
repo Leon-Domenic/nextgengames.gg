@@ -12,6 +12,12 @@ import {
   createOwnerCrest,
   createProceduralPawn,
   generateDiceMaterials,
+  create3DStartMonument,
+  create3DIslandMonument,
+  create3DChampionshipMonument,
+  create3DWorldTourMonument,
+  create3DBanknoteStack,
+  create3DJackpotCoinPile,
 } from '@/lib/board-brawl/pawnModels3D';
 
 // Authentic Monopoly 45-Degree Diamond Perimeter Math
@@ -141,6 +147,9 @@ export default function Board3D({
   const diceGroupRef = useRef(null);
   const diceMeshesRef = useRef([]);
   const diceSimRef = useRef({ active: false, progress: 1.0, targetRotation1: null, targetRotation2: null });
+  const monumentsRef = useRef([]);
+  const banknoteStacksRef = useRef([]);
+  const jackpotPileRef = useRef(null);
   const lastRollIdRef = useRef(null);
 
   const onTileClickRef = useRef(onTileClick);
@@ -212,29 +221,39 @@ export default function Board3D({
     renderer.setSize(width, height);
     renderer.setPixelRatio(initialQuality === 'low' ? 1 : Math.min(window.devicePixelRatio || 1, initialQuality === 'medium' ? 1.5 : 2));
     renderer.shadowMap.enabled = initialQuality !== 'low';
-    renderer.shadowMap.type = initialQuality === 'high' ? THREE.PCFSoftShadowMap : THREE.BasicShadowMap;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Smooth soft contact shadows
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
+    renderer.toneMappingExposure = 1.05;
     rendererRef.current = renderer;
 
     mountRef.current.innerHTML = '';
     mountRef.current.appendChild(renderer.domElement);
 
-    // 4. Lighting Rig (Rich Cinematic Tabletop Lighting)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+    // 4. Lighting Rig (Rich Warm Cinematic Tabletop Sunlight & Sky Fill)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.78);
     scene.add(ambientLight);
 
-    const mainSun = new THREE.DirectionalLight(0xfffbeb, 1.35);
-    mainSun.position.set(60, 130, 70);
+    const mainSun = new THREE.DirectionalLight(0xfff7ed, 1.45);
+    mainSun.position.set(65, 140, 75);
     mainSun.castShadow = true;
     mainSun.shadow.mapSize.width = 2048;
     mainSun.shadow.mapSize.height = 2048;
-    mainSun.shadow.bias = -0.0004;
+    mainSun.shadow.camera.near = 20;
+    mainSun.shadow.camera.far = 320;
+    mainSun.shadow.camera.left = -70;
+    mainSun.shadow.camera.right = 70;
+    mainSun.shadow.camera.top = 70;
+    mainSun.shadow.camera.bottom = -70;
+    mainSun.shadow.bias = -0.0005;
+    mainSun.shadow.normalBias = 0.02;
     scene.add(mainSun);
 
-    const blueSkyFill = new THREE.DirectionalLight(0xbae6fd, 0.55);
-    blueSkyFill.position.set(-70, 90, -70);
+    const blueSkyFill = new THREE.DirectionalLight(0xbae6fd, 0.62);
+    blueSkyFill.position.set(-75, 95, -75);
     scene.add(blueSkyFill);
+
+    const hemiLight = new THREE.HemisphereLight(0xfffbeb, 0x14532d, 0.38);
+    scene.add(hemiLight);
 
     // 5. Contact Shadow Ground Plane
     const groundGeom = new THREE.PlaneGeometry(260, 260);
@@ -927,6 +946,79 @@ export default function Board3D({
     buildingsGroupRef.current = buildingsGroup;
     scene.add(buildingsGroup);
 
+    // 8b. Physical 3D Corner Monuments (Start Archway, Resort Island, Championship Colosseum, World Tour Pier)
+    const monumentsGroup = new THREE.Group();
+    const cornerMonuments = [];
+
+    // Corner 0: South (START)
+    const pStart = getTile3DPos(0, TILES.length);
+    const startMonument = create3DStartMonument();
+    startMonument.position.set(pStart.x, 0.35, pStart.z + 1.2);
+    startMonument.rotation.y = 0;
+    monumentsGroup.add(startMonument);
+    cornerMonuments.push(startMonument);
+
+    // Corner 1: West (RESORT ISLAND)
+    const pIsland = getTile3DPos(12, TILES.length);
+    const islandMonument = create3DIslandMonument();
+    islandMonument.position.set(pIsland.x - 1.2, 0.35, pIsland.z);
+    islandMonument.rotation.y = Math.PI / 4;
+    monumentsGroup.add(islandMonument);
+    cornerMonuments.push(islandMonument);
+
+    // Corner 2: North (WORLD CHAMPIONSHIP)
+    const pChamp = getTile3DPos(24, TILES.length);
+    const champMonument = create3DChampionshipMonument();
+    champMonument.position.set(pChamp.x, 0.35, pChamp.z - 1.2);
+    champMonument.rotation.y = 0;
+    monumentsGroup.add(champMonument);
+    cornerMonuments.push(champMonument);
+
+    // Corner 3: East (WORLD TOUR)
+    const pTour = getTile3DPos(36, TILES.length);
+    const tourMonument = create3DWorldTourMonument();
+    tourMonument.position.set(pTour.x + 1.2, 0.35, pTour.z);
+    tourMonument.rotation.y = -Math.PI / 4;
+    monumentsGroup.add(tourMonument);
+    cornerMonuments.push(tourMonument);
+
+    monumentsRef.current = cornerMonuments;
+    scene.add(monumentsGroup);
+
+    // 8c. Central Physical 3D Jackpot Gold Coin Pile (Center Stadium Pitch)
+    const jackpotPile = create3DJackpotCoinPile();
+    jackpotPile.position.set(0, 0.12, -4.2);
+    jackpotPile.scale.set(1.15, 1.15, 1.15);
+    jackpotPileRef.current = jackpotPile;
+    scene.add(jackpotPile);
+
+    // 8d. Floating High-Roller Banknote Stacks (4 Quadrants outside outer board curb)
+    const banknoteStacksGroup = new THREE.Group();
+    const banknoteStacks = [];
+    const stackCoords = [
+      { x: -46, z: 46, rotY: Math.PI / 4 },
+      { x: -46, z: -46, rotY: (3 * Math.PI) / 4 },
+      { x: 46, z: -46, rotY: (-3 * Math.PI) / 4 },
+      { x: 46, z: 46, rotY: -Math.PI / 4 },
+    ];
+
+    stackCoords.forEach((coord, idx) => {
+      const stack = create3DBanknoteStack();
+      stack.scale.set(1.4, 1.4, 1.4);
+      stack.position.set(coord.x, 2.6, coord.z);
+      stack.rotation.y = coord.rotY;
+      stack.userData = {
+        baseY: 2.6,
+        phase: idx * (Math.PI / 2),
+        baseRotY: coord.rotY,
+      };
+      banknoteStacksGroup.add(stack);
+      banknoteStacks.push(stack);
+    });
+
+    banknoteStacksRef.current = banknoteStacks;
+    scene.add(banknoteStacksGroup);
+
     // 9. 3D Dice Group (Physical Ruby Red Dice Rolling on the Grass)
     const diceGroup = new THREE.Group();
     diceGroup.position.set(0, 0, 0);
@@ -1151,6 +1243,26 @@ export default function Board3D({
         }
         if (group && typeof group.userData?.update === 'function') {
           group.userData.update(delta, elapsed, isMoving);
+        }
+      });
+
+      // Update 3D Corner Monuments (fluttering pennants, colosseum searchlights, lighthouse rotating beacon)
+      monumentsRef.current.forEach((m) => {
+        if (m && typeof m.userData?.update === 'function') {
+          m.userData.update(delta, elapsed);
+        }
+      });
+
+      // Update Central Jackpot Gold Coin Pile (spinning 3D stars & crown coin)
+      if (jackpotPileRef.current && typeof jackpotPileRef.current.userData?.update === 'function') {
+        jackpotPileRef.current.userData.update(delta, elapsed);
+      }
+
+      // Update Floating High-Roller Banknote Stacks (gentle atmospheric bobbing & sway)
+      banknoteStacksRef.current.forEach((stack) => {
+        if (stack && stack.userData) {
+          stack.position.y = stack.userData.baseY + Math.sin(elapsed * 1.6 + stack.userData.phase) * 0.42;
+          stack.rotation.y = stack.userData.baseRotY + Math.sin(elapsed * 0.8 + stack.userData.phase) * 0.1;
         }
       });
 
@@ -1546,32 +1658,115 @@ export default function Board3D({
         </div>
       </div>
 
-      {/* Floating Dice Result Square Badge (Above Grass Center) */}
+      {/* Floating Total Dice Roll Indicator Pill (Above Pitch Center) */}
       {lastDiceResult && (
-        <div style={{
-          position: 'absolute',
-          top: '38%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          zIndex: 10,
-          padding: '10px 18px',
-          borderRadius: '16px',
-          background: '#ffffff',
-          border: '2px solid #38bdf8',
-          color: '#0f172a',
-          fontSize: '20px',
-          fontWeight: 900,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.35)',
-          pointerEvents: 'none',
-        }}>
-          <span>🎲 {lastDiceResult.d1 + lastDiceResult.d2}</span>
-          {lastDiceResult.isDoubles && (
-            <span style={{ fontSize: '13px', color: '#8b5cf6', display: 'flex', alignItems: 'center', gap: '3px' }}>
-              <Sparkles size={14} /> 2X!
+        <div
+          key={lastDiceResult.id || `${lastDiceResult.d1}_${lastDiceResult.d2}`}
+          style={{
+            position: 'absolute',
+            top: '36%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 10,
+            padding: '10px 22px',
+            borderRadius: '24px',
+            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.96) 100%)',
+            border: lastDiceResult.isDoubles ? '2px solid #a855f7' : '2px solid #38bdf8',
+            color: '#ffffff',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            boxShadow: lastDiceResult.isDoubles
+              ? '0 0 25px rgba(168, 85, 247, 0.5), 0 12px 30px rgba(0, 0, 0, 0.5)'
+              : '0 0 22px rgba(56, 189, 248, 0.4), 0 12px 30px rgba(0, 0, 0, 0.5)',
+            pointerEvents: 'none',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          {/* Individual dice face chips */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                background: '#dc2626',
+                color: '#ffffff',
+                fontWeight: 900,
+                fontSize: '17px',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
+                border: '1px solid #ef4444',
+              }}
+            >
+              {lastDiceResult.d1}
             </span>
+            <span style={{ color: '#94a3b8', fontSize: '15px', fontWeight: 800 }}>+</span>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                background: '#dc2626',
+                color: '#ffffff',
+                fontWeight: 900,
+                fontSize: '17px',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
+                border: '1px solid #ef4444',
+              }}
+            >
+              {lastDiceResult.d2}
+            </span>
+          </div>
+
+          <span style={{ color: '#64748b', fontSize: '16px', fontWeight: 900 }}>=</span>
+
+          {/* Big Total */}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+            <span
+              style={{
+                fontSize: '26px',
+                fontWeight: 900,
+                letterSpacing: '-0.5px',
+                background: lastDiceResult.isDoubles
+                  ? 'linear-gradient(180deg, #fef08a 0%, #facc15 100%)'
+                  : 'linear-gradient(180deg, #ffffff 0%, #e2e8f0 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                filter: lastDiceResult.isDoubles ? 'drop-shadow(0 0 8px rgba(250, 204, 21, 0.6))' : 'none',
+              }}
+            >
+              {lastDiceResult.d1 + lastDiceResult.d2}
+            </span>
+            <span style={{ fontSize: '12px', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>
+              Roll
+            </span>
+          </div>
+
+          {/* Doubles Callout */}
+          {lastDiceResult.isDoubles && (
+            <div
+              style={{
+                padding: '3px 8px',
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
+                color: '#ffffff',
+                fontSize: '11px',
+                fontWeight: 900,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '3px',
+                letterSpacing: '0.5px',
+                boxShadow: '0 0 10px rgba(168, 85, 247, 0.6)',
+              }}
+            >
+              <Sparkles size={12} /> DOUBLES!
+            </div>
           )}
         </div>
       )}
