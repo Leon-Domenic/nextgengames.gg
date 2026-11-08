@@ -160,6 +160,7 @@ export default function CosmeticsShopModal({
           width: '960px',
           maxWidth: '100%',
           maxHeight: 'calc(100vh - 48px)',
+          height: 'min(760px, calc(100vh - 48px))',
           background: '#ffffff',
           borderRadius: '24px',
           border: '3px solid #38bdf8',
@@ -168,7 +169,7 @@ export default function CosmeticsShopModal({
           flexDirection: 'column',
           overflow: 'hidden',
           position: 'relative',
-          margin: 'auto',
+          margin: '0 auto',
         }}
       >
         {/* 1. Header Bar with Gold Ribbon & Currency */}
@@ -252,6 +253,8 @@ export default function CosmeticsShopModal({
             {/* Close Button */}
             <button
               onClick={onClose}
+              aria-label="Close Shop"
+              title="Close Shop"
               style={{
                 width: '36px',
                 height: '36px',

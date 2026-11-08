@@ -68,7 +68,10 @@ export default function BoardBrawlArenaPage() {
     const handleKeyDown = (e) => {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target?.tagName)) return;
       if (e.key === 's' || e.key === 'S') {
-        setShowSettingsModal(prev => !prev);
+        setShowSettingsModal(prev => {
+          if (!prev) setShowInGameShop(false);
+          return !prev;
+        });
       } else if (e.key === 'm' || e.key === 'M') {
         if (sounds.toggleMute) sounds.toggleMute();
       }
@@ -538,6 +541,7 @@ export default function BoardBrawlArenaPage() {
             <button
               onClick={() => {
                 sounds.playBuild();
+                setShowInGameShop(false);
                 setShowSettingsModal(true);
               }}
               title="Game Settings"
@@ -697,7 +701,10 @@ export default function BoardBrawlArenaPage() {
               zIndex: 60,
             }}>
               <button
-                onClick={() => setShowInGameShop(true)}
+                onClick={() => {
+                  setShowSettingsModal(false);
+                  setShowInGameShop(true);
+                }}
                 title="Open Cosmetics Shop"
                 style={{
                   width: '46px',
@@ -760,7 +767,10 @@ export default function BoardBrawlArenaPage() {
               </button>
 
               <button
-                onClick={() => setShowSettingsModal(true)}
+                onClick={() => {
+                  setShowInGameShop(false);
+                  setShowSettingsModal(true);
+                }}
                 title="Open Game Settings"
                 aria-label="Game Settings"
                 style={{

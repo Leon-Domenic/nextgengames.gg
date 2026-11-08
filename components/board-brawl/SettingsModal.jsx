@@ -44,6 +44,21 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Lock body scroll and listen for Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    const origOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = origOverflow;
+    };
+  }, [isOpen, onClose]);
   const [activeTab, setActiveTab] = useState('audio'); // 'audio' | 'graphics' | 'gameplay' | 'controls' | 'info'
 
   // Master & Audio state
@@ -337,7 +352,7 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
-        padding: '50px 16px 40px 16px',
+        padding: '24px 16px',
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         overflowY: 'auto',
       }}
@@ -349,7 +364,8 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
         style={{
           width: '740px',
           maxWidth: '100%',
-          maxHeight: 'calc(100vh - 90px)',
+          maxHeight: 'calc(100vh - 48px)',
+          height: 'min(760px, calc(100vh - 48px))',
           margin: '0 auto',
           background: '#ffffff',
           borderRadius: '24px',

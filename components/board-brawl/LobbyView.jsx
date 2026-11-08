@@ -204,7 +204,10 @@ export default function LobbyView({
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {/* Shopping Bag Button -> Opens Cosmetics Shop */}
           <button
-            onClick={() => setShowShop(true)}
+            onClick={() => {
+              setShowSettings(false);
+              setShowShop(true);
+            }}
             title="Open Cosmetics Shop (Characters & 3D Dice Skins)"
             style={{
               width: '42px',
@@ -259,6 +262,7 @@ export default function LobbyView({
           <button
             onClick={() => {
               sounds.playBuild();
+              setShowShop(false);
               setShowSettings(true);
             }}
             title="Game Settings"
@@ -389,7 +393,10 @@ export default function LobbyView({
             BUSINESS TOUR 48
           </div>
           <button
-            onClick={() => setShowShop(true)}
+            onClick={() => {
+              setShowSettings(false);
+              setShowShop(true);
+            }}
             style={{
               padding: '6px 14px',
               borderRadius: '8px',
