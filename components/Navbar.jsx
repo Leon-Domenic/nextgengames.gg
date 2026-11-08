@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 import { useTheme } from './ThemeProvider';
-import { Users, LogIn, LogOut, UserPlus, Sparkles, Trophy, Sun, Moon } from 'lucide-react';
+import { Users, LogIn, LogOut, UserPlus, Sparkles, Trophy, Sun, Moon, Gamepad2 } from 'lucide-react';
 import { TOKEN_ICONS } from '@/lib/board-brawl/characters.js';
 
 export default function Navbar() {
@@ -15,7 +15,7 @@ export default function Navbar() {
   const [guestLoading, setGuestLoading] = useState(false);
 
   // Hide Navbar completely on Board Brawl game/lobby pages for immersive full-screen experience
-  if (pathname && pathname.startsWith('/game/board-brawl')) {
+  if (pathname && (pathname.startsWith('/game/board-brawl') || pathname.startsWith('/browsergames/board-brawl'))) {
     return null;
   }
 
@@ -76,14 +76,18 @@ export default function Navbar() {
 
         {/* Links */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <Link href="/" style={{
-            color: 'var(--text-main)',
+          <Link href="/browsergames" style={{
+            color: pathname === '/browsergames' ? '#00f0ff' : 'var(--text-main)',
             textDecoration: 'none',
             fontSize: '14px',
-            fontWeight: 600,
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
             transition: 'color 0.2s',
           }}>
-            Games
+            <Gamepad2 size={16} color="#00f0ff" />
+            Browser Games
           </Link>
 
           <Link href="/friends" style={{
