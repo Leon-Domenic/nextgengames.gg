@@ -18,7 +18,6 @@ import {
   create3DChampionshipMonument,
   create3DWorldTourMonument,
   create3DBanknoteStack,
-  create3DJackpotCoinPile,
 } from '@/lib/board-brawl/pawnModels3D';
 
 // Authentic Monopoly 45-Degree Diamond Perimeter Math
@@ -122,6 +121,7 @@ export default function Board3D({
   diceSkin = 'classic_red',
   centerContent = null,
   communityJackpot = 100000,
+  lastPayment = null,
   onRollDice,
   onBuyCity,
   onBuyoutCity,
@@ -150,7 +150,9 @@ export default function Board3D({
   const diceSimRef = useRef({ active: false, progress: 1.0, targetRotation1: null, targetRotation2: null });
   const monumentsRef = useRef([]);
   const banknoteStacksRef = useRef([]);
-  const jackpotPileRef = useRef(null);
+  const cashGroupRef = useRef(null);
+  const cashTransfersRef = useRef([]);
+  const lastPaymentIdRef = useRef(null);
   const lastRollIdRef = useRef(null);
 
   const onTileClickRef = useRef(onTileClick);
@@ -986,12 +988,10 @@ export default function Board3D({
     monumentsRef.current = cornerMonuments;
     scene.add(monumentsGroup);
 
-    // 8c. Central Physical 3D Jackpot Gold Coin Pile (Center Stadium Pitch)
-    const jackpotPile = create3DJackpotCoinPile();
-    jackpotPile.position.set(0, 0.12, -4.2);
-    jackpotPile.scale.set(1.15, 1.15, 1.15);
-    jackpotPileRef.current = jackpotPile;
-    scene.add(jackpotPile);
+    // 8c. 3D Cash Transfer Group
+    const cashGroup = new THREE.Group();
+    scene.add(cashGroup);
+    cashGroupRef.current = cashGroup;
 
     // 8d. Floating High-Roller Banknote Stacks (4 Quadrants outside outer board curb)
     const banknoteStacksGroup = new THREE.Group();
@@ -1285,6 +1285,9 @@ export default function Board3D({
         if (group && typeof group.userData?.update === 'function') {
           group.userData.update(delta, elapsed, isMoving);
         }
+        if (group && typeof group.userData?.updateDistress === 'function') {
+          group.userData.updateDistress(delta, elapsed);
+        }
       });
 
       // Update 3D Corner Monuments (fluttering pennants, colosseum searchlights, lighthouse rotating beacon)
@@ -1294,9 +1297,41 @@ export default function Board3D({
         }
       });
 
-      // Update Central Jackpot Gold Coin Pile (spinning 3D stars & crown coin)
-      if (jackpotPileRef.current && typeof jackpotPileRef.current.userData?.update === 'function') {
-        jackpotPileRef.current.userData.update(delta, elapsed);
+      // Update Flying Cash Transfers (Parabolic flight arc from payer to receiver/bank)
+      if (cashTransfersRef.current.length > 0) {
+        const activeNotes = [];
+        cashTransfersRef.current.forEach((note) => {
+          note.elapsed += delta;
+          if (note.elapsed < note.delay) {
+            note.mesh.visible = false;
+            activeNotes.push(note);
+            return;
+          }
+          note.mesh.visible = true;
+          const p = Math.min(1.0, (note.elapsed - note.delay) / note.duration);
+          const x = THREE.MathUtils.lerp(note.start.x, note.end.x, p) + Math.sin(p * Math.PI) * note.drift;
+          const z = THREE.MathUtils.lerp(note.start.z, note.end.z, p) + Math.cos(p * Math.PI) * note.drift;
+          const y = THREE.MathUtils.lerp(note.start.y, note.end.y, p) + Math.sin(p * Math.PI) * note.apexY;
+          note.mesh.position.set(x, y, z);
+          note.mesh.rotation.x += note.rotSpeed.x * delta;
+          note.mesh.rotation.y += note.rotSpeed.y * delta;
+          note.mesh.rotation.z += note.rotSpeed.z * delta;
+
+          if (p >= 1.0) {
+            if (!note.landingPlayed) {
+              note.landingPlayed = true;
+              try { sounds.playCash?.(); } catch (e) {}
+            }
+            if (cashGroupRef.current) {
+              cashGroupRef.current.remove(note.mesh);
+            }
+            if (note.mesh.geometry) note.mesh.geometry.dispose();
+            if (note.mesh.material) note.mesh.material.dispose();
+          } else {
+            activeNotes.push(note);
+          }
+        });
+        cashTransfersRef.current = activeNotes;
       }
 
       // Update Floating High-Roller Banknote Stacks (gentle atmospheric bobbing & sway)
@@ -1676,16 +1711,106 @@ export default function Board3D({
   }, [players, sceneReady, onPawnMovementStart, onPawnMovementComplete]);
 
   // Trigger 3D Dice Simulation on NEW Roll ID
+    // 3D Flying Cash Transfer Spawner
+  const spawnFlyingCash = useCallback((startPos, endPos, amount = 100000) => {
+    if (!cashGroupRef.current) return;
+    const noteCount = Math.min(12, Math.max(8, Math.floor((amount || 100000) / 100000)));
+
+    for (let i = 0; i < noteCount; i++) {
+      const cCanvas = document.createElement('canvas');
+      cCanvas.width = 128;
+      cCanvas.height = 64;
+      const cCtx = cCanvas.getContext('2d');
+      cCtx.fillStyle = '#10b981';
+      cCtx.fillRect(0, 0, 128, 64);
+      cCtx.strokeStyle = '#34d399';
+      cCtx.lineWidth = 4;
+      cCtx.strokeRect(4, 4, 120, 56);
+      cCtx.fillStyle = '#064e3b';
+      cCtx.font = 'bold 24px monospace';
+      cCtx.textAlign = 'center';
+      cCtx.textBaseline = 'middle';
+      cCtx.fillText('₩', 64, 32);
+
+      const cTex = new THREE.CanvasTexture(cCanvas);
+      const cMat = new THREE.MeshBasicMaterial({
+        map: cTex,
+        side: THREE.DoubleSide,
+        transparent: true,
+      });
+      const cGeom = new THREE.PlaneGeometry(0.75, 0.42);
+      const noteMesh = new THREE.Mesh(cGeom, cMat);
+      noteMesh.position.copy(startPos);
+      noteMesh.visible = false;
+      cashGroupRef.current.add(noteMesh);
+
+      cashTransfersRef.current.push({
+        mesh: noteMesh,
+        start: startPos.clone(),
+        end: endPos.clone(),
+        delay: i * 0.055,
+        duration: 0.72 + Math.random() * 0.16,
+        elapsed: 0,
+        apexY: 3.2 + Math.random() * 1.2,
+        rotSpeed: new THREE.Vector3(
+          (Math.random() - 0.5) * 16,
+          (Math.random() - 0.5) * 16,
+          (Math.random() - 0.5) * 12
+        ),
+        drift: (Math.random() - 0.5) * 1.2,
+        landingPlayed: false,
+      });
+    }
+  }, []);
+
+  // Listen to incoming lastPayment and trigger avatar distress & cash parabolic flight
+  useEffect(() => {
+    if (!lastPayment || !lastPayment.timestamp || lastPayment.timestamp === lastPaymentIdRef.current) return;
+    lastPaymentIdRef.current = lastPayment.timestamp;
+
+    const pawnMap = pawnMeshesRef.current;
+    const payerEntry = pawnMap.get(lastPayment.payerId);
+    const receiverEntry = lastPayment.receiverId ? pawnMap.get(lastPayment.receiverId) : null;
+
+    const startPos = payerEntry ? payerEntry.group.position.clone() : new THREE.Vector3(0, 0.5, 0);
+    const endPos = receiverEntry ? receiverEntry.group.position.clone() : new THREE.Vector3(0, 0.5, 0);
+
+    if (payerEntry?.group?.userData?.triggerDistress) {
+      payerEntry.group.userData.triggerDistress(1.2);
+    }
+    if (payerEntry?.token) {
+      try { sounds.playDistress?.(payerEntry.token); } catch (e) {}
+    }
+
+    spawnFlyingCash(startPos, endPos, lastPayment.amount);
+  }, [lastPayment, spawnFlyingCash]);
+
+  // Trigger 3D Dice Simulation on NEW Roll ID
   const triggerDiceRoll = useCallback((val1, val2, skinId = 'classic_red') => {
     if (!diceGroupRef.current) return;
     diceGroupRef.current.visible = true;
     sounds.playDiceRoll();
 
+    const isBlinded = (val2 === 0 || val2 === null || val2 === undefined);
+
     // Dynamically update 3D dice materials to match the player's equipped dice skin
-    if (diceMeshesRef.current[0] && diceMeshesRef.current[1]) {
+    if (diceMeshesRef.current[0]) {
       const mats = generateDiceMaterials(skinId);
       diceMeshesRef.current[0].material = mats;
-      diceMeshesRef.current[1].material = mats;
+
+      if (isBlinded) {
+        diceMeshesRef.current[0].position.set(0, 1.6, 0);
+        if (diceMeshesRef.current[1]) {
+          diceMeshesRef.current[1].visible = false;
+        }
+      } else {
+        diceMeshesRef.current[0].position.set(-2.8, 1.6, 0);
+        if (diceMeshesRef.current[1]) {
+          diceMeshesRef.current[1].visible = true;
+          diceMeshesRef.current[1].material = mats;
+          diceMeshesRef.current[1].position.set(2.8, 1.6, 0);
+        }
+      }
     }
 
     const getRot = (val) => {
@@ -1704,7 +1829,7 @@ export default function Board3D({
       active: true,
       progress: 0,
       targetRotation1: getRot(val1),
-      targetRotation2: getRot(val2),
+      targetRotation2: isBlinded ? null : getRot(val2),
     };
   }, []);
 
@@ -1713,7 +1838,8 @@ export default function Board3D({
       lastRollIdRef.current = lastDiceResult.id;
       const rollingPlayer = players.find(p => p.id === lastDiceResult.playerId);
       const skin = rollingPlayer?.diceSkin || diceSkin || 'classic_red';
-      triggerDiceRoll(lastDiceResult.d1 || 1, lastDiceResult.d2 || 1, skin);
+      const d2Val = lastDiceResult.d2 !== undefined ? lastDiceResult.d2 : 1;
+      triggerDiceRoll(lastDiceResult.d1 || 1, d2Val, skin);
     }
   }, [lastDiceResult, triggerDiceRoll, players, diceSkin]);
 
@@ -1730,46 +1856,7 @@ export default function Board3D({
       {/* 3D WebGL Canvas taking 100% of the screen */}
       <div ref={mountRef} style={{ width: '100%', height: '100%', cursor: 'default' }} />
 
-      {/* Floating Central Tax Jackpot Pool Badge (Center Grass Field) */}
-      <div style={{
-        position: 'absolute',
-        top: '28%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        zIndex: 10,
-        padding: '7px 18px',
-        borderRadius: '24px',
-        background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(20, 24, 39, 0.96) 100%)',
-        border: '1.5px solid #fbbf24',
-        boxShadow: '0 0 20px rgba(251, 191, 36, 0.4), 0 8px 25px rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '9px',
-        pointerEvents: 'none',
-        backdropFilter: 'blur(8px)',
-      }}>
-        <span style={{ fontSize: '18px', filter: 'drop-shadow(0 0 6px rgba(251, 191, 36, 0.8))' }}>💰</span>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <span style={{
-            fontSize: '9px',
-            fontWeight: 900,
-            color: '#fde68a',
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-          }}>
-            COMMUNITY POT
-          </span>
-          <span style={{
-            fontSize: '15px',
-            fontWeight: 900,
-            color: '#ffffff',
-            fontFamily: 'monospace',
-            textShadow: '0 0 10px rgba(251, 191, 36, 0.7)',
-          }}>
-            💰 JACKPOT: {(communityJackpot || 100000).toLocaleString()} CR
-          </span>
-        </div>
-      </div>
+      
 
       {/* Floating Total Dice Roll Indicator Pill (Above Pitch Center) */}
       {lastDiceResult && (
@@ -1796,46 +1883,72 @@ export default function Board3D({
             backdropFilter: 'blur(8px)',
           }}
         >
-          {/* Individual dice face chips */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                background: '#dc2626',
-                color: '#ffffff',
-                fontWeight: 900,
-                fontSize: '17px',
-                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
-                border: '1px solid #ef4444',
-              }}
-            >
-              {lastDiceResult.d1}
-            </span>
-            <span style={{ color: '#94a3b8', fontSize: '15px', fontWeight: 800 }}>+</span>
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                background: '#dc2626',
-                color: '#ffffff',
-                fontWeight: 900,
-                fontSize: '17px',
-                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
-                border: '1px solid #ef4444',
-              }}
-            >
-              {lastDiceResult.d2}
-            </span>
-          </div>
+          {lastDiceResult.d2 === 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '18px' }}>🍅</span>
+              <span style={{ fontSize: '11px', fontWeight: 900, color: '#f87171', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
+                BLINDED ROLL:
+              </span>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  background: '#dc2626',
+                  color: '#ffffff',
+                  fontWeight: 900,
+                  fontSize: '17px',
+                  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
+                  border: '1px solid #ef4444',
+                }}
+              >
+                {lastDiceResult.d1}
+              </span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  background: '#dc2626',
+                  color: '#ffffff',
+                  fontWeight: 900,
+                  fontSize: '17px',
+                  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
+                  border: '1px solid #ef4444',
+                }}
+              >
+                {lastDiceResult.d1}
+              </span>
+              <span style={{ color: '#94a3b8', fontSize: '15px', fontWeight: 800 }}>+</span>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  background: '#dc2626',
+                  color: '#ffffff',
+                  fontWeight: 900,
+                  fontSize: '17px',
+                  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
+                  border: '1px solid #ef4444',
+                }}
+              >
+                {lastDiceResult.d2}
+              </span>
+            </div>
+          )}
 
           <span style={{ color: '#64748b', fontSize: '16px', fontWeight: 900 }}>=</span>
 

@@ -66,6 +66,8 @@ export default function BoardBrawlArenaPage() {
   const [showInGameShop, setShowInGameShop] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [inspectedTileId, setInspectedTileId] = useState(null);
+  const [lastPaymentEvent, setLastPaymentEvent] = useState(null);
+  const [cashFloatingBadges, setCashFloatingBadges] = useState({});
   const [playerReactions, setPlayerReactions] = useState({});
   const [localMatchTimeRemaining, setLocalMatchTimeRemaining] = useState(1200);
   const [tradeTargetPlayer, setTradeTargetPlayer] = useState(null);
@@ -253,6 +255,62 @@ export default function BoardBrawlArenaPage() {
     socket.on('action_card_played', (cardData) => setActionCardPlayEvent(cardData));
     socket.on('taunt_sound_event', handleTauntSound);
     socket.on('player_reaction_event', handlePlayerReaction);
+    const handlePaymentEvent = (paymentData) => {
+      if (!paymentData) return;
+      setLastPaymentEvent(paymentData);
+
+      const timestamp = paymentData.timestamp || Date.now();
+      const badgeId = `${timestamp}_${Math.random()}`;
+
+      if (paymentData.payerId) {
+        setCashFloatingBadges((prev) => ({
+          ...prev,
+          [paymentData.payerId]: [
+            ...(prev[paymentData.payerId] || []),
+            {
+              id: `debit_${badgeId}`,
+              type: 'debit',
+              text: `-₩${Number(paymentData.amount || 0).toLocaleString()}`,
+            },
+          ],
+        }));
+
+        const payerObj = gameStateRef.current?.players?.find(p => p.id === paymentData.payerId);
+        if (payerObj?.avatarToken) {
+          try { sounds.playDistress?.(payerObj.avatarToken); } catch (e) {}
+        }
+      }
+
+      if (paymentData.receiverId) {
+        setCashFloatingBadges((prev) => ({
+          ...prev,
+          [paymentData.receiverId]: [
+            ...(prev[paymentData.receiverId] || []),
+            {
+              id: `credit_${badgeId}`,
+              type: 'credit',
+              text: `+₩${Number(paymentData.amount || 0).toLocaleString()}`,
+            },
+          ],
+        }));
+      }
+
+      try { sounds.playCash?.(); } catch (e) {}
+
+      setTimeout(() => {
+        setCashFloatingBadges((prev) => {
+          const next = { ...prev };
+          if (paymentData.payerId && next[paymentData.payerId]) {
+            next[paymentData.payerId] = next[paymentData.payerId].filter(b => !b.id.includes(badgeId));
+          }
+          if (paymentData.receiverId && next[paymentData.receiverId]) {
+            next[paymentData.receiverId] = next[paymentData.receiverId].filter(b => !b.id.includes(badgeId));
+          }
+          return next;
+        });
+      }, 2200);
+    };
+    socket.on('payment_event', handlePaymentEvent);
     const handlePlayerKicked = ({ playerId }) => {
       const myId = user?.id || localPlayerIdRef.current;
       if (myId && playerId === myId) {
@@ -294,6 +352,7 @@ export default function BoardBrawlArenaPage() {
       socket.off('action_card_played');
       socket.off('taunt_sound_event', handleTauntSound);
       socket.off('player_reaction_event', handlePlayerReaction);
+      socket.off('payment_event', handlePaymentEvent);
       socket.off('player_kicked_event', handlePlayerKicked);
       socket.off('trade_completed_event', handleTradeCompleted);
       socket.off('trade_declined_event', handleTradeDeclined);
@@ -924,6 +983,7 @@ export default function BoardBrawlArenaPage() {
             onOpenTrade={handleOpenEmergencyTrade}
             players={gameState.players}
             turnTimer={gameState.turnTimerRemaining}
+                  turnDuration={gameState.turnDuration || (gameState.mode === 'blitz' ? 25 : 35)}
           />
         )}
 
@@ -1088,7 +1148,8 @@ export default function BoardBrawlArenaPage() {
                     isCurrent={gameState.activePlayerIndex === idx}
                     isMe={player.id === myPlayerObj?.id}
                     timer={gameState.turnTimerRemaining}
-                    turnDuration={gameState.turnDuration || (gameState.mode === 'blitz' ? 15 : 30)}
+                    turnDuration={gameState.turnDuration || (gameState.mode === 'blitz' ? 25 : 35)}
+                    cashBadges={cashFloatingBadges[player.id]}
                     theme={theme}
                     position={pos}
                     isCompact={total > 4}
@@ -1115,28 +1176,7 @@ export default function BoardBrawlArenaPage() {
               alignItems: 'center',
               gap: '10px',
             }}>
-              {/* Community Tax Jackpot Pool Capsule */}
-              <div style={{
-                background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.22) 0%, rgba(180, 83, 9, 0.38) 100%)',
-                backdropFilter: 'blur(16px)',
-                border: '1.5px solid rgba(251, 191, 36, 0.6)',
-                borderRadius: '16px',
-                padding: '6px 14px',
-                boxShadow: '0 0 18px rgba(245, 158, 11, 0.3), 0 8px 25px rgba(0, 0, 0, 0.45)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}>
-                <span style={{ fontSize: '18px', filter: 'drop-shadow(0 0 6px #fbbf24)' }}>💰</span>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '9px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#fde68a' }}>
-                    COMMUNITY POT
-                  </span>
-                  <span style={{ fontSize: '14px', fontWeight: 900, fontFamily: 'monospace', color: '#ffffff', textShadow: '0 0 10px rgba(251, 191, 36, 0.8)' }}>
-                    {(gameState.communityJackpot || 100000).toLocaleString()} CR
-                  </span>
-                </div>
-              </div>
+              
 
               {/* 1. Overall Match Countdown Timer (Top Middle Side of Board) */}
               <div style={{
@@ -1240,9 +1280,9 @@ export default function BoardBrawlArenaPage() {
                   }}>
                     <div style={{
                       height: '100%',
-                      width: `${Math.min(100, Math.max(0, ((gameState.turnTimerRemaining || 0) / (gameState.turnDuration || 25)) * 100))}%`,
+                      width: `${Math.min(100, Math.max(0, ((gameState.turnTimerRemaining || 0) / (gameState.turnDuration || (gameState.mode === 'blitz' ? 25 : 35))) * 100))}%`,
                       background: (gameState.turnTimerRemaining || 0) > 6 ? '#22c55e' : (gameState.turnTimerRemaining || 0) > 3 ? '#f59e0b' : '#ef4444',
-                      transition: 'width 0.9s linear, background-color 0.3s ease',
+                      transition: (gameState.turnTimerRemaining || 0) >= ((gameState.turnDuration || (gameState.mode === 'blitz' ? 25 : 35)) - 1) ? 'none' : 'width 0.95s linear, background-color 0.3s ease',
                       boxShadow: (gameState.turnTimerRemaining || 0) <= 3 ? '0 0 8px #ef4444' : 'none',
                     }} />
                   </div>
@@ -1518,6 +1558,7 @@ export default function BoardBrawlArenaPage() {
 
             {/* The Steady 45-Degree Diamond 3D Arena */}
             <Board3D
+              lastPayment={lastPaymentEvent}
               properties={gameState.properties}
               players={gameState.players}
               activeTileId={currentPlayer?.position}
@@ -1645,6 +1686,7 @@ export default function BoardBrawlArenaPage() {
                   onUpgrade={handleUpgradeCity}
                   onEndTurn={handleEndTurn}
                   turnTimer={gameState.turnTimerRemaining}
+                  turnDuration={gameState.turnDuration || (gameState.mode === 'blitz' ? 25 : 35)}
                 />
               </div>
             )}
@@ -1671,7 +1713,8 @@ function PlayerCornerCard({
   isCurrent,
   isMe,
   timer,
-  turnDuration = 15,
+  turnDuration = 25,
+  cashBadges = [],
   theme,
   position,
   isCompact = false,
@@ -1688,6 +1731,7 @@ function PlayerCornerCard({
   const isBankrupt = player.isBankrupt;
   const activeChar = CHARACTERS.find(c => c.id === player.avatarToken) || CHARACTERS[0];
   const playerColor = player.avatarColor || theme.headerBg;
+  const isResetting = (timer || 0) >= (turnDuration - 1);
 
   const posStyles = {
     'top-left': { top: '16px', left: '16px' },
@@ -1717,6 +1761,36 @@ function PlayerCornerCard({
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
+      {/* Floating Cash Debit / Credit Badges */}
+      {cashBadges && cashBadges.map((badge) => (
+        <div
+          key={badge.id}
+          style={{
+            position: 'absolute',
+            top: '-28px',
+            right: '12px',
+            padding: '4px 12px',
+            borderRadius: '999px',
+            fontWeight: 900,
+            fontSize: '13px',
+            letterSpacing: '0.5px',
+            color: '#ffffff',
+            background: badge.type === 'debit'
+              ? 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)'
+              : 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+            boxShadow: badge.type === 'debit'
+              ? '0 4px 14px rgba(239, 68, 68, 0.7), 0 0 10px rgba(239, 68, 68, 0.4)'
+              : '0 4px 14px rgba(16, 185, 129, 0.7), 0 0 10px rgba(16, 185, 129, 0.4)',
+            animation: 'cashBadgeFloat 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',
+            zIndex: 100,
+            pointerEvents: 'none',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {badge.text}
+        </div>
+      ))}
+
       {/* Active Turn Running Progress Bar */}
       {isCurrent && !isBankrupt && (
         <div style={{
@@ -1730,9 +1804,9 @@ function PlayerCornerCard({
         }}>
           <div style={{
             height: '100%',
-            width: `${Math.min(100, Math.max(0, ((timer || 0) / (turnDuration || 15)) * 100))}%`,
+            width: `${Math.min(100, Math.max(0, ((timer || 0) / (turnDuration || 25)) * 100))}%`,
             background: (timer || 0) > 6 ? '#22c55e' : (timer || 0) > 3 ? '#f59e0b' : '#ef4444',
-            transition: 'width 0.9s linear, background-color 0.3s ease',
+            transition: isResetting ? 'none' : 'width 0.95s linear, background-color 0.3s ease',
             boxShadow: (timer || 0) <= 3 ? '0 0 8px #ef4444' : 'none',
           }} />
         </div>

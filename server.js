@@ -130,6 +130,9 @@ app.prepare().then(() => {
           onDiceRoll: (data) => {
             io.to(`game_${roomId}`).emit('dice_rolled_event', data);
           },
+          onPayment: (paymentData) => {
+            io.to(`game_${roomId}`).emit('payment_event', paymentData);
+          },
           onChatMessage: (msg) => {
             io.to(`game_${roomId}`).emit('chat_message_event', msg);
           },

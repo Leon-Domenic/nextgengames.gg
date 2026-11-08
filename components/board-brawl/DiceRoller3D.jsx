@@ -11,7 +11,8 @@ export default function DiceRoller3D({
   lastResult,
   canRoll,
   onRoll,
-  turnTimer = 15,
+  turnTimer = 25,
+  turnDuration = 25,
   isMyTurn,
   activePlayerName = 'Opponent',
   diceSkin = 'classic_red',
@@ -20,6 +21,9 @@ export default function DiceRoller3D({
   canPayBail = false,
 }) {
   const { t } = useTranslation();
+  const maxDuration = turnDuration || 25;
+  const isResetting = (turnTimer || 0) >= (maxDuration - 1);
+  const progressPct = Math.min(100, Math.max(0, ((turnTimer || 0) / maxDuration) * 100));
   const [isRolling, setIsRolling] = useState(false);
   const [showDoublesCelebration, setShowDoublesCelebration] = useState(false);
   const lastRollIdRef = useRef(null);
@@ -232,9 +236,9 @@ export default function DiceRoller3D({
           }}>
             <div style={{
               height: '100%',
-              width: `${Math.min(100, Math.max(0, ((turnTimer || 0) / 15) * 100))}%`,
+              width: `${progressPct}%`,
               backgroundColor: (turnTimer || 0) > 6 ? '#22c55e' : (turnTimer || 0) > 3 ? '#f59e0b' : '#ef4444',
-              transition: 'width 0.9s linear, background-color 0.3s ease',
+              transition: isResetting ? 'none' : 'width 0.95s linear, background-color 0.3s ease',
               boxShadow: (turnTimer || 0) <= 3 ? '0 0 10px #ef4444' : 'none',
             }} />
           </div>
