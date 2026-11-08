@@ -31,9 +31,9 @@ export default function Navbar() {
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: '14px 28px',
-      background: 'rgba(10, 13, 18, 0.85)',
+      background: 'var(--bg-glass-heavy)',
       backdropFilter: 'blur(12px)',
-      borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+      borderBottom: '1px solid var(--border-dim)',
       position: 'sticky',
       top: 0,
       zIndex: 1000,
@@ -59,18 +59,18 @@ export default function Navbar() {
             fontWeight: 800,
             fontSize: '20px',
             letterSpacing: '1px',
-            color: '#ffffff',
+            color: 'var(--text-main)',
             textTransform: 'uppercase',
           }}>
             NextGen<span style={{ color: '#00f0ff' }}>Games</span>
-            <span style={{ fontSize: '12px', color: '#64748b', marginLeft: '4px' }}>.gg</span>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginLeft: '4px' }}>.gg</span>
           </span>
         </Link>
 
         {/* Links */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <Link href="/" style={{
-            color: '#f0f4f8',
+            color: 'var(--text-main)',
             textDecoration: 'none',
             fontSize: '14px',
             fontWeight: 600,
@@ -80,7 +80,7 @@ export default function Navbar() {
           </Link>
 
           <Link href="/friends" style={{
-            color: '#f0f4f8',
+            color: 'var(--text-main)',
             textDecoration: 'none',
             fontSize: '14px',
             fontWeight: 600,
@@ -143,7 +143,7 @@ export default function Navbar() {
               alignItems: 'center',
               gap: '10px',
               padding: '6px 14px',
-              background: 'rgba(255, 255, 255, 0.04)',
+              background: 'var(--bg-surface)',
               border: `1px solid ${user.avatar_color || '#00f0ff'}44`,
               borderRadius: '24px',
             }}>
@@ -161,11 +161,11 @@ export default function Navbar() {
                 {TOKEN_ICONS[user.avatar_token] || '🎩'}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-main)' }}>
                   {user.username}
                   {user.is_guest && <span style={{ fontSize: '10px', color: '#f97316', marginLeft: '4px' }}>(Guest)</span>}
                 </span>
-                <span style={{ fontSize: '10px', color: '#94a3b8' }}>
+                <span style={{ fontSize: '10px', color: 'var(--text-dim)' }}>
                   🏆 {user.stats?.wins || 0} Wins
                 </span>
               </div>
@@ -221,8 +221,9 @@ export default function Navbar() {
                 alignItems: 'center',
                 gap: '6px',
                 padding: '8px 14px',
-                background: 'rgba(255, 255, 255, 0.08)',
-                color: '#f0f4f8',
+                background: 'var(--bg-surface-elevated)',
+                border: '1px solid var(--border-medium)',
+                color: 'var(--text-main)',
                 borderRadius: '8px',
                 textDecoration: 'none',
                 fontSize: '13px',

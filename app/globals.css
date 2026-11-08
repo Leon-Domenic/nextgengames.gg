@@ -54,44 +54,47 @@
    LIGHT MODE DESIGN TOKENS & OVERRIDES
    ========================================================================== */
 [data-theme='light'] {
-  --bg-deep: #f1f5f9;
+  color-scheme: light;
+
+  --bg-deep: #f8fafc;
   --bg-dark: #ffffff;
   --bg-surface: #ffffff;
-  --bg-surface-elevated: #e2e8f0;
-  --bg-glass: rgba(255, 255, 255, 0.92);
-  --bg-glass-heavy: rgba(248, 250, 252, 0.98);
+  --bg-surface-elevated: #f1f5f9;
+  --bg-glass: rgba(255, 255, 255, 0.94);
+  --bg-glass-heavy: rgba(255, 255, 255, 0.98);
 
   --armada-cyan: #0284c7;
   --armada-blue: #0369a1;
-  --armada-glow: rgba(2, 132, 199, 0.25);
+  --armada-glow: rgba(2, 132, 199, 0.2);
 
   --cortex-red: #dc2626;
   --cortex-orange: #ea580c;
-  --cortex-glow: rgba(220, 38, 38, 0.25);
+  --cortex-glow: rgba(220, 38, 38, 0.2);
 
   --legion-green: #059669;
   --legion-acid: #10b981;
-  --legion-glow: rgba(16, 185, 129, 0.25);
+  --legion-glow: rgba(16, 185, 129, 0.2);
 
   --white: #0f172a;
   --text-main: #0f172a;
-  --text-dim: #475569;
+  --text-dim: #334155;
   --text-muted: #64748b;
-  --border-dim: rgba(0, 0, 0, 0.1);
-  --border-medium: rgba(0, 0, 0, 0.18);
+  --border-dim: rgba(0, 0, 0, 0.12);
+  --border-medium: rgba(0, 0, 0, 0.2);
   --border-cyan: rgba(2, 132, 199, 0.4);
   --border-red: rgba(220, 38, 38, 0.4);
 }
 
-[data-theme='light'] body {
-  background-color: #f1f5f9 !important;
+[data-theme='light'] body,
+[data-theme='light'] main {
+  background-color: #f8fafc !important;
   color: #0f172a !important;
 }
 
 [data-theme='light'] nav {
-  background: rgba(255, 255, 255, 0.94) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05) !important;
 }
 
 [data-theme='light'] nav a,
@@ -99,22 +102,114 @@
   color: #0f172a;
 }
 
-[data-theme='light'] input {
-  background: #ffffff !important;
-  color: #0f172a !important;
-  border-color: #cbd5e1 !important;
-}
-
+/* Headings and Typography */
 [data-theme='light'] h1, 
 [data-theme='light'] h2, 
 [data-theme='light'] h3, 
 [data-theme='light'] h4,
-[data-theme='light'] h5 {
+[data-theme='light'] h5,
+[data-theme='light'] strong,
+[data-theme='light'] b {
   color: #0f172a !important;
 }
 
 [data-theme='light'] p {
-  color: #475569;
+  color: #334155 !important;
+}
+
+/* In-depth font color overrides for light mode readability */
+[data-theme='light'] span[style*="color: #fff"],
+[data-theme='light'] span[style*="color:#fff"],
+[data-theme='light'] span[style*="color: rgb(255, 255, 255)"],
+[data-theme='light'] div[style*="color: #fff"],
+[data-theme='light'] div[style*="color:#fff"],
+[data-theme='light'] div[style*="color: rgb(255, 255, 255)"],
+[data-theme='light'] p[style*="color: #fff"],
+[data-theme='light'] p[style*="color:#fff"],
+[data-theme='light'] strong[style*="color: #fff"],
+[data-theme='light'] strong[style*="color:#fff"],
+[data-theme='light'] a[style*="color: #fff"],
+[data-theme='light'] a[style*="color:#fff"],
+[data-theme='light'] a[style*="color: #f0f4f8"],
+[data-theme='light'] div[style*="color: #f0f4f8"],
+[data-theme='light'] span[style*="color: #f0f4f8"] {
+  color: #0f172a !important;
+}
+
+[data-theme='light'] span[style*="color: #94a3b8"],
+[data-theme='light'] div[style*="color: #94a3b8"],
+[data-theme='light'] p[style*="color: #94a3b8"],
+[data-theme='light'] span[style*="color:#94a3b8"],
+[data-theme='light'] div[style*="color:#94a3b8"],
+[data-theme='light'] p[style*="color:#94a3b8"] {
+  color: #475569 !important;
+}
+
+[data-theme='light'] span[style*="color: #64748b"],
+[data-theme='light'] div[style*="color: #64748b"],
+[data-theme='light'] p[style*="color: #64748b"] {
+  color: #64748b !important;
+}
+
+/* Card Backgrounds & High-Tech Panels */
+[data-theme='light'] div[style*="background: linear-gradient(180deg, rgba(16, 20, 29"],
+[data-theme='light'] div[style*="background: linear-gradient(135deg, rgba(16, 20, 29"],
+[data-theme='light'] div[style*="background: rgba(16, 20, 29"],
+[data-theme='light'] div[style*="background:rgba(16, 20, 29"],
+[data-theme='light'] div[style*="background: rgba(10, 13, 18"],
+[data-theme='light'] div[style*="background:rgba(10, 13, 18"],
+[data-theme='light'] div[style*="background: rgba(0, 0, 0, 0.3)"],
+[data-theme='light'] div[style*="background: rgba(0, 0, 0, 0.4)"],
+[data-theme='light'] div[style*="background: rgba(0, 0, 0, 0.5)"],
+[data-theme='light'] div[style*="background: rgba(255, 255, 255, 0.02)"],
+[data-theme='light'] div[style*="background: rgba(255, 255, 255, 0.03)"],
+[data-theme='light'] div[style*="background: rgba(255, 255, 255, 0.04)"],
+[data-theme='light'] div[style*="background: rgba(255, 255, 255, 0.05)"],
+[data-theme='light'] div[style*="background: rgba(255, 255, 255, 0.08)"] {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Borders */
+[data-theme='light'] div[style*="border: 1px solid rgba(255, 255, 255"],
+[data-theme='light'] div[style*="border:1px solid rgba(255, 255, 255"],
+[data-theme='light'] div[style*="border-bottom: 1px solid rgba(255, 255, 255"],
+[data-theme='light'] div[style*="border-bottom:1px solid rgba(255, 255, 255"] {
+  border-color: #e2e8f0 !important;
+}
+
+/* Buttons in light mode */
+[data-theme='light'] button[style*="color: #fff"],
+[data-theme='light'] button[style*="color:#fff"],
+[data-theme='light'] button[style*="color: rgb(255, 255, 255)"] {
+  color: #0f172a !important;
+}
+
+[data-theme='light'] button[style*="background: rgba(255, 255, 255, 0.08)"],
+[data-theme='light'] button[style*="background: rgba(255, 255, 255, 0.06)"],
+[data-theme='light'] button[style*="background: rgba(255, 255, 255, 0.05)"],
+[data-theme='light'] button[style*="background: rgba(255, 255, 255, 0.03)"] {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+/* Inputs & Forms */
+[data-theme='light'] input,
+[data-theme='light'] textarea {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+[data-theme='light'] input::placeholder,
+[data-theme='light'] textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Board Center and Tiles */
+[data-theme='light'] div[style*="radial-gradient(circle at 50% 50%"] {
+  background: radial-gradient(circle at 50% 50%, #ffffff 0%, #f1f5f9 100%) !important;
 }
 
 /* ==========================================================================

@@ -45,10 +45,10 @@ export default function Board({
       height: '840px',
       maxWidth: '96vw',
       maxHeight: '96vw',
-      background: '#090d14',
-      border: '3px solid #161c28',
+      background: 'var(--bg-dark)',
+      border: '3px solid var(--border-medium)',
       borderRadius: '20px',
-      boxShadow: '0 0 50px rgba(0, 0, 0, 0.9), inset 0 0 40px rgba(0, 240, 255, 0.05)',
+      boxShadow: '0 0 50px rgba(0, 0, 0, 0.4), inset 0 0 40px rgba(0, 240, 255, 0.05)',
       position: 'relative',
       overflow: 'hidden',
       userSelect: 'none',
@@ -68,8 +68,8 @@ export default function Board({
             style={{
               gridRow: gridPos.row,
               gridColumn: gridPos.col,
-              background: owner ? `${owner.avatarColor}15` : 'rgba(16, 20, 29, 0.85)',
-              border: owner ? `2px solid ${owner.avatarColor}` : '1px solid rgba(255, 255, 255, 0.08)',
+              background: owner ? `${owner.avatarColor}18` : 'var(--bg-surface)',
+              border: owner ? `2px solid ${owner.avatarColor}` : '1px solid var(--border-dim)',
               position: 'relative',
               display: 'flex',
               flexDirection: 'column',
@@ -99,7 +99,7 @@ export default function Board({
               <span style={{
                 fontSize: isCorner ? '11px' : '10px',
                 fontWeight: 800,
-                color: '#fff',
+                color: 'var(--text-main)',
                 display: 'block',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
@@ -139,11 +139,11 @@ export default function Board({
             {/* Price / Rent Footer */}
             <div style={{ textAlign: 'center' }}>
               {tile.type === 'city' ? (
-                <span style={{ fontSize: '9px', color: owner ? owner.avatarColor : '#94a3b8', fontWeight: 700 }}>
+                <span style={{ fontSize: '9px', color: owner ? owner.avatarColor : 'var(--text-dim)', fontWeight: 700 }}>
                   ${prop.ownerId ? (tile.rent[Math.min(prop.level - 1, 4)] || tile.rent[0]) : tile.price}
                 </span>
               ) : (
-                <span style={{ fontSize: '8px', color: '#64748b' }}>
+                <span style={{ fontSize: '8px', color: 'var(--text-muted)' }}>
                   {tile.type.toUpperCase()}
                 </span>
               )}
@@ -193,7 +193,7 @@ export default function Board({
       <div style={{
         gridRow: '2 / 8',
         gridColumn: '2 / 8',
-        background: 'radial-gradient(circle at 50% 50%, rgba(16, 20, 29, 0.95) 0%, rgba(6, 7, 9, 0.98) 100%)',
+        background: 'var(--bg-glass-heavy)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
