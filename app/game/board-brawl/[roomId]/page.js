@@ -599,10 +599,16 @@ export default function BoardBrawlArenaPage() {
             winReason={gameState.winReason}
             players={gameState.players}
             mode={gameState.mode}
-            onReturnToHub={() => router.push('/games')}
+            lobbyReturnRemaining={gameState.lobbyReturnRemaining}
+            autoReturnSeconds={20}
+            onReturnToLobby={() => {
+              sounds.playBuy();
+              socket?.emit('game_action', { roomId, action: 'return_to_lobby' });
+            }}
+            onReturnToHub={() => router.push('/browsergames')}
             onPlayAgain={() => {
               sounds.playBuy();
-              socket?.emit('game_action', { roomId, action: 'start_game' });
+              socket?.emit('game_action', { roomId, action: 'return_to_lobby' });
             }}
           />
         )}

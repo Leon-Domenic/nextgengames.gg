@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
 import { Trophy, Medal, Crown, Flame, Target, ArrowRight, Clock, Coins, Building2, RotateCcw } from 'lucide-react';
 import { TOKEN_ICONS } from '@/lib/board-brawl/characters';
@@ -10,9 +10,37 @@ export default function VictoryPodium({
   winReason,
   players = [],
   mode = 'blitz',
+  lobbyReturnRemaining,
+  autoReturnSeconds = 20,
+  onReturnToLobby,
   onReturnToHub,
   onPlayAgain,
 }) {
+  const initialSeconds = typeof lobbyReturnRemaining === 'number' && lobbyReturnRemaining > 0
+    ? lobbyReturnRemaining
+    : autoReturnSeconds;
+  const [countdown, setCountdown] = useState(initialSeconds);
+
+  useEffect(() => {
+    if (typeof lobbyReturnRemaining === 'number' && lobbyReturnRemaining > 0) {
+      setCountdown(lobbyReturnRemaining);
+    }
+  }, [lobbyReturnRemaining]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          if (onReturnToLobby) onReturnToLobby();
+          else if (onPlayAgain) onPlayAgain();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [onReturnToLobby, onPlayAgain]);
   useEffect(() => {
     // Blast celebratory confetti on podium reveal
     try {
@@ -430,42 +458,55 @@ export default function VictoryPodium({
           </div>
         </div>
 
+        {/* Auto Return Countdown Bar */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          background: 'rgba(56, 189, 248, 0.1)',
+          border: '1px solid rgba(56, 189, 248, 0.35)',
+          borderRadius: '14px',
+          padding: '12px 18px',
+          marginBottom: '20px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Clock size={16} color="#38bdf8" />
+            <span style={{ fontSize: '13px', color: '#e0f2fe', fontWeight: 700 }}>
+              Auto-returning to room lobby in <strong style={{ color: '#38bdf8', fontSize: '15px' }}>{countdown}s</strong>
+            </span>
+          </div>
+
+          <div style={{
+            width: '120px',
+            height: '6px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            borderRadius: '999px',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              width: `${Math.max(0, Math.min(100, (countdown / autoReturnSeconds) * 100))}%`,
+              height: '100%',
+              background: 'linear-gradient(90deg, #38bdf8 0%, #00f0ff 100%)',
+              transition: 'width 1s linear',
+            }} />
+          </div>
+        </div>
+
         {/* Action Buttons */}
         <div style={{ display: 'flex', gap: '10px' }}>
-          {onPlayAgain && (
-            <button
-              onClick={onPlayAgain}
-              style={{
-                flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                padding: '14px',
-                background: 'rgba(255, 255, 255, 0.12)',
-                color: '#ffffff',
-                border: '1.5px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '12px',
-                fontSize: '14px',
-                fontWeight: 800,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <RotateCcw size={16} />
-              PLAY AGAIN
-            </button>
-          )}
-
           <button
-            onClick={onReturnToHub}
+            onClick={() => {
+              if (onReturnToLobby) onReturnToLobby();
+              else if (onPlayAgain) onPlayAgain();
+            }}
             style={{
-              flex: 1,
+              flex: 1.3,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
-              padding: '14px',
+              padding: '14px 18px',
               background: 'linear-gradient(135deg, #00f0ff 0%, #0284c7 100%)',
               color: '#060709',
               border: 'none',
@@ -477,7 +518,30 @@ export default function VictoryPodium({
               transition: 'all 0.15s ease',
             }}
           >
-            RETURN TO GAMES HUB
+            <RotateCcw size={17} />
+            RETURN TO LOBBY ({countdown}s)
+          </button>
+
+          <button
+            onClick={onReturnToHub}
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '14px',
+              background: 'rgba(255, 255, 255, 0.08)',
+              color: '#94a3b8',
+              border: '1.5px solid rgba(255, 255, 255, 0.16)',
+              borderRadius: '12px',
+              fontSize: '14px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            LEAVE TO HUB
             <ArrowRight size={17} />
           </button>
         </div>

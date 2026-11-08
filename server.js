@@ -178,7 +178,12 @@ app.prepare().then(() => {
       if (!game) return;
 
       if (action === 'start_game') {
+        if (game.status === 'finished') {
+          game.returnToLobby();
+        }
         game.startGame();
+      } else if (action === 'return_to_lobby') {
+        game.returnToLobby();
       } else if (action === 'set_game_mode') {
         game.setGameMode(payload?.mode);
       } else if (action === 'add_bot') {
