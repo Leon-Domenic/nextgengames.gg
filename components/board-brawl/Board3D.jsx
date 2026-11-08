@@ -340,7 +340,7 @@ export default function Board3D({
       const delta = clock.getDelta();
       const elapsed = clock.getElapsedTime();
 
-      controls.update();
+      
 
       // Idle Hover for Pawns
       pawnMeshesRef.current.forEach(({ group, isMoving }) => {
