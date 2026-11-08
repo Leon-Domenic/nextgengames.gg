@@ -3,14 +3,16 @@
 import React, { useEffect, useState } from 'react';
 import { CARD_RARITY } from '@/lib/board-brawl/cards';
 import { sounds } from '@/lib/audio';
-import { Sparkles, Zap, Shield, AlertTriangle, ArrowRight, X, Clock } from 'lucide-react';
+import { Sparkles, Zap, Shield, AlertTriangle, ArrowRight, Clock } from 'lucide-react';
+
+const DISPLAY_DURATION_MS = 6000; // 6.0 seconds display time (>= 4.5s requirement)
 
 export default function EventCardModal({
   eventData,
   isMyTurn,
   onDismiss,
 }) {
-  const [countdown, setCountdown] = useState(6);
+  const [remainingMs, setRemainingMs] = useState(DISPLAY_DURATION_MS);
 
   useEffect(() => {
     if (!eventData) return;
@@ -18,25 +20,29 @@ export default function EventCardModal({
       sounds.playCardDraw?.();
     } catch (e) {}
 
-    setCountdown(6);
+    setRemainingMs(DISPLAY_DURATION_MS);
+    const startTime = Date.now();
+
     const interval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+      const elapsed = Date.now() - startTime;
+      const left = Math.max(0, DISPLAY_DURATION_MS - elapsed);
+      setRemainingMs(left);
+      if (left <= 0) {
+        clearInterval(interval);
+        onDismiss?.();
+      }
+    }, 50);
 
     return () => clearInterval(interval);
-  }, [eventData]);
+  }, [eventData, onDismiss]);
 
   if (!eventData || !eventData.card) return null;
 
-  const { card, drawerName, drawerId } = eventData;
+  const { card, drawerName } = eventData;
   const rarityConfig = CARD_RARITY[card.rarity] || CARD_RARITY.COMMON;
   const isDisaster = card.rarity === 'DISASTER';
+  const progressPercent = Math.max(0, Math.min(100, (remainingMs / DISPLAY_DURATION_MS) * 100));
+  const secondsLeft = Math.ceil(remainingMs / 1000);
 
   return (
     <div
@@ -72,7 +78,7 @@ export default function EventCardModal({
           alignItems: 'center',
           textAlign: 'center',
           transform: 'scale(1)',
-          transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          animation: 'modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
         {/* Top Floating Glow Pill */}
@@ -187,13 +193,39 @@ export default function EventCardModal({
           <span>{card.summary}</span>
         </div>
 
+        {/* Animated Countdown Timer Bar */}
+        <div
+          style={{
+            width: '100%',
+            marginTop: '18px',
+            background: 'rgba(255, 255, 255, 0.08)',
+            borderRadius: '999px',
+            height: '6px',
+            overflow: 'hidden',
+            position: 'relative',
+          }}
+        >
+          <div
+            style={{
+              height: '100%',
+              width: `${progressPercent}%`,
+              background: isDisaster
+                ? 'linear-gradient(90deg, #ef4444, #f87171)'
+                : 'linear-gradient(90deg, #38bdf8, #818cf8)',
+              borderRadius: '999px',
+              boxShadow: `0 0 10px ${rarityConfig.border}`,
+              transition: 'width 0.05s linear',
+            }}
+          />
+        </div>
+
         {/* Bottom Countdown & Action Button */}
-        <div style={{ marginTop: '20px', width: '100%' }}>
+        <div style={{ marginTop: '16px', width: '100%' }}>
           <button
             onClick={() => onDismiss?.()}
             style={{
               width: '100%',
-              padding: '12px 0',
+              padding: '13px 0',
               borderRadius: '14px',
               border: 'none',
               background: isDisaster
@@ -214,7 +246,8 @@ export default function EventCardModal({
             onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.02)')}
             onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
           >
-            <span>CONTINUE ({countdown}s)</span>
+            <Clock size={15} />
+            <span>CONTINUE ({secondsLeft}s)</span>
             <ArrowRight size={16} />
           </button>
         </div>

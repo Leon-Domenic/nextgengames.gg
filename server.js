@@ -188,8 +188,8 @@ app.prepare().then(() => {
         game.setGameMode(payload?.mode);
       } else if (action === 'add_bot') {
         const botCount = game.players.filter(p => p.isBot).length + 1;
-        const botNames = ['BaronVonCash', 'Apex-9', 'AxelNitro', 'CaptainMonaco', 'AstroVance', 'LordQuackers', 'HodlKing', 'QueenVictoria', 'Knuckles', 'MadameSolana'];
-        const botTokens = ['hat', 'robot', 'car', 'yacht', 'rocket', 'duck', 'diamond', 'crown', 'brawler', 'mystic'];
+        const botNames = ['BaronVonCash', 'Apex-9', 'AxelNitro', 'CaptainMonaco', 'AstroVance', 'LordQuackers', 'HodlKing', 'QueenVictoria', 'Knuckles', 'MadameSolana', 'Rudolf', 'Cantino'];
+        const botTokens = ['hat', 'robot', 'car', 'yacht', 'rocket', 'duck', 'diamond', 'crown', 'brawler', 'mystic', 'kitten', 'pigeon'];
         const availableColors = ['#00f0ff', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'];
         const usedColors = new Set(game.players.map(p => (p.avatarColor || '').toLowerCase()));
         const botColor = availableColors.find(c => !usedColors.has(c.toLowerCase())) || availableColors[(botCount - 1) % availableColors.length];

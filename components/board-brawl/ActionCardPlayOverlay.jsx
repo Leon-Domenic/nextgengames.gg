@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { CARD_RARITY } from '@/lib/board-brawl/cards';
 import { sounds } from '@/lib/audio';
-import { Zap, Sparkles, Shield, Flame } from 'lucide-react';
+import { Zap, Sparkles, Shield, Flame, Info } from 'lucide-react';
 
 export default function ActionCardPlayOverlay({ lastActionCardPlayed }) {
   const [visible, setVisible] = useState(false);
@@ -21,17 +21,19 @@ export default function ActionCardPlayOverlay({ lastActionCardPlayed }) {
       try { sounds.playCardPlay?.(); } catch (e) {}
     }
 
+    // Retain notification on screen for at least 3.5 seconds (4000ms)
     const timer = setTimeout(() => {
       setVisible(false);
-    }, 3200);
+    }, 4000);
 
     return () => clearTimeout(timer);
   }, [lastActionCardPlayed]);
 
   if (!visible || !data) return null;
 
-  const { card, playerName } = data;
+  const { card, playerName, targetPayload } = data;
   const rarity = CARD_RARITY[card.rarity] || CARD_RARITY.COMMON;
+  const outcomeText = card.summary || card.description || '';
 
   return (
     <div
@@ -42,7 +44,8 @@ export default function ActionCardPlayOverlay({ lastActionCardPlayed }) {
         transform: 'translateX(-50%)',
         zIndex: 80,
         pointerEvents: 'none',
-        animation: 'slideDown 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        animation: 'slideDown 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        maxWidth: '92vw',
       }}
     >
       <div
@@ -50,40 +53,39 @@ export default function ActionCardPlayOverlay({ lastActionCardPlayed }) {
           display: 'flex',
           alignItems: 'center',
           gap: '14px',
-          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%)',
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.96) 0%, rgba(30, 41, 59, 0.96) 100%)',
           backdropFilter: 'blur(16px)',
           border: `2px solid ${rarity.border}`,
-          borderRadius: '999px',
-          padding: '10px 24px',
-          boxShadow: `0 12px 36px rgba(0, 0, 0, 0.5), 0 0 30px ${rarity.border}66`,
+          borderRadius: '20px',
+          padding: '12px 24px',
+          boxShadow: `0 12px 36px rgba(0, 0, 0, 0.55), 0 0 30px ${rarity.border}66`,
           color: '#ffffff',
+          maxWidth: '560px',
         }}
       >
         {/* Card Icon Circle */}
         <div
           style={{
-            width: '42px',
-            height: '42px',
+            width: '46px',
+            height: '46px',
             borderRadius: '50%',
             background: `radial-gradient(circle, ${rarity.border}44 0%, rgba(0,0,0,0.5) 80%)`,
             border: `2px solid ${rarity.border}`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '22px',
+            fontSize: '24px',
+            flexShrink: 0,
           }}
         >
           {card.icon}
         </div>
 
-        {/* Text Details */}
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 700, letterSpacing: '0.04em' }}>
-            <span style={{ color: '#38bdf8', fontWeight: 900 }}>{playerName}</span> PLAYED AN ACTION CARD
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '16px', fontWeight: 900, color: '#f8fafc', letterSpacing: '-0.01em' }}>
-              {card.title}
+        {/* Text Details & Outcome */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '15px', fontWeight: 900, color: '#f8fafc', letterSpacing: '-0.01em' }}>
+              <span style={{ color: '#38bdf8' }}>{playerName}</span> played {card.title}!
             </span>
             <span
               style={{
@@ -95,11 +97,33 @@ export default function ActionCardPlayOverlay({ lastActionCardPlayed }) {
                 borderRadius: '6px',
                 letterSpacing: '0.06em',
                 textTransform: 'uppercase',
+                flexShrink: 0,
               }}
             >
               {card.badge}
             </span>
           </div>
+
+          {/* Clear explanation of what happened / effect */}
+          {outcomeText && (
+            <div
+              style={{
+                fontSize: '12px',
+                color: '#cbd5e1',
+                lineHeight: 1.4,
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <Zap size={12} style={{ color: rarity.border, flexShrink: 0 }} />
+              <span>
+                {outcomeText}
+                {targetPayload?.targetPlayerName && ` (Target: ${targetPayload.targetPlayerName})`}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>

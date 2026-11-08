@@ -35,10 +35,10 @@ export function getTile3DPos(id, totalTiles = 48) {
   // Ensures card top (color header) points to the outside of the board,
   // and card bottom (price pill / track stripe) points to the inside (lawn).
   const sideRotations = [
-    -Math.PI / 4,        // Side 0 (South -> West): flipped 180 deg so color ribbon faces outward
-    (-3 * Math.PI) / 4,  // Side 1 (West -> North): flipped 180 deg so color ribbon faces outward
-    (3 * Math.PI) / 4,   // Side 2 (North -> East): flipped 180 deg so color ribbon faces outward
-    Math.PI / 4,         // Side 3 (East -> South): flipped 180 deg so color ribbon faces outward
+    (3 * Math.PI) / 4,   // Side 0 (South -> West): color header faces outward
+    Math.PI / 4,         // Side 1 (West -> North): color header faces outward
+    -Math.PI / 4,        // Side 2 (North -> East): color header faces outward
+    (-3 * Math.PI) / 4,  // Side 3 (East -> South): color header faces outward
   ];
 
   // Corner orientations: aligned with the diamond sides (45-degree angle) so edges are 100% flush!
@@ -120,6 +120,9 @@ export default function Board3D({
   onSetFestival,
   onThrowTomato,
   onEndTurn,
+  onTileClick,
+  onPawnMovementStart,
+  onPawnMovementComplete,
 }) {
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
@@ -127,12 +130,19 @@ export default function Board3D({
   const cameraRef = useRef(null);
 
   // Mesh & Model Refs
+  const tileMeshesRef = useRef([]);
+  const hoveredMeshRef = useRef(null);
   const pawnMeshesRef = useRef(new Map());
   const buildingsGroupRef = useRef(null);
   const diceGroupRef = useRef(null);
   const diceMeshesRef = useRef([]);
   const diceSimRef = useRef({ active: false, progress: 1.0, targetRotation1: null, targetRotation2: null });
   const lastRollIdRef = useRef(null);
+
+  const onTileClickRef = useRef(onTileClick);
+  useEffect(() => {
+    onTileClickRef.current = onTileClick;
+  }, [onTileClick]);
 
   const [sceneReady, setSceneReady] = useState(false);
 
@@ -323,10 +333,12 @@ export default function Board3D({
 
     // 7. 48 Perimeter 3D Tiles (Monopoly Flush Square Corners & Outward-Facing Slabs)
     const tileGroup = new THREE.Group();
+    const tileMeshes = [];
+
     TILES.forEach((tile) => {
       const p = getTile3DPos(tile.id, TILES.length);
 
-      // Dynamic High-Res Tile Texture
+      // Dynamic High-Res Ultra Crisp Tile Texture (512x512)
       const canvas = document.createElement('canvas');
       canvas.width = 512;
       canvas.height = 512;
@@ -338,10 +350,15 @@ export default function Board3D({
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, 512, 512);
 
-      // Card border
+      // High contrast outer dark border
       ctx.lineWidth = 14;
-      ctx.strokeStyle = '#cbd5e1';
+      ctx.strokeStyle = '#0f172a';
       ctx.strokeRect(7, 7, 498, 498);
+
+      // Inner boundary
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.strokeRect(16, 16, 480, 480);
 
       if (p.isCorner) {
         // Authentic Monopoly Corner Field (Pristine square slab, centered emblem & outward-facing header)
@@ -353,16 +370,15 @@ export default function Board3D({
 
         if (cornerType === 'start' || p.side === 0) {
           // START / GO (South Corner): Emerald ribbon, forward chevron arrow, salary pill
-          // Outer header ribbon (pointing to outer apex)
-          ctx.fillStyle = '#10b981';
+          ctx.fillStyle = '#059669';
           ctx.beginPath();
-          ctx.roundRect(-160, -220, 320, 72, 18);
+          ctx.roundRect(-165, -220, 330, 74, 18);
           ctx.fill();
 
           ctx.fillStyle = '#ffffff';
           ctx.font = '900 46px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('START', 0, -170);
+          ctx.fillText('START', 0, -168);
 
           // Center circular emblem with 🏁
           ctx.beginPath();
@@ -370,14 +386,14 @@ export default function Board3D({
           ctx.fillStyle = '#ecfdf5';
           ctx.fill();
           ctx.lineWidth = 6;
-          ctx.strokeStyle = '#10b981';
+          ctx.strokeStyle = '#059669';
           ctx.stroke();
 
           ctx.font = '76px sans-serif';
           ctx.fillText('🏁', 0, 16);
 
-          // Directional arrow turning along track from incoming to outgoing
-          ctx.fillStyle = '#059669';
+          // Directional arrow
+          ctx.fillStyle = '#047857';
           ctx.beginPath();
           ctx.moveTo(60, 75);
           ctx.lineTo(-40, 75);
@@ -389,37 +405,37 @@ export default function Board3D({
           ctx.closePath();
           ctx.fill();
 
-          // Salary pill (pointing to inner lawn)
-          ctx.fillStyle = '#ecfdf5';
-          ctx.strokeStyle = '#10b981';
-          ctx.lineWidth = 4;
+          // Salary pill (facing center lawn)
+          ctx.fillStyle = '#f8fafc';
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 5;
           ctx.beginPath();
-          ctx.roundRect(-155, 135, 310, 64, 18);
+          ctx.roundRect(-160, 135, 320, 68, 20);
           ctx.fill();
           ctx.stroke();
 
           ctx.fillStyle = '#047857';
-          ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText('COLLECT 200K CR', 0, 178);
+          ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.fillText('COLLECT ₩200K', 0, 180);
 
           // Inner track asphalt curve
-          ctx.fillStyle = '#334155';
+          ctx.fillStyle = '#1e293b';
           ctx.beginPath();
           ctx.roundRect(-90, 222, 180, 28, 14);
           ctx.fill();
-          ctx.fillStyle = '#ffffff';
+          ctx.fillStyle = '#38bdf8';
           ctx.fillRect(-35, 234, 70, 4);
         } else if (cornerType === 'jail' || p.side === 1) {
           // LOST ISLAND / PRISON (West Corner): Tropical island cell & bail
-          ctx.fillStyle = '#f59e0b';
+          ctx.fillStyle = '#d97706';
           ctx.beginPath();
-          ctx.roundRect(-165, -220, 330, 72, 18);
+          ctx.roundRect(-170, -220, 340, 74, 18);
           ctx.fill();
 
           ctx.fillStyle = '#ffffff';
           ctx.font = '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('LOST ISLAND', 0, -170);
+          ctx.fillText('LOST ISLAND', 0, -168);
 
           // Center circular emblem
           ctx.beginPath();
@@ -427,43 +443,43 @@ export default function Board3D({
           ctx.fillStyle = '#fffbeb';
           ctx.fill();
           ctx.lineWidth = 6;
-          ctx.strokeStyle = '#f59e0b';
+          ctx.strokeStyle = '#d97706';
           ctx.stroke();
 
           ctx.font = '78px sans-serif';
           ctx.fillText('🌴', 0, 16);
 
           // Bail pill
-          ctx.fillStyle = '#fffbeb';
-          ctx.strokeStyle = '#f59e0b';
-          ctx.lineWidth = 4;
+          ctx.fillStyle = '#f8fafc';
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 5;
           ctx.beginPath();
-          ctx.roundRect(-150, 135, 300, 64, 18);
+          ctx.roundRect(-155, 135, 310, 68, 20);
           ctx.fill();
           ctx.stroke();
 
           ctx.fillStyle = '#b45309';
-          ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText('BAIL: 100K CR', 0, 178);
+          ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.fillText('BAIL: ₩100K', 0, 180);
 
           // Inner track asphalt curve
-          ctx.fillStyle = '#334155';
+          ctx.fillStyle = '#1e293b';
           ctx.beginPath();
           ctx.roundRect(-90, 222, 180, 28, 14);
           ctx.fill();
-          ctx.fillStyle = '#ffffff';
+          ctx.fillStyle = '#38bdf8';
           ctx.fillRect(-35, 234, 70, 4);
         } else if (cornerType === 'festival' || p.side === 2) {
           // CHAMPIONSHIPS / FESTIVAL (North Corner): Trophy & 2X Rent Host
-          ctx.fillStyle = '#8b5cf6';
+          ctx.fillStyle = '#7c3aed';
           ctx.beginPath();
-          ctx.roundRect(-170, -220, 340, 72, 18);
+          ctx.roundRect(-175, -220, 350, 74, 18);
           ctx.fill();
 
           ctx.fillStyle = '#ffffff';
           ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('CHAMPIONSHIPS', 0, -170);
+          ctx.fillText('CHAMPIONSHIPS', 0, -168);
 
           // Center circular emblem
           ctx.beginPath();
@@ -471,43 +487,43 @@ export default function Board3D({
           ctx.fillStyle = '#f5f3ff';
           ctx.fill();
           ctx.lineWidth = 6;
-          ctx.strokeStyle = '#8b5cf6';
+          ctx.strokeStyle = '#7c3aed';
           ctx.stroke();
 
           ctx.font = '78px sans-serif';
           ctx.fillText('🏆', 0, 16);
 
           // 2X Rent Host pill
-          ctx.fillStyle = '#f5f3ff';
-          ctx.strokeStyle = '#8b5cf6';
-          ctx.lineWidth = 4;
+          ctx.fillStyle = '#f8fafc';
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 5;
           ctx.beginPath();
-          ctx.roundRect(-155, 135, 310, 64, 18);
+          ctx.roundRect(-160, 135, 320, 68, 20);
           ctx.fill();
           ctx.stroke();
 
           ctx.fillStyle = '#6d28d9';
-          ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText('2X RENT HOST', 0, 178);
+          ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.fillText('2X RENT HOST', 0, 180);
 
           // Inner track asphalt curve
-          ctx.fillStyle = '#334155';
+          ctx.fillStyle = '#1e293b';
           ctx.beginPath();
           ctx.roundRect(-90, 222, 180, 28, 14);
           ctx.fill();
-          ctx.fillStyle = '#ffffff';
+          ctx.fillStyle = '#38bdf8';
           ctx.fillRect(-35, 234, 70, 4);
         } else {
           // WORLD TOUR / AIRPORT (East Corner): Supersonic airliner & fly anywhere
-          ctx.fillStyle = '#06b6d4';
+          ctx.fillStyle = '#0891b2';
           ctx.beginPath();
-          ctx.roundRect(-165, -220, 330, 72, 18);
+          ctx.roundRect(-170, -220, 340, 74, 18);
           ctx.fill();
 
           ctx.fillStyle = '#ffffff';
           ctx.font = '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('WORLD TOUR', 0, -170);
+          ctx.fillText('WORLD TOUR', 0, -168);
 
           // Center circular emblem
           ctx.beginPath();
@@ -515,116 +531,140 @@ export default function Board3D({
           ctx.fillStyle = '#ecfeff';
           ctx.fill();
           ctx.lineWidth = 6;
-          ctx.strokeStyle = '#06b6d4';
+          ctx.strokeStyle = '#0891b2';
           ctx.stroke();
 
           ctx.font = '78px sans-serif';
           ctx.fillText('✈️', 0, 16);
 
           // Fly Anywhere pill
-          ctx.fillStyle = '#ecfeff';
-          ctx.strokeStyle = '#06b6d4';
-          ctx.lineWidth = 4;
+          ctx.fillStyle = '#f8fafc';
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 5;
           ctx.beginPath();
-          ctx.roundRect(-155, 135, 310, 64, 18);
+          ctx.roundRect(-160, 135, 320, 68, 20);
           ctx.fill();
           ctx.stroke();
 
           ctx.fillStyle = '#0e7490';
-          ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText('FLY ANYWHERE', 0, 178);
+          ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.fillText('FLY ANYWHERE', 0, 180);
 
           // Inner track asphalt curve
-          ctx.fillStyle = '#334155';
+          ctx.fillStyle = '#1e293b';
           ctx.beginPath();
           ctx.roundRect(-90, 222, 180, 28, 14);
           ctx.fill();
-          ctx.fillStyle = '#ffffff';
+          ctx.fillStyle = '#38bdf8';
           ctx.fillRect(-35, 234, 70, 4);
         }
 
         ctx.restore();
       } else if (tile.type === 'city') {
-        // Outer district color flag / ribbon (top 130px) - FACES OUTSIDE OF BOARD
+        // District color ribbon (top 132px) - FACES OUTSIDE OF BOARD
         ctx.fillStyle = tile.color || '#3b82f6';
-        ctx.fillRect(14, 14, 484, 126);
+        ctx.fillRect(18, 18, 476, 126);
 
-        // Country flag and district group
+        // Subtle gloss gradient
+        const gloss = ctx.createLinearGradient(0, 18, 0, 80);
+        gloss.addColorStop(0, 'rgba(255, 255, 255, 0.35)');
+        gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = gloss;
+        ctx.fillRect(18, 18, 476, 62);
+
+        // Divider line below header
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(18, 142, 476, 4);
+
+        // Country flag and district name in bold white
         ctx.fillStyle = '#ffffff';
         ctx.font = '900 42px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(`${tile.flag || ''} ${tile.country || ''}`, 256, 82);
+        ctx.fillText(`${tile.flag || ''} ${tile.country || ''}`, 256, 88);
 
-        // City name in bold clean dark slate
+        // City name in ultra-bold dark slate
         ctx.fillStyle = '#0f172a';
         const name = tile.name.toUpperCase();
-        const fontSize = name.length > 9 ? 46 : name.length > 7 ? 52 : 60;
+        const fontSize = name.length > 9 ? 48 : name.length > 7 ? 54 : 64;
         ctx.font = `900 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-        ctx.fillText(name, 256, 252);
+        ctx.fillText(name, 256, 246);
 
-        // Price tag pill
+        // Ultra high-contrast bold price pill
         ctx.fillStyle = '#f8fafc';
-        ctx.strokeStyle = '#94a3b8';
-        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 5;
         ctx.beginPath();
-        ctx.roundRect(66, 335, 380, 90, 22);
+        ctx.roundRect(50, 325, 412, 94, 24);
         ctx.fill();
         ctx.stroke();
 
         ctx.fillStyle = '#0f172a';
-        ctx.font = '900 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        const displayPrice = tile.price >= 1000 ? `${Math.round(tile.price / 1000)}K CR` : `${tile.price} CR`;
-        ctx.fillText(displayPrice, 256, 400);
+        ctx.font = '900 54px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        const displayPrice = tile.price >= 1000000
+          ? `₩${(tile.price / 1000000).toFixed(1)}M`
+          : `₩${Math.round(tile.price / 1000)}K`;
+        ctx.fillText(displayPrice, 256, 392);
 
-        // Asphalt track stripe at bottom (inner edge facing center lawn)
-        ctx.fillStyle = '#334155';
-        ctx.fillRect(14, 445, 484, 53);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(150, 468, 212, 8);
+        // Asphalt track stripe at inner edge
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(18, 444, 476, 50);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(150, 466, 212, 6);
       } else {
         // Perimeter Event Squares (Chance, Armory, Tax) - FACES OUTSIDE OF BOARD
-        const taxSub = tile.amount ? `PAY ${Math.round(tile.amount / 1000)}K CR` : 'PAY TAX';
+        const taxSub = tile.amount ? `PAY ₩${Math.round(tile.amount / 1000)}K` : 'PAY TAX';
         const eventConfig = {
           chance: { color: '#ec4899', icon: '❓', title: 'CHANCE', sub: 'LUCKY DRAW', subColor: '#be185d' },
-          armory: { color: '#ef4444', icon: '⚔️', title: 'ARMORY', sub: 'ACTION CARD', subColor: '#b91c1c' },
-          tax: { color: '#64748b', icon: '🏛️', title: 'CITY TAX', sub: taxSub, subColor: '#334155' },
+          armory: { color: '#ef4444', icon: '🍅', title: 'ARMORY', sub: '+2 TOMATOES', subColor: '#b91c1c' },
+          tax: { color: '#475569', icon: '💸', title: tile.name.toUpperCase(), sub: taxSub, subColor: '#b91c1c' },
         };
         const cfg = eventConfig[tile.type] || {
-          color: '#38bdf8',
+          color: '#0284c7',
           icon: tile.icon || '🎯',
           title: tile.name.toUpperCase(),
-          sub: tile.amount ? `PAY ${Math.round(tile.amount / 1000)}K CR` : (tile.type || '').toUpperCase(),
-          subColor: '#0284c7',
+          sub: tile.amount ? `PAY ₩${Math.round(tile.amount / 1000)}K` : (tile.type || '').toUpperCase(),
+          subColor: '#0369a1',
         };
 
         ctx.fillStyle = cfg.color;
-        ctx.fillRect(14, 14, 484, 126);
+        ctx.fillRect(18, 18, 476, 126);
+
+        // Subtle gloss gradient
+        const gloss = ctx.createLinearGradient(0, 18, 0, 80);
+        gloss.addColorStop(0, 'rgba(255, 255, 255, 0.35)');
+        gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = gloss;
+        ctx.fillRect(18, 18, 476, 62);
+
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(18, 142, 476, 4);
 
         ctx.fillStyle = '#ffffff';
-        ctx.font = '900 46px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.font = '900 42px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(cfg.title, 256, 88);
+        ctx.fillText(cfg.title, 256, 90);
 
         ctx.font = '96px sans-serif';
-        ctx.fillText(cfg.icon, 256, 258);
+        ctx.fillText(cfg.icon, 256, 256);
 
+        // Pill box
         ctx.fillStyle = '#f8fafc';
-        ctx.strokeStyle = '#94a3b8';
-        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 5;
         ctx.beginPath();
-        ctx.roundRect(56, 335, 400, 92, 22);
+        ctx.roundRect(50, 325, 412, 94, 24);
         ctx.fill();
         ctx.stroke();
 
         ctx.fillStyle = cfg.subColor;
-        ctx.font = '900 44px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.fillText(cfg.sub, 256, 398);
+        ctx.font = '900 46px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillText(cfg.sub, 256, 390);
 
-        // Asphalt track stripe at bottom
-        ctx.fillStyle = '#334155';
-        ctx.fillRect(14, 445, 484, 53);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(150, 468, 212, 8);
+        // Asphalt track stripe at inner edge
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(18, 444, 476, 50);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(150, 466, 212, 6);
       }
 
       const texture = new THREE.CanvasTexture(canvas);
@@ -638,9 +678,9 @@ export default function Board3D({
       // Street is rectangle (width == streetWidth, length == trackDepth)
       const tileGeom = new THREE.BoxGeometry(p.width, 0.35, p.length);
       const sideMat = new THREE.MeshStandardMaterial({
-        color: 0xe2e8f0,
+        color: 0x0f172a,
         roughness: 0.5,
-        metalness: 0.05,
+        metalness: 0.1,
       });
       const topMat = new THREE.MeshStandardMaterial({
         map: texture,
@@ -654,9 +694,13 @@ export default function Board3D({
       tileMesh.position.set(p.x, 0.17, p.z);
       tileMesh.rotation.y = p.rotationY;
       tileMesh.receiveShadow = true;
+      tileMesh.userData = { tileId: tile.id, isTile: true };
+
       tileGroup.add(tileMesh);
+      tileMeshes.push(tileMesh);
     });
 
+    tileMeshesRef.current = tileMeshes;
     scene.add(tileGroup);
 
     // 8. Dynamic 3D Buildings Group
@@ -760,6 +804,96 @@ export default function Board3D({
     };
     window.addEventListener('ngg_settings_changed', handleSettingsUpdate);
 
+    // 10. Interactive Raycaster for Tile Hover & Click Inspection
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let pointerDownPos = { x: 0, y: 0 };
+
+    const getRaycastIntersects = (clientX, clientY) => {
+      if (!mountNode || !cameraRef.current) return [];
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(mouse, cameraRef.current);
+      return raycaster.intersectObjects(tileMeshesRef.current, false);
+    };
+
+    const handlePointerMove = (e) => {
+      const intersects = getRaycastIntersects(e.clientX, e.clientY);
+
+      if (intersects.length > 0) {
+        const hitMesh = intersects[0].object;
+        if (hoveredMeshRef.current !== hitMesh) {
+          if (hoveredMeshRef.current) {
+            const prevMat = hoveredMeshRef.current.material?.[2];
+            if (prevMat?.emissive) {
+              prevMat.emissive.setHex(0x000000);
+              prevMat.emissiveIntensity = 0;
+            }
+            hoveredMeshRef.current.position.y = 0.17;
+          }
+
+          hoveredMeshRef.current = hitMesh;
+          const topMat = hitMesh.material?.[2];
+          if (topMat?.emissive) {
+            topMat.emissive.setHex(0x38bdf8);
+            topMat.emissiveIntensity = 0.35;
+          }
+          hitMesh.position.y = 0.32;
+          renderer.domElement.style.cursor = 'pointer';
+        }
+      } else {
+        if (hoveredMeshRef.current) {
+          const prevMat = hoveredMeshRef.current.material?.[2];
+          if (prevMat?.emissive) {
+            prevMat.emissive.setHex(0x000000);
+            prevMat.emissiveIntensity = 0;
+          }
+          hoveredMeshRef.current.position.y = 0.17;
+          hoveredMeshRef.current = null;
+          renderer.domElement.style.cursor = 'default';
+        }
+      }
+    };
+
+    const handlePointerDown = (e) => {
+      pointerDownPos = { x: e.clientX, y: e.clientY };
+    };
+
+    const handlePointerUp = (e) => {
+      const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+      if (dist > 8) return; // Ignore drag/swipe moves
+
+      const intersects = getRaycastIntersects(e.clientX, e.clientY);
+      if (intersects.length > 0) {
+        const hitMesh = intersects[0].object;
+        const tileId = hitMesh.userData?.tileId;
+        if (tileId !== undefined && tileId !== null) {
+          sounds.playClick?.();
+          onTileClickRef.current?.(tileId);
+        }
+      }
+    };
+
+    const handlePointerLeave = () => {
+      if (hoveredMeshRef.current) {
+        const prevMat = hoveredMeshRef.current.material?.[2];
+        if (prevMat?.emissive) {
+          prevMat.emissive.setHex(0x000000);
+          prevMat.emissiveIntensity = 0;
+        }
+        hoveredMeshRef.current.position.y = 0.17;
+        hoveredMeshRef.current = null;
+        renderer.domElement.style.cursor = 'default';
+      }
+    };
+
+    const domEl = renderer.domElement;
+    domEl.addEventListener('pointermove', handlePointerMove);
+    domEl.addEventListener('pointerdown', handlePointerDown);
+    domEl.addEventListener('pointerup', handlePointerUp);
+    domEl.addEventListener('pointerleave', handlePointerLeave);
+
     // Render Loop
     let animationFrameId;
     let clock = new THREE.Clock();
@@ -814,6 +948,10 @@ export default function Board3D({
     setSceneReady(true);
 
     return () => {
+      domEl.removeEventListener('pointermove', handlePointerMove);
+      domEl.removeEventListener('pointerdown', handlePointerDown);
+      domEl.removeEventListener('pointerup', handlePointerUp);
+      domEl.removeEventListener('pointerleave', handlePointerLeave);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('ngg_settings_changed', handleSettingsUpdate);
       if (resizeObserver) resizeObserver.disconnect();
@@ -938,6 +1076,8 @@ export default function Board3D({
         const fromTile = entry.currentTile;
         const toTile = player.position;
 
+        onPawnMovementStart?.(player.id, toTile);
+
         const path = [];
         let curr = fromTile;
         const totalTileCount = TILES.length || 48;
@@ -946,12 +1086,46 @@ export default function Board3D({
           path.push(curr);
         }
 
+        if (path.length === 0) {
+          entry.currentTile = toTile;
+          entry.targetTile = toTile;
+          entry.isMoving = false;
+          onPawnMovementComplete?.(player.id, toTile);
+          return;
+        }
+
         let stepIndex = 0;
         const hopToNext = () => {
           if (stepIndex >= path.length) {
-            entry.currentTile = toTile;
-            entry.targetTile = toTile;
-            entry.isMoving = false;
+            // Landing thump sound and visual squash-and-stretch landing impact (350ms)
+            sounds.playPawnLand?.();
+
+            const origScaleY = entry.group.scale.y;
+            const origScaleXZ = entry.group.scale.x;
+            const landStartTime = performance.now();
+            const landDuration = 350;
+
+            const landAnim = () => {
+              const now = performance.now();
+              const lp = Math.min(1.0, (now - landStartTime) / landDuration);
+              const squash = Math.sin(lp * Math.PI) * 0.22;
+              entry.group.scale.y = origScaleY * (1.0 - squash);
+              entry.group.scale.x = origScaleXZ * (1.0 + squash * 0.45);
+              entry.group.scale.z = origScaleXZ * (1.0 + squash * 0.45);
+              entry.group.position.y = 0.25 - squash * 0.12;
+
+              if (lp < 1.0) {
+                requestAnimationFrame(landAnim);
+              } else {
+                entry.group.scale.set(origScaleXZ, origScaleY, origScaleXZ);
+                entry.group.position.y = 0.25;
+                entry.currentTile = toTile;
+                entry.targetTile = toTile;
+                entry.isMoving = false;
+                onPawnMovementComplete?.(player.id, toTile);
+              }
+            };
+            landAnim();
             return;
           }
 
@@ -987,7 +1161,9 @@ export default function Board3D({
           stepAnim();
         };
 
-        hopToNext();
+        // Smooth Cadence: Dice settles (600ms) -> Pawn hops tile-by-tile
+        const diceDelay = diceSimRef.current?.active ? 600 : 80;
+        setTimeout(hopToNext, diceDelay);
       }
     });
 
@@ -999,7 +1175,7 @@ export default function Board3D({
         pawnMap.delete(id);
       }
     });
-  }, [players, sceneReady]);
+  }, [players, sceneReady, onPawnMovementStart, onPawnMovementComplete]);
 
   // Trigger 3D Dice Simulation on NEW Roll ID
   const triggerDiceRoll = useCallback((val1, val2, skinId = 'classic_red') => {

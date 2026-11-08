@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { getSocket } from '@/lib/socket';
@@ -21,6 +21,7 @@ import ActionCardPlayOverlay from '@/components/board-brawl/ActionCardPlayOverla
 import FestivalSelectModal from '@/components/board-brawl/FestivalSelectModal';
 import WorldTourSelectModal from '@/components/board-brawl/WorldTourSelectModal';
 import DebtLiquidationModal from '@/components/board-brawl/DebtLiquidationModal';
+import TileInfoModal from '@/components/board-brawl/TileInfoModal';
 import EmojiReactionPicker from '@/components/board-brawl/EmojiReactionPicker';
 import EmojiReactionBubble from '@/components/board-brawl/EmojiReactionBubble';
 import {
@@ -58,8 +59,36 @@ export default function BoardBrawlArenaPage() {
   const [showChatPanel, setShowChatPanel] = useState(false);
   const [showInGameShop, setShowInGameShop] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [inspectedTileId, setInspectedTileId] = useState(null);
   const [playerReactions, setPlayerReactions] = useState({});
   const [localMatchTimeRemaining, setLocalMatchTimeRemaining] = useState(1200);
+
+  // Pawn Movement Arrival & Modal Deferral State
+  const [movementPendingArrival, setMovementPendingArrival] = useState(false);
+  const landedPositionsRef = useRef({});
+  const safetyArrivalTimerRef = useRef(null);
+
+  const handlePawnMovementStart = useCallback((playerId, targetTileId) => {
+    setMovementPendingArrival(true);
+    if (safetyArrivalTimerRef.current) clearTimeout(safetyArrivalTimerRef.current);
+    safetyArrivalTimerRef.current = setTimeout(() => {
+      setMovementPendingArrival(false);
+    }, 8000);
+  }, []);
+
+  const handlePawnMovementComplete = useCallback((playerId, targetTileId) => {
+    if (landedPositionsRef.current) {
+      landedPositionsRef.current[playerId] = targetTileId;
+    }
+    if (safetyArrivalTimerRef.current) {
+      clearTimeout(safetyArrivalTimerRef.current);
+    }
+    // Defer showing ActionModal, EventCardModal, FestivalSelectModal, and WorldTourSelectModal
+    // until the pawn has physically arrived and landed on the target tile (+ 400ms pause for visual landing impact)
+    setTimeout(() => {
+      setMovementPendingArrival(false);
+    }, 400);
+  }, []);
 
   // Sync match timer with server state
   useEffect(() => {
@@ -167,6 +196,25 @@ export default function BoardBrawlArenaPage() {
 
     const handleStateUpdate = (newState) => {
       if (newState && newState.roomId === roomId) {
+        if (newState.players && landedPositionsRef.current) {
+          const isMoving = newState.players.some(p => {
+            const recorded = landedPositionsRef.current[p.id];
+            return recorded !== undefined && recorded !== p.position;
+          });
+          if (isMoving) {
+            setMovementPendingArrival(true);
+            if (safetyArrivalTimerRef.current) clearTimeout(safetyArrivalTimerRef.current);
+            safetyArrivalTimerRef.current = setTimeout(() => {
+              setMovementPendingArrival(false);
+            }, 8000);
+          } else {
+            newState.players.forEach(p => {
+              if (landedPositionsRef.current[p.id] === undefined) {
+                landedPositionsRef.current[p.id] = p.position;
+              }
+            });
+          }
+        }
         setGameState(newState);
       }
     };
@@ -373,6 +421,7 @@ export default function BoardBrawlArenaPage() {
 
   const handleRollDice = () => {
     if (!isMyTurn || !activePlayerId) return;
+    setMovementPendingArrival(true);
     socket.emit('game_action', { roomId, action: 'roll_dice', payload: { playerId: activePlayerId } });
   };
 
@@ -529,6 +578,20 @@ export default function BoardBrawlArenaPage() {
         userSelect: 'none',
         fontFamily: 'system-ui, -apple-system, sans-serif',
       }}>
+        <style jsx global>{`
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          @keyframes modalSlideUp {
+            from { opacity: 0; transform: translateY(24px) scale(0.96); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+          }
+          @keyframes slideDown {
+            from { opacity: 0; transform: translate(-50%, -18px) scale(0.95); }
+            to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+          }
+        `}</style>
         {/* Tomato Sabotage Overlay with Trajectory Flight & Screen Splat */}
         <TomatoOverlay
           splatEvent={splatEvent}
@@ -541,11 +604,13 @@ export default function BoardBrawlArenaPage() {
         <ActionCardPlayOverlay lastActionCardPlayed={actionCardPlayEvent || gameState.lastActionCardPlayed} />
 
         {/* Cinematic Event Card Draw Modal */}
-        <EventCardModal
-          eventData={gameState.activeEventCard}
-          isMyTurn={isMyTurn}
-          onDismiss={handleDismissEventCard}
-        />
+        {!movementPendingArrival && (
+          <EventCardModal
+            eventData={gameState.activeEventCard}
+            isMyTurn={isMyTurn}
+            onDismiss={handleDismissEventCard}
+          />
+        )}
 
         {/* Hand Action Cards Dock */}
         {gameState.status === 'playing' && myPlayerObj && (
@@ -559,7 +624,7 @@ export default function BoardBrawlArenaPage() {
         )}
 
         {/* World Championship Festival Select Modal */}
-        {isMyTurn && gameState.turnState === 'festival_select' && (
+        {isMyTurn && gameState.turnState === 'festival_select' && !movementPendingArrival && (
           <FestivalSelectModal
             properties={gameState.properties}
             myPlayer={myPlayerObj}
@@ -570,7 +635,7 @@ export default function BoardBrawlArenaPage() {
         )}
 
         {/* World Tour Flight Destination Select Modal */}
-        {isMyTurn && gameState.turnState === 'flight_select' && (
+        {isMyTurn && gameState.turnState === 'flight_select' && !movementPendingArrival && (
           <WorldTourSelectModal
             properties={gameState.properties}
             myPlayer={myPlayerObj}
@@ -581,7 +646,7 @@ export default function BoardBrawlArenaPage() {
         )}
 
         {/* Debt Liquidation / Insolvency Modal */}
-        {isMyTurn && gameState.turnState === 'debt' && (
+        {isMyTurn && gameState.turnState === 'debt' && !movementPendingArrival && (
           <DebtLiquidationModal
             pendingDebt={gameState.pendingDebt}
             myPlayer={myPlayerObj}
@@ -1094,10 +1159,22 @@ export default function BoardBrawlArenaPage() {
               lastDiceResult={gameState.lastDiceResult}
               diceSkin={myPlayerObj?.diceSkin || equippedDiceSkin}
               centerContent={null}
+              onTileClick={(tileId) => setInspectedTileId(tileId)}
+              onPawnMovementStart={handlePawnMovementStart}
+              onPawnMovementComplete={handlePawnMovementComplete}
+            />
+
+            {/* Clickable 3D Tile Info Inspector Modal */}
+            <TileInfoModal
+              isOpen={inspectedTileId !== null}
+              tileId={inspectedTileId}
+              properties={gameState.properties}
+              players={gameState.players}
+              onClose={() => setInspectedTileId(null)}
             />
 
             {/* Floating In-Game Roll Control (Only on active player's roll turn) */}
-            {isMyTurn && gameState.turnState === 'roll' && (
+            {isMyTurn && gameState.turnState === 'roll' && !movementPendingArrival && (
               <div style={{
                 position: 'absolute',
                 bottom: '36px',
@@ -1121,7 +1198,7 @@ export default function BoardBrawlArenaPage() {
             )}
 
             {/* Centered Property Card Popup Overlay */}
-            {isMyTurn && gameState.turnState === 'action' && (
+            {isMyTurn && gameState.turnState === 'action' && !movementPendingArrival && (
               <div style={{
                 position: 'fixed',
                 inset: 0,
@@ -1132,6 +1209,7 @@ export default function BoardBrawlArenaPage() {
                 padding: '16px',
                 backgroundColor: 'rgba(0, 0, 0, 0.45)',
                 backdropFilter: 'blur(3px)',
+                animation: 'fadeIn 0.3s ease-out',
               }}>
                 <ActionModal
                   currentTileId={currentPlayer?.position}

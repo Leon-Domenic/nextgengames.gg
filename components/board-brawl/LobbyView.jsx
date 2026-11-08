@@ -163,7 +163,13 @@ export default function LobbyView({
               justifyContent: 'center',
               fontSize: '22px',
             }}>
-              {myPlayer?.avatarToken ? (CHARACTERS.find(c => c.id === myPlayer.avatarToken)?.icon || '🎩') : '🎩'}
+              {(() => {
+                const char = myPlayer?.avatarToken ? CHARACTERS.find(c => c.id === myPlayer.avatarToken) : null;
+                if (char?.avatar) {
+                  return <img src={char.avatar} alt={char.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} />;
+                }
+                return char?.icon || '🎩';
+              })()}
             </div>
             <div>
               <div style={{ fontSize: '14px', fontWeight: 900, color: '#ffffff', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
@@ -650,7 +656,20 @@ export default function LobbyView({
                     position: 'relative',
                   }}
                 >
-                  {activeChar?.icon || '🎩'}
+                  {activeChar?.avatar ? (
+                    <img
+                      src={activeChar.avatar}
+                      alt={activeChar.name}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        borderRadius: '8px',
+                      }}
+                    />
+                  ) : (
+                    activeChar?.icon || '🎩'
+                  )}
                   <EmojiReactionBubble reaction={playerReactions?.[player.id]} position="top-left" />
                 </div>
 
@@ -770,7 +789,20 @@ export default function LobbyView({
                     onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.06)'}
                     onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                   >
-                    {activeChar?.icon || '🎩'}
+                    {activeChar?.avatar ? (
+                    <img
+                      src={activeChar.avatar}
+                      alt={activeChar.name}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        borderRadius: '8px',
+                      }}
+                    />
+                  ) : (
+                    activeChar?.icon || '🎩'
+                  )}
 
                     {/* Reaction Bubble Displayed Next to Avatar */}
                     <EmojiReactionBubble reaction={playerReactions?.[player.id]} position="pedestal" />
