@@ -151,7 +151,7 @@ export function AuthProvider({ children }) {
           </p>
           <div style={{ display: 'flex', gap: '10px' }}>
             <a
-              href={`/game/board-brawl/${incomingInvite.roomId}`}
+              href={`/browsergames/board-brawl/${incomingInvite.roomId}`}
               style={{
                 flex: 1,
                 padding: '8px 12px',

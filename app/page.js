@@ -15,7 +15,7 @@ export default function HomePage() {
   const [guestLoading, setGuestLoading] = useState(false);
 
   const handleCreateLobby = () => {
-    router.push('/friends');
+    router.push('/browsergames');
   };
 
   const handleJoinByCode = (e) => {
@@ -121,7 +121,7 @@ export default function HomePage() {
             }}
           >
             <Users size={20} />
-            OPEN /FRIENDS & PARTY LOBBY
+            BROWSER GAMES & PARTY LOBBY
           </button>
 
           <button

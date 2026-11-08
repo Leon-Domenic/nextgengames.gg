@@ -20,7 +20,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(username, password);
-      router.push('/friends');
+      router.push('/browsergames');
     } catch (err) {
       setError(err.message || 'Login failed');
     } finally {
@@ -33,7 +33,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await playAsGuest();
-      router.push('/friends');
+      router.push('/browsergames');
     } catch (err) {
       setError(err.message || 'Guest login failed');
     } finally {

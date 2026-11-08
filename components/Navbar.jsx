@@ -90,7 +90,7 @@ export default function Navbar() {
             Browser Games
           </Link>
 
-          <Link href="/friends" style={{
+          <Link href="/browsergames#friends" style={{
             color: 'var(--text-main)',
             textDecoration: 'none',
             fontSize: '14px',
@@ -101,7 +101,7 @@ export default function Navbar() {
             position: 'relative',
           }}>
             <Users size={16} color="#00f0ff" />
-            Friends & Parties
+            Squad & Parties
             {onlineFriendsCount > 0 && (
               <span style={{
                 background: '#00ff88',

@@ -15,7 +15,7 @@ export default function JoinLobbyPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace(`/game/board-brawl/${code}`);
+      router.replace(`/browsergames/board-brawl/${code}`);
     }
   }, [user, loading, code, router]);
 
@@ -24,7 +24,7 @@ export default function JoinLobbyPage() {
     setSubmitting(true);
     try {
       await playAsGuest(guestName || null);
-      router.replace(`/game/board-brawl/${code}`);
+      router.replace(`/browsergames/board-brawl/${code}`);
     } catch (err) {
       alert(err.message || 'Failed to join');
       setSubmitting(false);

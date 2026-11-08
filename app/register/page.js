@@ -32,7 +32,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register(username, password, selectedColor, selectedToken);
-      router.push('/friends');
+      router.push('/browsergames');
     } catch (err) {
       setError(err.message || 'Registration failed');
     } finally {
@@ -45,7 +45,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await playAsGuest();
-      router.push('/friends');
+      router.push('/browsergames');
     } catch (err) {
       setError(err.message || 'Guest login failed');
     } finally {
