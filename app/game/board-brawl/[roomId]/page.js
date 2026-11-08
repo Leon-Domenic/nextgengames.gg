@@ -275,17 +275,197 @@ export default function BoardBrawlArenaPage() {
         />
       )}
 
+      {/* Top Players Header Bar (Inspired by the repo's clean HUD) */}
       <div style={{
         maxWidth: '1440px',
         margin: '0 auto',
-        padding: '20px',
-        display: 'grid',
-        gridTemplateColumns: '1fr 380px',
-        gap: '24px',
-        minHeight: 'calc(100vh - 70px)',
+        padding: '16px 20px 0 20px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px',
       }}>
-        {/* Left: The Board Brawl Arena */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        {/* Left: Brand & Room Tag */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            background: 'rgba(16, 20, 29, 0.9)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '12px',
+            padding: '8px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+          }}>
+            <span style={{ fontSize: '18px' }}>🎲</span>
+            <div>
+              <div style={{ fontSize: '10px', color: '#00f0ff', fontWeight: 900, letterSpacing: '0.5px' }}>BOARD BRAWL</div>
+              <div style={{ fontSize: '14px', fontWeight: 900, color: '#fff' }}>Room #{roomId}</div>
+            </div>
+            <button
+              onClick={copyInviteLink}
+              title="Copy Invite Link"
+              style={{
+                background: copiedLink ? '#00ff88' : 'rgba(255, 255, 255, 0.08)',
+                color: copiedLink ? '#060709' : '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '6px 10px',
+                fontSize: '11px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                marginLeft: '6px',
+              }}
+            >
+              {copiedLink ? <CheckCheck size={12} /> : <Copy size={12} />}
+              {copiedLink ? 'Copied' : 'Invite'}
+            </button>
+          </div>
+        </div>
+
+        {/* Right: Players Roster Pills */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          overflowX: 'auto',
+          paddingBottom: '4px',
+        }}>
+          {gameState.players.map((p, idx) => {
+            const isCurrent = idx === gameState.activePlayerIndex && gameState.status === 'playing';
+            const isMe = p.id === user?.id;
+
+            return (
+              <div
+                key={p.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '6px 12px 6px 6px',
+                  borderRadius: '30px',
+                  background: isCurrent
+                    ? 'rgba(0, 240, 255, 0.12)'
+                    : 'rgba(16, 20, 29, 0.85)',
+                  border: isCurrent
+                    ? `2px solid ${p.avatarColor || '#00f0ff'}`
+                    : '1px solid rgba(255, 255, 255, 0.08)',
+                  boxShadow: isCurrent
+                    ? `0 0 20px ${p.avatarColor || '#00f0ff'}44`
+                    : '0 2px 8px rgba(0, 0, 0, 0.3)',
+                  transition: 'all 0.2s ease',
+                  opacity: p.isBankrupt ? 0.4 : 1,
+                }}
+              >
+                {/* Character Avatar Circle */}
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  background: `${p.avatarColor || '#00f0ff'}33`,
+                  border: `2px solid ${p.avatarColor || '#00f0ff'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '16px',
+                  position: 'relative',
+                }}>
+                  {TOKEN_ICONS[p.avatarToken] || '🎩'}
+                </div>
+
+                {/* Name & Monospace Cash */}
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <div style={{
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    color: isCurrent ? '#fff' : '#cbd5e1',
+                    lineHeight: '1.2',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}>
+                    <span>{p.name}</span>
+                    {isMe && <span style={{ fontSize: '9px', color: '#00f0ff' }}>(You)</span>}
+                    {p.isBot && <span style={{ fontSize: '9px', color: '#a855f7' }}>[BOT]</span>}
+                  </div>
+                  <div style={{
+                    fontSize: '13px',
+                    fontFamily: 'monospace',
+                    fontWeight: 900,
+                    color: p.isBankrupt ? '#ef4444' : '#00ff88',
+                    lineHeight: '1.2',
+                  }}>
+                    ${p.cash}
+                  </div>
+                </div>
+
+                {/* Turn countdown ring if active */}
+                {isCurrent && (
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 900,
+                    color: '#00f0ff',
+                    padding: '2px 6px',
+                    background: 'rgba(0, 240, 255, 0.15)',
+                    borderRadius: '8px',
+                    marginLeft: '2px',
+                  }}>
+                    {gameState.turnTimerRemaining}s
+                  </span>
+                )}
+
+                {/* Direct Tomato Sabotage Button */}
+                {!isMe && !p.isBankrupt && gameState.status === 'playing' && myPlayerObj?.freeTomatoes > 0 && (
+                  <button
+                    onClick={() => handleThrowTomato(p.id)}
+                    title={`Hurl tomato at ${p.name}!`}
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      borderRadius: '50%',
+                      width: '24px',
+                      height: '24px',
+                      padding: 0,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '12px',
+                      transition: 'transform 0.1s',
+                      marginLeft: '2px',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.15)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    🍅
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={{
+        maxWidth: '1440px',
+        margin: '0 auto',
+        padding: '16px 20px',
+        display: 'grid',
+        gridTemplateColumns: '1fr 340px',
+        gap: '24px',
+        minHeight: 'calc(100vh - 120px)',
+      }}>
+        {/* Left: The Steady Board Brawl Arena */}
+        <div style={{
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
           <Board3D
             properties={gameState.properties}
             players={gameState.players}
@@ -294,17 +474,25 @@ export default function BoardBrawlArenaPage() {
             centerContent={
               gameState.status === 'waiting' ? (
                 /* Pre-Match Lobby View */
-                <div style={{ textAlign: 'center', padding: '20px' }}>
+                <div style={{
+                  textAlign: 'center',
+                  padding: '24px',
+                  background: 'rgba(16, 20, 29, 0.95)',
+                  backdropFilter: 'blur(16px)',
+                  border: '2px solid rgba(0, 240, 255, 0.3)',
+                  borderRadius: '16px',
+                  boxShadow: '0 0 40px rgba(0, 0, 0, 0.6)',
+                }}>
                   <div style={{ fontSize: '36px', marginBottom: '8px' }}>🎲</div>
-                  <h2 style={{ fontSize: '26px', fontWeight: 900, margin: '0 0 8px 0', color: '#fff' }}>
+                  <h2 style={{ fontSize: '24px', fontWeight: 900, margin: '0 0 6px 0', color: '#fff' }}>
                     BOARD BRAWL LOBBY
                   </h2>
-                  <p style={{ color: '#94a3b8', fontSize: '14px', margin: '0 0 20px 0' }}>
+                  <p style={{ color: '#94a3b8', fontSize: '13px', margin: '0 0 16px 0' }}>
                     Room <strong style={{ color: '#00f0ff' }}>#{roomId}</strong> • Mode:{' '}
                     <strong style={{ color: '#00ff88' }}>{gameState.mode?.toUpperCase()}</strong>
                   </p>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '280px', margin: '0 auto' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '280px', margin: '0 auto' }}>
                     <button
                       onClick={handleAddBot}
                       disabled={gameState.players.length >= 6}
@@ -351,62 +539,59 @@ export default function BoardBrawlArenaPage() {
                     </button>
                   </div>
                 </div>
-              ) : (
-                /* In-Game Center Stage: Dice & Decision Prompts */
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', gap: '14px' }}>
-                  {/* Turn Status Alert */}
-                  <div style={{
-                    padding: '8px 18px',
-                    borderRadius: '24px',
-                    background: `${currentPlayer?.avatarColor || '#00f0ff'}22`,
-                    border: `1px solid ${currentPlayer?.avatarColor || '#00f0ff'}`,
-                    fontSize: '13px',
-                    fontWeight: 800,
-                    color: '#fff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                  }}>
-                    <span>{TOKEN_ICONS[currentPlayer?.avatarToken] || '🎩'}</span>
-                    <span>
-                      {isMyTurn ? "👉 IT'S YOUR TURN!" : `${currentPlayer?.name}'s Turn`}
-                    </span>
-                    <span style={{ color: '#00f0ff' }}>({gameState.turnTimerRemaining}s)</span>
-                  </div>
-
-                  {/* 3D Dice Roller */}
-                  <DiceRoller3D
-                    dice={gameState.dice}
-                    lastResult={gameState.lastDiceResult}
-                    canRoll={isMyTurn && gameState.turnState === 'roll'}
-                    onRoll={handleRollDice}
-                    turnTimer={gameState.turnTimerRemaining}
-                    isMyTurn={isMyTurn}
-                  />
-
-                  {/* Action Modal (Buy / Buyout / Upgrade) */}
-                  {isMyTurn && gameState.turnState === 'action' && (
-                    <ActionModal
-                      currentTileId={currentPlayer?.position}
-                      properties={gameState.properties}
-                      player={currentPlayer}
-                      players={gameState.players}
-                      onBuy={handleBuyCity}
-                      onBuyout={handleBuyoutCity}
-                      onUpgrade={handleUpgradeCity}
-                      onEndTurn={handleEndTurn}
-                      turnTimer={gameState.turnTimerRemaining}
-                    />
-                  )}
-                </div>
-              )
+              ) : null
             }
           />
+
+          {/* Floating In-Game Roll Control (Only on active player's roll turn) */}
+          {gameState.status === 'playing' && isMyTurn && gameState.turnState === 'roll' && (
+            <div style={{
+              position: 'absolute',
+              bottom: '40px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 20,
+            }}>
+              <DiceRoller3D
+                dice={gameState.dice}
+                lastResult={gameState.lastDiceResult}
+                canRoll={isMyTurn && gameState.turnState === 'roll'}
+                onRoll={handleRollDice}
+                turnTimer={gameState.turnTimerRemaining}
+                isMyTurn={isMyTurn}
+              />
+            </div>
+          )}
+
+          {/* Centered Action Modal Overlay (When player lands on property or opportunity) */}
+          {gameState.status === 'playing' && isMyTurn && gameState.turnState === 'action' && (
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 30,
+              width: '440px',
+              maxWidth: '90%',
+            }}>
+              <ActionModal
+                currentTileId={currentPlayer?.position}
+                properties={gameState.properties}
+                player={currentPlayer}
+                players={gameState.players}
+                onBuy={handleBuyCity}
+                onBuyout={handleBuyoutCity}
+                onUpgrade={handleUpgradeCity}
+                onEndTurn={handleEndTurn}
+                turnTimer={gameState.turnTimerRemaining}
+              />
+            </div>
+          )}
         </div>
 
-        {/* Right Sidebar: Players, Sabotage Tomatoes & Live Chat */}
+        {/* Right Sidebar: Live Match Broadcast Feed & Chat */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Room Header & Invite Link */}
+          {/* Match Tactical Sabotage Status */}
           <div style={{
             background: 'rgba(16, 20, 29, 0.85)',
             border: '1px solid rgba(255, 255, 255, 0.08)',
@@ -417,127 +602,17 @@ export default function BoardBrawlArenaPage() {
             justifyContent: 'space-between',
           }}>
             <div>
-              <span style={{ fontSize: '11px', color: '#00f0ff', fontWeight: 800 }}>BOARD BRAWL</span>
-              <div style={{ fontSize: '18px', fontWeight: 900, color: '#fff' }}>Room #{roomId}</div>
-            </div>
-
-            <button
-              onClick={copyInviteLink}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '8px 12px',
-                background: copiedLink ? '#00ff88' : 'rgba(255, 255, 255, 0.06)',
-                color: copiedLink ? '#060709' : '#fff',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                borderRadius: '8px',
-                fontSize: '12px',
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              {copiedLink ? <CheckCheck size={14} /> : <Copy size={14} />}
-              {copiedLink ? 'Copied!' : 'Invite Link'}
-            </button>
-          </div>
-
-          {/* Players Roster & Tactical Tomato Throwing */}
-          <div style={{
-            background: 'rgba(16, 20, 29, 0.85)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRadius: '14px',
-            padding: '16px',
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '12px',
-            }}>
-              <span style={{ fontSize: '12px', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>
-                Tycoons ({gameState.players.length}/6)
+              <span style={{ fontSize: '11px', color: '#ff3344', fontWeight: 800, textTransform: 'uppercase' }}>
+                🍅 Sabotage Arsenal
               </span>
-              {myPlayerObj && (
-                <span style={{ fontSize: '12px', color: '#ff3344', fontWeight: 700 }}>
-                  🍅 {myPlayerObj.freeTomatoes} Free Tomatoes
-                </span>
-              )}
+              <div style={{ fontSize: '14px', fontWeight: 800, color: '#fff', marginTop: '2px' }}>
+                {myPlayerObj ? `${myPlayerObj.freeTomatoes} Free Tomatoes` : '3 Tomatoes / Match'}
+              </div>
+              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
+                Click 🍅 on any player above to blind & shake screen!
+              </div>
             </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {gameState.players.map((p, idx) => {
-                const isCurrent = idx === gameState.activePlayerIndex && gameState.status === 'playing';
-                const isMe = p.id === user?.id;
-
-                return (
-                  <div
-                    key={p.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '10px 12px',
-                      background: isCurrent ? 'rgba(0, 240, 255, 0.08)' : 'rgba(255, 255, 255, 0.02)',
-                      border: isCurrent ? `1px solid ${p.avatarColor}` : '1px solid rgba(255, 255, 255, 0.06)',
-                      borderRadius: '10px',
-                      opacity: p.isBankrupt ? 0.4 : 1,
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '50%',
-                        background: `${p.avatarColor}33`,
-                        border: `2px solid ${p.avatarColor}`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '14px',
-                      }}>
-                        {TOKEN_ICONS[p.avatarToken] || '🎩'}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '13px', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          {p.name}
-                          {p.isBot && <span style={{ fontSize: '10px', color: '#a855f7' }}>[BOT]</span>}
-                          {isMe && <span style={{ fontSize: '10px', color: '#00f0ff' }}>(You)</span>}
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                          Cash: <strong style={{ color: '#00ff88' }}>${p.cash}</strong> • Net:{' '}
-                          <strong>${p.netWorth}</strong>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Tomato Thrower Action Button */}
-                    {!isMe && !p.isBankrupt && gameState.status === 'playing' && (
-                      <button
-                        onClick={() => handleThrowTomato(p.id)}
-                        title={`Hurl tomato at ${p.name}!`}
-                        style={{
-                          padding: '6px 10px',
-                          background: 'rgba(255, 51, 68, 0.15)',
-                          border: '1px solid rgba(255, 51, 68, 0.4)',
-                          color: '#ff3344',
-                          borderRadius: '8px',
-                          fontSize: '12px',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          boxShadow: '0 0 10px rgba(255, 51, 68, 0.2)',
-                        }}
-                      >
-                        🍅 Throw
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            <div style={{ fontSize: '28px' }}>🎯</div>
           </div>
 
           {/* Live In-Game Chat & Taunts */}

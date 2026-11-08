@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TILES } from '@/lib/board-brawl/types';
 import { sounds } from '@/lib/audio';
 import {
@@ -10,7 +9,7 @@ import {
   createProceduralPawn,
   generateDiceMaterials,
 } from '@/lib/board-brawl/pawnModels3D';
-import { RotateCcw, Eye, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 const BOARD_HALF = 35; // Extents from -35 to +35
 const TILE_STEP = (BOARD_HALF * 2) / 8; // 8.75 units per tile
@@ -97,7 +96,6 @@ export default function Board3D({
   const diceSimRef = useRef({ active: false, d1: 1, d2: 1, progress: 1, startRot1: null, startRot2: null });
   const shockwaveMeshRef = useRef(null);
 
-  const [viewMode, setViewMode] = useState('iso'); // 'iso' | 'top'
   const [diceRolling, setDiceRolling] = useState(false);
 
   // 1. Preload 3D Model JSONs (house, hotel)
@@ -125,9 +123,10 @@ export default function Board3D({
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
-    // Camera: Elevated Luxury Isometric Angle
-    const camera = new THREE.PerspectiveCamera(34, width / height, 1, 1000);
-    camera.position.set(0, 88, 88);
+    // Camera: Rock-Steady Tabletop Isometric Angle (Fixed perspective, no OrbitControls rotation)
+    const camera = new THREE.PerspectiveCamera(28, width / height, 1, 1000);
+    camera.position.set(0, 105, 115);
+    camera.lookAt(0, -2, 0);
     cameraRef.current = camera;
 
     // Renderer
@@ -141,15 +140,8 @@ export default function Board3D({
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    // Controls
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.06;
-    controls.maxPolarAngle = Math.PI / 2.15; // Don't allow camera under board
-    controls.minDistance = 40;
-    controls.maxDistance = 180;
-    controls.target.set(0, 0, 0);
-    controlsRef.current = controls;
+    // Controls: Locked down (no user dragging/rotating/panning the board)
+    controlsRef.current = null;
 
     // Lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
@@ -582,31 +574,6 @@ export default function Board3D({
     };
   }, [lastDiceResult]);
 
-  // Reset Camera View
-  const handleResetCamera = useCallback(() => {
-    if (!cameraRef.current || !controlsRef.current) return;
-    if (viewMode === 'iso') {
-      cameraRef.current.position.set(0, 88, 88);
-      controlsRef.current.target.set(0, 0, 0);
-    } else {
-      cameraRef.current.position.set(0, 110, 0.01);
-      controlsRef.current.target.set(0, 0, 0);
-    }
-  }, [viewMode]);
-
-  const toggleTopDown = useCallback(() => {
-    if (!cameraRef.current || !controlsRef.current) return;
-    if (viewMode === 'iso') {
-      setViewMode('top');
-      cameraRef.current.position.set(0, 110, 0.01);
-      controlsRef.current.target.set(0, 0, 0);
-    } else {
-      setViewMode('iso');
-      cameraRef.current.position.set(0, 88, 88);
-      controlsRef.current.target.set(0, 0, 0);
-    }
-  }, [viewMode]);
-
   return (
     <div style={{
       position: 'relative',
@@ -621,60 +588,8 @@ export default function Board3D({
       boxShadow: '0 0 60px rgba(0, 0, 0, 0.6), inset 0 0 50px rgba(0, 240, 255, 0.05)',
       userSelect: 'none',
     }}>
-      {/* Three.js Canvas Container */}
-      <div ref={containerRef} style={{ width: '100%', height: '100%', cursor: 'grab' }} />
-
-      {/* Floating 3D Camera Controls */}
-      <div style={{
-        position: 'absolute',
-        top: '16px',
-        right: '16px',
-        display: 'flex',
-        gap: '8px',
-        zIndex: 10,
-      }}>
-        <button
-          onClick={toggleTopDown}
-          title={viewMode === 'iso' ? 'Switch to 2D Top-Down' : 'Switch to 3D Isometric'}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '8px 12px',
-            borderRadius: '10px',
-            background: 'rgba(16, 22, 34, 0.85)',
-            backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
-            color: '#00f0ff',
-            fontSize: '12px',
-            fontWeight: 800,
-            cursor: 'pointer',
-            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.4)',
-          }}
-        >
-          <Eye size={14} />
-          {viewMode === 'iso' ? '3D View' : 'Top-Down'}
-        </button>
-
-        <button
-          onClick={handleResetCamera}
-          title="Reset Camera Angle"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            padding: '8px',
-            borderRadius: '10px',
-            background: 'rgba(16, 22, 34, 0.85)',
-            backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
-            color: '#fff',
-            cursor: 'pointer',
-            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.4)',
-          }}
-        >
-          <RotateCcw size={14} />
-        </button>
-      </div>
+      {/* Three.js Canvas Container (Fixed Tabletop View) */}
+      <div ref={containerRef} style={{ width: '100%', height: '100%', cursor: 'default' }} />
 
       {/* Active Dice Floating Badge */}
       {lastDiceResult && (
