@@ -118,6 +118,10 @@ export default function BoardBrawlArenaPage() {
     }, 10000);
   }, []);
 
+  const handleVictimImpact = useCallback(() => {
+    setShakeTrigger(prev => prev + 1);
+  }, []);
+
   const handlePawnMovementComplete = useCallback((playerId, targetTileId) => {
     if (landedPositionsRef.current) {
       landedPositionsRef.current[playerId] = targetTileId;
@@ -846,10 +850,6 @@ export default function BoardBrawlArenaPage() {
     });
     setIsTradeModalOpen(false);
   };
-
-  const handleVictimImpact = useCallback(() => {
-    setShakeTrigger(prev => prev + 1);
-  }, []);
 
   const copyInviteLink = () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://nextgengames.gg';
