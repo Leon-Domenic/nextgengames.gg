@@ -3,6 +3,61 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { sounds } from '@/lib/audio';
 
+// High-fidelity 3D Vector Tomato Component (glossy red sphere with specular shine & star calyx)
+function TomatoSprite({ size = 56, rotation = 0, scale = 1 }) {
+  return (
+    <div
+      style={{
+        width: `${size}px`,
+        height: `${size}px`,
+        transform: `rotate(${rotation}deg) scale(${scale})`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        filter: 'drop-shadow(0 10px 22px rgba(185, 28, 28, 0.75))',
+        willChange: 'transform',
+      }}
+    >
+      <svg viewBox="0 0 100 100" width="100%" height="100%">
+        <defs>
+          <radialGradient id="tomatoBodyGrad" cx="38%" cy="34%" r="62%">
+            <stop offset="0%" stopColor="#ff5252" />
+            <stop offset="35%" stopColor="#ef4444" />
+            <stop offset="70%" stopColor="#dc2626" />
+            <stop offset="100%" stopColor="#7f1d1d" />
+          </radialGradient>
+          <radialGradient id="tomatoGloss" cx="30%" cy="26%" r="28%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.75" />
+            <stop offset="60%" stopColor="#ff8a80" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
+          </radialGradient>
+          <filter id="tomatoGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="4" stdDeviation="5" floodColor="#991b1b" floodOpacity="0.6" />
+          </filter>
+        </defs>
+
+        {/* Tomato Red Body */}
+        <ellipse cx="50" cy="56" rx="42" ry="38" fill="url(#tomatoBodyGrad)" filter="url(#tomatoGlow)" />
+
+        {/* Specular Gloss Reflection */}
+        <ellipse cx="36" cy="40" rx="14" ry="9" transform="rotate(-25 36 40)" fill="url(#tomatoGloss)" />
+
+        {/* Star-shaped Green Calyx (Leafy Stem) */}
+        <g fill="#15803d" stroke="#166534" strokeWidth="1.5" strokeLinejoin="round">
+          {/* Leaves */}
+          <path d="M 50,22 Q 42,8 32,16 Q 44,22 48,26 Z" />
+          <path d="M 52,22 Q 62,8 68,17 Q 56,23 52,26 Z" />
+          <path d="M 47,25 Q 30,22 26,32 Q 38,30 46,28 Z" />
+          <path d="M 53,25 Q 70,22 74,32 Q 62,30 54,28 Z" />
+          <path d="M 50,27 Q 50,38 48,42 Q 52,38 51,27 Z" />
+          {/* Central Stem */}
+          <path d="M 50,24 C 50,15 54,10 52,4 C 49,6 48,14 49,24 Z" fill="#166534" />
+        </g>
+      </svg>
+    </div>
+  );
+}
+
 export default function TomatoOverlay({
   splatEvent,
   currentUserId,
@@ -49,7 +104,7 @@ export default function TomatoOverlay({
       : null;
 
     let sX = vw * 0.15;
-    let sY = vh * 0.85;
+    let sY = vh * 0.15;
     if (fromCard) {
       const r = fromCard.getBoundingClientRect();
       sX = r.left + r.width / 2;
@@ -72,23 +127,42 @@ export default function TomatoOverlay({
       eX = r.left + r.width / 2;
       eY = r.top + r.height / 2;
     } else {
-      eX = vw * 0.8;
-      eY = vh * 0.2;
+      eX = vw * 0.82;
+      eY = vh * 0.15;
     }
 
-    // 3. Parabolic Quadratic Bézier Control Point (Apex high above the midpoint)
+    // 3. Parabolic Quadratic Bézier Control Point
+    // CRITICAL FIX: If cards are in the upper header (y < 35% of vh), swooping upward creates negative Y
+    // which flies off the top of the monitor! Instead, swoop DOWNWARD across the open 3D board so it is 100% visible!
     const mX = (sX + eX) / 2;
     const distance = Math.hypot(eX - sX, eY - sY);
-    const arcHeight = Math.max(160, distance * 0.38);
-    const mY = Math.min(sY, eY) - arcHeight;
+    const arcHeight = Math.max(140, Math.min(340, distance * 0.32));
+
+    let mY;
+    if (isVictim) {
+      // Direct charge towards the camera
+      mY = Math.min(sY, eY) - 80;
+    } else if (sY < vh * 0.38 && eY < vh * 0.38) {
+      // Both cards are at the top: arc downwards into the 3D board view!
+      mY = Math.max(sY, eY) + arcHeight;
+    } else if (sY > vh * 0.65 && eY > vh * 0.65) {
+      // Both cards are at the bottom: arc upwards
+      mY = Math.min(sY, eY) - arcHeight;
+    } else {
+      // Cross-screen diagonal: slight arc clamped inside screen
+      mY = Math.min(sY, eY) - arcHeight * 0.5;
+    }
+
+    // Clamp mY so the trajectory NEVER escapes the viewport
+    mY = Math.max(80, Math.min(vh - 90, mY));
 
     // Play initial swoosh / throw audio
     try {
       sounds.playTomatoThrow?.();
     } catch (e) {}
 
-    // Initialize animation state
-    const duration = isVictim ? 620 : 680; // ms
+    // Initialize animation state (850ms for satisfying flight time)
+    const duration = isVictim ? 780 : 880;
     const startTime = performance.now();
     trailPositionsRef.current = [];
 
@@ -105,19 +179,19 @@ export default function TomatoOverlay({
       const curY = invT * invT * sY + 2 * invT * t * mY + t * t * eY;
 
       // 3D rotation & dynamic scale
-      const rotationDeg = t * 720;
-      let curScale = 0.8;
+      const rotationDeg = t * 1080;
+      let curScale = 0.9;
       if (isVictim) {
-        // Zooms from normal size up to massive in-your-face impact scale
-        curScale = 0.8 + t * t * 3.2;
+        // Zooms from normal size up to massive 4.5x screen-shattering impact
+        curScale = 0.9 + t * t * 3.6;
       } else {
-        // Rises to 1.35 at apex, drops to 1.0 on impact
-        curScale = 0.75 + Math.sin(t * Math.PI) * 0.6;
+        // Rises to 1.45 at apex, lands at 1.1 on impact
+        curScale = 0.9 + Math.sin(t * Math.PI) * 0.55;
       }
 
-      // Record motion trail points (max 5)
-      trailPositionsRef.current.push({ x: curX, y: curY, scale: curScale * 0.7 });
-      if (trailPositionsRef.current.length > 5) {
+      // Record motion trail points (up to 7 particles)
+      trailPositionsRef.current.push({ x: curX, y: curY, scale: curScale * 0.6 });
+      if (trailPositionsRef.current.length > 7) {
         trailPositionsRef.current.shift();
       }
 
@@ -148,7 +222,7 @@ export default function TomatoOverlay({
             onVictimImpact?.();
           } catch (e) {}
 
-          // Severe impact splatter covering majority of screen
+          // Severe impact splatter covering screen
           setScreenSplat({
             active: true,
             slidingDown: false,
@@ -186,7 +260,7 @@ export default function TomatoOverlay({
           if (cardSplatTimerRef.current) clearTimeout(cardSplatTimerRef.current);
           cardSplatTimerRef.current = setTimeout(() => {
             setCardSplat(null);
-          }, 2600);
+          }, 2800);
         }
       }
     };
@@ -228,7 +302,7 @@ export default function TomatoOverlay({
         >
           {/* Motion Trail Particles */}
           {activeProjectile.trails.map((pt, idx) => {
-            const trailOpacity = (idx + 1) / activeProjectile.trails.length * 0.45;
+            const trailOpacity = ((idx + 1) / activeProjectile.trails.length) * 0.6;
             return (
               <div
                 key={`trail-${idx}`}
@@ -236,11 +310,11 @@ export default function TomatoOverlay({
                   position: 'absolute',
                   left: pt.x,
                   top: pt.y,
-                  width: '28px',
-                  height: '28px',
+                  width: '32px',
+                  height: '32px',
                   borderRadius: '50%',
-                  background: 'radial-gradient(circle, rgba(239, 68, 68, 0.8) 0%, rgba(220, 38, 38, 0.2) 65%, transparent 100%)',
-                  transform: `translate(-50%, -50%) scale(${pt.scale * 0.7})`,
+                  background: 'radial-gradient(circle, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 0.4) 55%, transparent 100%)',
+                  transform: `translate(-50%, -50%) scale(${pt.scale * 0.8})`,
                   opacity: trailOpacity,
                   filter: 'blur(3px)',
                 }}
@@ -254,37 +328,37 @@ export default function TomatoOverlay({
               position: 'absolute',
               left: activeProjectile.x,
               top: activeProjectile.y,
-              transform: `translate(-50%, -50%) scale(${activeProjectile.scale}) rotate(${activeProjectile.rotation}deg)`,
+              transform: 'translate(-50%, -50%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              filter: 'drop-shadow(0 10px 22px rgba(220, 38, 38, 0.85))',
-              userSelect: 'none',
-              willChange: 'transform, left, top',
+              willChange: 'left, top',
             }}
           >
             {/* Speed Streak Flare */}
             <div
               style={{
                 position: 'absolute',
-                width: '70px',
-                height: '30px',
+                width: '80px',
+                height: '36px',
                 borderRadius: '999px',
-                background: 'radial-gradient(ellipse, rgba(239, 68, 68, 0.7) 0%, transparent 75%)',
-                filter: 'blur(5px)',
+                background: 'radial-gradient(ellipse, rgba(239, 68, 68, 0.65) 0%, transparent 75%)',
+                filter: 'blur(6px)',
                 zIndex: -1,
-                transform: 'scale(1.5)',
+                transform: 'scale(1.4)',
               }}
             />
 
-            <span style={{ fontSize: '56px', display: 'inline-block', lineHeight: 1 }}>
-              🍅
-            </span>
+            <TomatoSprite
+              size={56}
+              rotation={activeProjectile.rotation}
+              scale={activeProjectile.scale}
+            />
           </div>
         </div>
       )}
 
-      {/* 2. Target Player Card Splat with Dripping Ketchup */}
+      {/* 2. Target Player Card Splat with Dripping Ketchup & Comic Popup */}
       {cardSplat && cardSplat.active && (
         <div
           style={{
@@ -294,10 +368,37 @@ export default function TomatoOverlay({
             transform: 'translate(-50%, -50%)',
             zIndex: 99997,
             pointerEvents: 'none',
-            animation: 'cardSplatPop 2.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            animation: 'cardSplatPop 2.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
           }}
         >
-          <div style={{ position: 'relative', width: '240px', height: '200px' }}>
+          {/* Comic Direct Hit Badge */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '-36px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+              border: '2px solid #ffffff',
+              borderRadius: '999px',
+              padding: '4px 14px',
+              color: '#ffffff',
+              fontWeight: 900,
+              fontSize: '13px',
+              letterSpacing: '0.06em',
+              whiteSpace: 'nowrap',
+              boxShadow: '0 6px 18px rgba(185, 28, 28, 0.6)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              animation: 'splatBadgeBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            }}
+          >
+            <span>🍅</span>
+            <span>SPLAT! DIRECT HIT!</span>
+          </div>
+
+          <div style={{ position: 'relative', width: '220px', height: '190px' }}>
             <svg
               viewBox="0 0 200 170"
               style={{
@@ -474,7 +575,7 @@ export default function TomatoOverlay({
             opacity: 1;
           }
           15% {
-            transform: translate(-50%, -50%) scale(1.22);
+            transform: translate(-50%, -50%) scale(1.25);
             opacity: 1;
           }
           25% {
@@ -489,6 +590,12 @@ export default function TomatoOverlay({
             transform: translate(-50%, -44%) scale(0.96);
             opacity: 0;
           }
+        }
+
+        @keyframes splatBadgeBounce {
+          0% { transform: translateX(-50%) scale(0); opacity: 0; }
+          70% { transform: translateX(-50%) scale(1.15); opacity: 1; }
+          100% { transform: translateX(-50%) scale(1); opacity: 1; }
         }
 
         .drip-slide-heavy-1 {
