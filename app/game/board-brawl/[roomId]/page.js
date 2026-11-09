@@ -567,7 +567,7 @@ export default function BoardBrawlArenaPage() {
   };
 
   const handlePlayActionCard = (cardId, target) => {
-    if (!socket || !activePlayerId) return;
+    if (!isMyTurn || !socket || !activePlayerId) return;
     socket.emit('game_action', {
       roomId,
       action: 'play_action_card',
@@ -679,6 +679,14 @@ export default function BoardBrawlArenaPage() {
 
     return null;
   };
+  
+  // Ensure action card targeting is cancelled if turn expires or passes
+  useEffect(() => {
+    if (!isMyTurn && activeCardTargeting) {
+      setActiveCardTargeting(null);
+    }
+  }, [isMyTurn, activeCardTargeting]);
+
   const activeTargetingMode = getActiveTargetingMode();
 
   const handleSkipFlight = () => {
@@ -889,7 +897,8 @@ export default function BoardBrawlArenaPage() {
             gameState={gameState}
             onPlayCard={handlePlayActionCard}
             onStartMapTargeting={(targetCfg) => setActiveCardTargeting(targetCfg)}
-            disabled={!isMyTurn && gameState.turnState !== 'roll' && gameState.turnState !== 'action'}
+            disabled={!isMyTurn}
+            isMyTurn={isMyTurn}
           />
         )}
 

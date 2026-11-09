@@ -13,6 +13,7 @@ export default function ActionCardDock({
   onPlayCard,
   onStartMapTargeting,
   disabled = false,
+  isMyTurn = true,
 }) {
   const [selectedCard, setSelectedCard] = useState(null);
   const [targetPayload, setTargetPayload] = useState({});
@@ -20,6 +21,7 @@ export default function ActionCardDock({
   if (!cards || cards.length === 0) return null;
 
   const handleOpenCard = (card) => {
+    if (disabled || !isMyTurn) return;
     if (card.id === 'demolition_strike' && onStartMapTargeting) {
       const oppTileIds = Object.keys(gameState?.properties || {}).filter((tId) => {
         const prop = gameState.properties[tId];
@@ -49,7 +51,7 @@ export default function ActionCardDock({
   };
 
   const handleConfirmPlay = () => {
-    if (!selectedCard) return;
+    if (disabled || !isMyTurn || !selectedCard) return;
 
     if (selectedCard.id === 'toll_shield') {
       try { sounds.playShield?.(); } catch (e) {}
@@ -124,6 +126,7 @@ export default function ActionCardDock({
               <button
                 key={`${card.id}_${idx}`}
                 onClick={() => handleOpenCard(card)}
+                title={(disabled || !isMyTurn) ? `${card.title} (Can only be played on your turn)` : card.title}
                 disabled={disabled}
                 style={{
                   position: 'relative',
