@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { TILES } from '@/lib/board-brawl/types';
 import { sounds } from '@/lib/audio';
+import CountryFlag from '@/components/board-brawl/CountryFlag';
 import { Plane, Coins, ArrowRight, X, Sparkles, Building2, CheckCircle2 } from 'lucide-react';
 
 export default function WorldTourSelectModal({
@@ -248,7 +249,11 @@ export default function WorldTourSelectModal({
                 {/* Top Info */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '18px' }}>{tile.flag || '🏙️'}</span>
+                    {tile.country ? (
+                      <CountryFlag country={tile.country} code={tile.flag} width={22} height={15} />
+                    ) : (
+                      <span style={{ fontSize: '18px' }}>{tile.flag || '🏙️'}</span>
+                    )}
                     <strong style={{ fontSize: '14px', color: '#ffffff' }}>{tile.name}</strong>
                   </div>
                   <span style={{

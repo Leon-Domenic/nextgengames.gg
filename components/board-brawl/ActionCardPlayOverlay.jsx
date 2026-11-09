@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { CARD_RARITY } from '@/lib/board-brawl/cards';
 import { sounds } from '@/lib/audio';
+import { t } from '@/lib/board-brawl/i18n';
 import { Zap, Sparkles, Shield, Flame, Info } from 'lucide-react';
 
 export default function ActionCardPlayOverlay({ lastActionCardPlayed }) {
@@ -85,7 +86,7 @@ export default function ActionCardPlayOverlay({ lastActionCardPlayed }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '15px', fontWeight: 900, color: '#f8fafc', letterSpacing: '-0.01em' }}>
-              <span style={{ color: '#38bdf8' }}>{playerName}</span> played {card.title}!
+              <span style={{ color: '#38bdf8' }}>{playerName}</span> played {t(card.id + '_title', {}, t(card.title, {}, card.title))}!
             </span>
             <span
               style={{

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { CARD_RARITY } from '@/lib/board-brawl/cards';
 import { TILES } from '@/lib/board-brawl/types';
 import { sounds } from '@/lib/audio';
+import { t } from '@/lib/board-brawl/i18n';
 import { Sparkles, Zap, Shield, Target, X, Check, ArrowUpRight, Flame } from 'lucide-react';
 
 export default function ActionCardDock({
@@ -190,7 +191,7 @@ export default function ActionCardDock({
                     textOverflow: 'ellipsis',
                   }}
                 >
-                  {card.title}
+                  {t(card.id + '_title', {}, t(card.title, {}, card.title))}
                 </div>
               </button>
             );
@@ -290,7 +291,7 @@ export default function ActionCardDock({
             </div>
 
             <h3 style={{ margin: '12px 0 4px 0', fontSize: '20px', fontWeight: 900, color: '#f8fafc' }}>
-              {selectedCard.title}
+              {t(selectedCard.id + '_title', {}, t(selectedCard.title, {}, selectedCard.title))}
             </h3>
 
             <div
@@ -305,7 +306,7 @@ export default function ActionCardDock({
             </div>
 
             <p style={{ fontSize: '13px', lineHeight: 1.5, color: '#cbd5e1', padding: '0 8px', margin: 0 }}>
-              {selectedCard.description}
+              {t(selectedCard.id + '_desc', {}, t(selectedCard.description, {}, selectedCard.description))}
             </p>
 
             {/* Target Selection Logic */}

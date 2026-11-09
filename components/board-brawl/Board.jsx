@@ -4,6 +4,7 @@ import React from 'react';
 import { TILES } from '@/lib/board-brawl/types';
 import { sounds } from '@/lib/audio';
 import { TOKEN_ICONS } from '@/lib/board-brawl/characters.js';
+import CountryFlag from '@/components/board-brawl/CountryFlag';
 
 // Maps 0..31 tile index to grid row and column in an 8x8 grid
 function getTileGridPos(index) {
@@ -93,9 +94,15 @@ export default function Board({
 
             {/* Tile Header: Flag / Icon & Name */}
             <div style={{ textAlign: 'center' }}>
-              <span style={{ fontSize: isCorner ? '20px' : '14px', display: 'block' }}>
-                {tile.flag || tile.icon}
-              </span>
+              {tile.country ? (
+                <span style={{ display: 'inline-flex', justifyContent: 'center', marginBottom: '2px' }}>
+                  <CountryFlag country={tile.country} code={tile.flag} width={24} height={16} />
+                </span>
+              ) : (
+                <span style={{ fontSize: isCorner ? '20px' : '14px', display: 'block' }}>
+                  {tile.flag || tile.icon}
+                </span>
+              )}
               <span style={{
                 fontSize: isCorner ? '11px' : '10px',
                 fontWeight: 800,

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { TILES } from '@/lib/board-brawl/types';
 import { sounds } from '@/lib/audio';
 import SmoothTimerBar from '@/components/board-brawl/SmoothTimerBar';
+import CountryFlag from '@/components/board-brawl/CountryFlag';
 import { Zap, Clock, Gavel, ShieldCheck, Trophy, AlertTriangle, ArrowUpRight } from 'lucide-react';
 
 export default function AuctionModal({
@@ -143,7 +144,11 @@ export default function AuctionModal({
                 fontSize: '22px',
                 boxShadow: `0 4px 12px ${tile.color ? tile.color + '66' : 'rgba(56,189,248,0.4)'}`,
               }}>
-                {tile.flag || tile.icon || '🏙️'}
+                {tile.country ? (
+                  <CountryFlag country={tile.country} code={tile.flag} width={26} height={17} />
+                ) : (
+                  tile.flag || tile.icon || '🏙️'
+                )}
               </div>
               <div>
                 <div style={{

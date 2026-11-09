@@ -3,6 +3,7 @@
 import React from 'react';
 import { TILES } from '@/lib/board-brawl/types';
 import { sounds } from '@/lib/audio';
+import CountryFlag from '@/components/board-brawl/CountryFlag';
 import { AlertOctagon, Skull, DollarSign, Handshake, Building, ArrowRight, ShieldAlert, Sparkles, TrendingUp } from 'lucide-react';
 
 export default function DebtLiquidationModal({
@@ -262,7 +263,11 @@ export default function DebtLiquidationModal({
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '14px' }}>
-                      <span>{item.tile.flag || '🏙️'}</span>
+                      {item.tile.country ? (
+                        <CountryFlag country={item.tile.country} code={item.tile.flag} width={20} height={14} />
+                      ) : (
+                        <span>{item.tile.flag || '🏙️'}</span>
+                      )}
                       <span>{item.tile.name || `Tile #${item.id}`}</span>
                     </div>
                     <div style={{ fontSize: '11px', color: '#94a3b8', display: 'flex', gap: '8px' }}>

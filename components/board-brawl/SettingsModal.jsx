@@ -38,6 +38,7 @@ import {
   Globe,
 } from 'lucide-react';
 import { useTranslation, LANGUAGES } from '@/lib/board-brawl/i18n';
+import CountryFlag from '@/components/board-brawl/CountryFlag';
 
 export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
   const { t, language, setLanguage } = useTranslation();
@@ -456,7 +457,7 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
                       transition: 'all 0.15s ease',
                     }}
                   >
-                    <span>{lang.flag}</span>
+                    <CountryFlag code={lang.code} width={18} height={12} />
                     <span style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase' }}>
                       {lang.code}
                     </span>
@@ -1375,7 +1376,7 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
                           transition: 'all 0.15s ease',
                         }}
                       >
-                        <span style={{ fontSize: '18px' }}>{l.flag}</span>
+                        <CountryFlag code={l.code} width={22} height={15} />
                         <span>{l.name}</span>
                         {isSelected && <Check size={14} style={{ color: '#0284c7' }} />}
                       </button>

@@ -156,7 +156,7 @@ export default function EventCardModal({
             textShadow: '0 2px 10px rgba(0,0,0,0.5)',
           }}
         >
-          {t(card.id + '_title') || t(card.title)}
+          {t(card.id + '_title', {}, t(card.title, {}, card.title))}
         </h2>
 
         {/* Flavor Description */}
@@ -169,7 +169,7 @@ export default function EventCardModal({
             padding: '0 8px',
           }}
         >
-          {t(card.id + '_desc') || t(card.description)}
+          {t(card.id + '_desc', {}, t(card.description, {}, card.description))}
         </p>
 
         {/* Visual Impact Summary Pill */}

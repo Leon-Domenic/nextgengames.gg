@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import { TILES } from '@/lib/board-brawl/types';
 import { t } from '@/lib/board-brawl/i18n';
+import CountryFlag from '@/components/board-brawl/CountryFlag';
 import {
   X,
   Building,
@@ -168,7 +169,11 @@ export default function TileInfoModal({
                 boxShadow: 'inset 0 2px 6px rgba(0, 0, 0, 0.3)',
               }}
             >
-              {tile.flag || tile.icon || '📍'}
+              {tile.country ? (
+                <CountryFlag country={tile.country} code={tile.flag} width={30} height={20} />
+              ) : (
+                tile.flag || tile.icon || '📍'
+              )}
             </div>
             <div>
               <div

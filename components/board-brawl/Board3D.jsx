@@ -20,6 +20,7 @@ import {
   create3DWorldTourMonument,
   create3DBanknoteStack,
 } from '@/lib/board-brawl/pawnModels3D';
+import { drawVectorFlag } from '@/lib/board-brawl/flags';
 
 // Authentic Monopoly 45-Degree Diamond Perimeter Math
 // 4 Sides with Square Corner Fields and Outward-Facing Cards
@@ -866,10 +867,16 @@ export default function Board3D({
 
           // Country Flag + City Name
           const name = tile.name.toUpperCase();
-          const flagStr = tile.flag ? (tile.flag + ' ') : '';
-          const fullName = flagStr + name;
-          const fontSize = fullName.length > 15 ? 32 : fullName.length > 11 ? 38 : 44;
-          drawOutwardText(fullName, 256, 122, '900 ' + fontSize + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a', 450);
+          if (tile.country) {
+            ctx.save();
+            ctx.translate(256, 44);
+            ctx.rotate(Math.PI);
+            drawVectorFlag(ctx, tile.country, -32, -18, 64, 36, 6);
+            ctx.restore();
+          }
+
+          const fontSize = name.length > 15 ? 34 : name.length > 11 ? 40 : 46;
+          drawOutwardText(name, 256, 118, '900 ' + fontSize + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a', 450);
 
           // Price Tag Pill
           ctx.fillStyle = '#f8fafc';
@@ -952,7 +959,15 @@ export default function Board3D({
           ctx.fillRect(16, 72, 480, 4);
 
           const rName = tile.name.toUpperCase();
-          drawOutwardText((tile.flag || '🏖️') + ' ' + rName, 256, 122, '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0891b2', 450);
+          if (tile.country) {
+            ctx.save();
+            ctx.translate(256, 44);
+            ctx.rotate(Math.PI);
+            drawVectorFlag(ctx, tile.country, -32, -18, 64, 36, 6);
+            ctx.restore();
+          }
+
+          drawOutwardText(rName, 256, 118, '900 42px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0891b2', 450);
 
           // Resort Price Pill
           ctx.fillStyle = '#f8fafc';

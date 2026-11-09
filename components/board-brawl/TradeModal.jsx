@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { TILES, COLOR_GROUPS } from '@/lib/board-brawl/types.js';
 import { CHARACTERS } from '@/lib/board-brawl/characters.js';
 import { CARD_RARITY } from '@/lib/board-brawl/cards.js';
+import CountryFlag from '@/components/board-brawl/CountryFlag';
 import { sounds } from '@/lib/audio';
 import {
   X, Check, Handshake, ArrowRightLeft, ShieldAlert, Sparkles, Clock, AlertTriangle, Coins, FileText, ChevronDown, ChevronUp
@@ -471,7 +472,11 @@ export default function TradeModal({
                           transition: 'all 0.15s',
                         }}
                       >
-                        <span style={{ fontSize: '14px' }}>{tile.flag}</span>
+                        {tile.country ? (
+                          <CountryFlag country={tile.country} code={tile.flag} width={18} height={12} />
+                        ) : (
+                          <span style={{ fontSize: '14px' }}>{tile.flag}</span>
+                        )}
                         <span style={{ fontSize: '12px', fontWeight: 700 }}>{tile.name}</span>
                         <span style={{
                           fontSize: '9px',
@@ -666,7 +671,11 @@ export default function TradeModal({
                           transition: 'all 0.15s',
                         }}
                       >
-                        <span style={{ fontSize: '14px' }}>{tile.flag}</span>
+                        {tile.country ? (
+                          <CountryFlag country={tile.country} code={tile.flag} width={18} height={12} />
+                        ) : (
+                          <span style={{ fontSize: '14px' }}>{tile.flag}</span>
+                        )}
                         <span style={{ fontSize: '12px', fontWeight: 700 }}>{tile.name}</span>
                         <span style={{
                           fontSize: '9px',

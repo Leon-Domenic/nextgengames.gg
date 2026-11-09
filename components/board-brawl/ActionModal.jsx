@@ -5,6 +5,7 @@ import { TILES } from '@/lib/board-brawl/types';
 import { sounds } from '@/lib/audio';
 import SmoothTimerBar from '@/components/board-brawl/SmoothTimerBar';
 import { useTranslation } from '@/lib/board-brawl/i18n';
+import CountryFlag from '@/components/board-brawl/CountryFlag';
 import { Zap, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
 
 const LANDMARK_ICONS = {
@@ -195,7 +196,7 @@ export default function ActionModal({
           fontSize: '28px',
           filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
         }}>
-          {tile.flag || '🌐'}
+          <CountryFlag country={tile.country} code={tile.flag} width={34} height={22} />
         </div>
 
         {/* City Title */}

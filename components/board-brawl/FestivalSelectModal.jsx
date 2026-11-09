@@ -3,6 +3,7 @@
 import React from 'react';
 import { TILES } from '@/lib/board-brawl/types';
 import { sounds } from '@/lib/audio';
+import CountryFlag from '@/components/board-brawl/CountryFlag';
 import { Sparkles, Trophy, ArrowRight, X } from 'lucide-react';
 
 export default function FestivalSelectModal({
@@ -152,7 +153,11 @@ export default function FestivalSelectModal({
                   }
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '18px' }}>{tile?.flag || '🏛️'}</span>
+                    {tile?.country ? (
+                      <CountryFlag country={tile.country} code={tile.flag} width={22} height={15} />
+                    ) : (
+                      <span style={{ fontSize: '18px' }}>{tile?.flag || '🏛️'}</span>
+                    )}
                     <div style={{ textAlign: 'left' }}>
                       <div style={{ fontWeight: 800, fontSize: '14px' }}>{tile?.name}</div>
                       <div style={{ fontSize: '11px', color: '#94a3b8' }}>
