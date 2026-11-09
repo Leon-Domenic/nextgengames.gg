@@ -116,6 +116,23 @@ export function getTile3DPos(id, totalTiles = 32) {
 }
 
 // Compute accurate 3D position for player pawns along the outer street zone
+// Compute accurate 3D position for player pawns inside the off-board PRISON FIELD
+export function getPrisonField3DPos(playerIndex = 0, totalPlayers = 4) {
+  const PRISON_CENTER = new THREE.Vector3(-58, 0.95, 14);
+  const padOffsets = [
+    [-1.0, -0.6],
+    [1.0, -0.6],
+    [-1.0, 0.6],
+    [1.0, 0.6],
+  ];
+  const [px, pz] = padOffsets[playerIndex % padOffsets.length];
+  const cos = Math.cos(Math.PI / 4);
+  const sin = Math.sin(Math.PI / 4);
+  const rx = px * cos - pz * sin;
+  const rz = px * sin + pz * cos;
+  return new THREE.Vector3(PRISON_CENTER.x + rx, PRISON_CENTER.y, PRISON_CENTER.z + rz);
+}
+
 export function getPawnTile3DPos(id, totalTiles = 32, subOffset = null) {
   const p = getTile3DPos(id, totalTiles);
   const pos = new THREE.Vector3(p.x, 0.35, p.z);
@@ -568,147 +585,96 @@ export default function Board3D({
           ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
           ctx.fillText('COLLECT 200K CR', 0, 180);
 
-        } else if (cornerType === 'jail' || p.side === 1) {
-          // CORNER 1: PRISON FIELD ("2d pic of the prison for the prison field")
-          // Weathered Penitentiary Stone Brick Background
-          ctx.fillStyle = '#1e293b';
+        } else if (cornerType === 'jail' || cornerType === 'go_to_jail' || p.side === 1) {
+          // CORNER 1: POLICE PRECINCT & EXTRADITION GATEWAY
+          // Deep Cyber-Police Tarmac with Radar Grid
+          ctx.fillStyle = '#070c18';
           ctx.fillRect(-240, -240, 480, 480);
 
-          // Brick masonry mortar seams
-          ctx.strokeStyle = '#0f172a';
-          ctx.lineWidth = 3;
-          for (let by = -240; by < 240; by += 40) {
+          // Radar grid lines
+          ctx.strokeStyle = 'rgba(30, 58, 138, 0.35)';
+          ctx.lineWidth = 2;
+          for (let r = 40; r <= 200; r += 40) {
             ctx.beginPath();
-            ctx.moveTo(-240, by);
-            ctx.lineTo(240, by);
+            ctx.arc(0, 0, r, 0, Math.PI * 2);
             ctx.stroke();
-            const stagger = Math.floor(by / 40) % 2 === 0 ? 0 : 40;
-            for (let bx = -240 + stagger; bx < 240; bx += 80) {
-              ctx.beginPath();
-              ctx.moveTo(bx, by);
-              ctx.lineTo(bx, by + 40);
-              ctx.stroke();
-            }
           }
-
-          // Arched Prison Cell Alcove (Deep Black/Navy Interior)
-          ctx.fillStyle = '#020617';
           ctx.beginPath();
-          ctx.roundRect(-140, -110, 280, 220, [30, 30, 8, 8]);
-          ctx.fill();
+          ctx.moveTo(-240, 0); ctx.lineTo(240, 0);
+          ctx.moveTo(0, -240); ctx.lineTo(0, 240);
+          ctx.stroke();
+
+          // Outer Warning Hazard Rim
+          ctx.strokeStyle = '#ef4444';
           ctx.lineWidth = 6;
-          ctx.strokeStyle = '#334155';
-          ctx.stroke();
+          ctx.strokeRect(-230, -230, 460, 460);
 
-          // Inmate silhouette with orange/striped jumpsuit inside the cell!
-          ctx.fillStyle = '#f97316'; // Orange jumpsuit inmate
+          // Top Header: POLICE PRECINCT Badge
+          ctx.fillStyle = '#1e3a8a';
           ctx.beginPath();
-          ctx.arc(0, -35, 32, 0, Math.PI * 2); // Inmate head
-          ctx.fill();
-          ctx.fillStyle = '#ea580c';
-          ctx.beginPath();
-          ctx.roundRect(-42, 2, 84, 90, [16, 16, 0, 0]); // Shoulders/torso
-          ctx.fill();
-
-          // Horizontal prison stripes on torso
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(-42, 16, 84, 10);
-          ctx.fillRect(-42, 38, 84, 10);
-          ctx.fillRect(-42, 60, 84, 10);
-
-          // Hands gripping the bars
-          ctx.fillStyle = '#fed7aa'; // Skin tone hands
-          ctx.beginPath();
-          ctx.arc(-42, 10, 12, 0, Math.PI * 2);
-          ctx.arc(42, 10, 12, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Heavy 3D Metallic Steel Cell Bars
-          const barCount = 7;
-          const barSpacing = 240 / (barCount + 1);
-          for (let b = 1; b <= barCount; b++) {
-            const barX = -120 + b * barSpacing;
-            // Bar drop shadow
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            ctx.fillRect(barX + 2, -106, 10, 212);
-
-            // 3D Metallic Bar gradient
-            const bGrad = ctx.createLinearGradient(barX - 5, 0, barX + 5, 0);
-            bGrad.addColorStop(0, '#334155');
-            bGrad.addColorStop(0.3, '#cbd5e1'); // Bright metallic highlight
-            bGrad.addColorStop(0.7, '#64748b');
-            bGrad.addColorStop(1, '#0f172a');
-            ctx.fillStyle = bGrad;
-            ctx.fillRect(barX - 5, -106, 10, 212);
-          }
-
-          // Horizontal Reinforced Steel Crossbars
-          [-60, 40].forEach((crossY) => {
-            const cGrad = ctx.createLinearGradient(0, crossY - 6, 0, crossY + 6);
-            cGrad.addColorStop(0, '#64748b');
-            cGrad.addColorStop(0.5, '#cbd5e1');
-            cGrad.addColorStop(1, '#0f172a');
-            ctx.fillStyle = cGrad;
-            ctx.fillRect(-138, crossY - 6, 276, 12);
-
-            // Chrome Rivets
-            for (let rx = -115; rx <= 115; rx += 46) {
-              ctx.beginPath();
-              ctx.arc(rx, crossY, 3.5, 0, Math.PI * 2);
-              ctx.fillStyle = '#f8fafc';
-              ctx.fill();
-            }
-          });
-
-          // Heavy Hanging Brass Padlock & Steel Chain
-          ctx.fillStyle = '#eab308'; // Padlock body
-          ctx.beginPath();
-          ctx.roundRect(-16, 25, 32, 28, 6);
-          ctx.fill();
-          ctx.lineWidth = 4;
-          ctx.strokeStyle = '#94a3b8'; // Shackle
-          ctx.beginPath();
-          ctx.arc(0, 25, 12, Math.PI, 0);
-          ctx.stroke();
-
-          // Top Header: Hazard Warning Tape + PRISON Banner
-          ctx.save();
-          ctx.beginPath();
-          ctx.roundRect(-180, -225, 360, 74, 16);
-          ctx.clip();
-          // Diagonal hazard stripes
-          for (let hx = -300; hx < 300; hx += 32) {
-            ctx.fillStyle = Math.floor(hx / 32) % 2 === 0 ? '#f59e0b' : '#0f172a';
-            ctx.fillRect(hx, -225, 32, 74);
-          }
-          ctx.restore();
-
-          // PRISON Badge Plate
-          ctx.fillStyle = '#0f172a';
-          ctx.beginPath();
-          ctx.roundRect(-160, -215, 320, 54, 12);
+          ctx.roundRect(-175, -220, 350, 72, 16);
           ctx.fill();
           ctx.lineWidth = 3;
-          ctx.strokeStyle = '#f59e0b';
+          ctx.strokeStyle = '#38bdf8';
           ctx.stroke();
 
           ctx.fillStyle = '#ffffff';
           ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('⛓️ MAX PRISON', 0, -178);
+          ctx.fillText('🚓 POLICE PRECINCT', 0, -172);
 
-          // Bottom Bail Pill
-          ctx.fillStyle = '#f8fafc';
-          ctx.strokeStyle = '#ef4444';
-          ctx.lineWidth = 5;
+          // Center Police Star Shield Badge
+          ctx.fillStyle = '#1e293b';
           ctx.beginPath();
-          ctx.roundRect(-160, 135, 320, 68, 20);
+          ctx.roundRect(-90, -85, 180, 170, 24);
+          ctx.fill();
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = '#eab308';
+          ctx.stroke();
+
+          // Gold Star in Badge
+          ctx.fillStyle = '#facc15';
+          ctx.font = '72px -apple-system, sans-serif';
+          ctx.fillText('★', 0, -15);
+
+          // Dual Flashing Police Lights (Blue & Red)
+          ctx.fillStyle = '#2563eb';
+          ctx.shadowColor = '#3b82f6';
+          ctx.shadowBlur = 18;
+          ctx.beginPath();
+          ctx.roundRect(-60, 24, 50, 22, 6);
+          ctx.fill();
+
+          ctx.fillStyle = '#ef4444';
+          ctx.shadowColor = '#f87171';
+          ctx.shadowBlur = 18;
+          ctx.beginPath();
+          ctx.roundRect(10, 24, 50, 22, 6);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          // Subtitle text: EXTRADITION GATE
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '800 20px -apple-system, sans-serif';
+          ctx.fillText('EXTRADITION GATE', 0, 72);
+
+          // Arrow pointing off-board to Prison Field
+          ctx.fillStyle = '#ef4444';
+          ctx.font = '900 24px -apple-system, sans-serif';
+          ctx.fillText('➔ OFF-BOARD PRISON', 0, 102);
+
+          // Bottom Warning Pill
+          ctx.fillStyle = '#fef2f2';
+          ctx.strokeStyle = '#dc2626';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.roundRect(-165, 135, 330, 68, 20);
           ctx.fill();
           ctx.stroke();
 
-          ctx.fillStyle = '#b91c1c';
-          ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText('BAIL: 100K CR', 0, 178);
+          ctx.fillStyle = '#991b1b';
+          ctx.font = '900 26px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.fillText('ARREST ➔ PRISON', 0, 178);
 
         } else if (cornerType === 'world_tour' || p.side === 2) {
           // CORNER 2: AIRPORT RUNWAY ("3d plane for the airport, you know the drill")
@@ -1156,10 +1122,13 @@ export default function Board3D({
     monumentsGroup.add(startMonument);
     cornerMonuments.push(startMonument);
 
-    // Corner 1: West (PRISON FIELD)
-    // The user requested: "2d pic of the prison for the prison field"
-    // We leave Corner 1 open and unobstructed so the high-resolution 2D prison illustration is prominent!
-    const pIsland = getTile3DPos(8, TILES.length);
+    // Corner 1: West (Off-board PRISON FIELD)
+    // The user requested: "actually can we make the prison a non tile field, add it seperatly from the board so people get sent off the board in a prison field"
+    const prisonField = create3DPrisonMonument();
+    prisonField.position.set(-58, 0.1, 14); // Positioned off the board!
+    prisonField.rotation.y = Math.PI / 4;   // Angled nicely towards main camera
+    monumentsGroup.add(prisonField);
+    cornerMonuments.push(prisonField);
 
     // Corner 2: North (WORLD TOUR / AIRPORT)
     const pTour = getTile3DPos(16, TILES.length);
@@ -1809,7 +1778,10 @@ export default function Board3D({
         const pawnGroup = createProceduralPawn(playerToken, playerColor);
         const subAngle = (idx * Math.PI * 2) / Math.max(1, players.length);
         const subOffset = new THREE.Vector3(Math.cos(subAngle) * 0.9, 0, Math.sin(subAngle) * 0.9);
-        const startPos = getPawnTile3DPos(player.position || 0, TILES.length, subOffset);
+        const isImprisoned = (player.islandTurns || 0) > 0 || !!player.inJail;
+        const startPos = isImprisoned
+          ? getPrisonField3DPos(idx, players.length)
+          : getPawnTile3DPos(player.position || 0, TILES.length, subOffset);
 
         pawnGroup.position.copy(startPos);
         scene.add(pawnGroup);
@@ -1822,8 +1794,77 @@ export default function Board3D({
           subOffset,
           color: playerColor,
           token: playerToken,
+          isImprisoned,
         };
         pawnMap.set(player.id, entry);
+      }
+
+      const currentlyImprisoned = (player.islandTurns || 0) > 0 || !!player.inJail;
+
+      // 1. Arrest Extradition: Player was free, now imprisoned!
+      if (currentlyImprisoned && !entry.isImprisoned && !entry.isMoving) {
+        entry.isMoving = true;
+        entry.isImprisoned = true;
+        entry.currentTile = player.position || 8;
+        entry.targetTile = player.position || 8;
+
+        try { sounds.playDistress?.(playerToken); } catch (e) {}
+
+        const startCoords = entry.group.position.clone();
+        const prisonTarget = getPrisonField3DPos(idx, players.length);
+        const arrestDuration = 1200;
+        const startTime = performance.now();
+
+        const arrestAnim = () => {
+          const now = performance.now();
+          const p = Math.min(1.0, (now - startTime) / arrestDuration);
+          const ease = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+          entry.group.position.lerpVectors(startCoords, prisonTarget, ease);
+          entry.group.position.y = 0.95 + Math.sin(p * Math.PI) * 7.5;
+          entry.group.rotation.y += 0.08;
+
+          if (p < 1.0) {
+            requestAnimationFrame(arrestAnim);
+          } else {
+            entry.group.position.copy(prisonTarget);
+            entry.group.rotation.y = 0;
+            entry.isMoving = false;
+            try { sounds.playCardPlay?.(); } catch (e) {}
+          }
+        };
+        requestAnimationFrame(arrestAnim);
+        return;
+      }
+
+      // 2. Prison Escape / Bail: Player was imprisoned, now free!
+      if (!currentlyImprisoned && entry.isImprisoned && !entry.isMoving) {
+        entry.isImprisoned = false;
+        if (entry.targetTile === player.position) {
+          entry.isMoving = true;
+          const startCoords = entry.group.position.clone();
+          const boardExit = getPawnTile3DPos(8, TILES.length, entry.subOffset);
+          const escapeDuration = 800;
+          const startTime = performance.now();
+
+          const escapeAnim = () => {
+            const now = performance.now();
+            const p = Math.min(1.0, (now - startTime) / escapeDuration);
+            const ease = p * (2 - p);
+            entry.group.position.lerpVectors(startCoords, boardExit, ease);
+            entry.group.position.y = 0.35 + Math.sin(p * Math.PI) * 4.0;
+
+            if (p < 1.0) {
+              requestAnimationFrame(escapeAnim);
+            } else {
+              entry.group.position.copy(boardExit);
+              entry.currentTile = 8;
+              entry.targetTile = 8;
+              entry.isMoving = false;
+            }
+          };
+          requestAnimationFrame(escapeAnim);
+          return;
+        }
       }
 
       // Hop Animation when Position Changes
