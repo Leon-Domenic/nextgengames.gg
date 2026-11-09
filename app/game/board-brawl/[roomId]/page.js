@@ -608,6 +608,7 @@ export default function BoardBrawlArenaPage() {
 
   // Compute active targeting mode for direct 3D board selection & highlights
   const getActiveTargetingMode = () => {
+    if (!isMyTurn) return null;
     // 1. World Tour Flight Selection
     if (isMyTurn && gameState?.turnState === 'flight_select' && !movementPendingArrival) {
       const eligibleTileIds = TILES.map(t => t.id).filter(id => id !== myPlayerObj?.position);
@@ -680,13 +681,6 @@ export default function BoardBrawlArenaPage() {
     return null;
   };
   
-  // Ensure action card targeting is cancelled if turn expires or passes
-  useEffect(() => {
-    if (!isMyTurn && activeCardTargeting) {
-      setActiveCardTargeting(null);
-    }
-  }, [isMyTurn, activeCardTargeting]);
-
   const activeTargetingMode = getActiveTargetingMode();
 
   const handleSkipFlight = () => {
