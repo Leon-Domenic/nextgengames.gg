@@ -124,12 +124,13 @@ export default function EventCardModal({
           }}
         >
           {isDisaster ? <AlertTriangle size={13} /> : <Sparkles size={13} />}
-          <span>{card.rarity} EVENT CARD</span>
+          <span>{t(card.rarity?.toLowerCase() + 'EventCard', {}, `${card.rarity} EVENT CARD`)}</span>
         </div>
 
         {/* Drawer Attribution */}
         <div style={{ marginTop: '8px', fontSize: '13px', color: '#94a3b8', fontWeight: 600 }}>
-          Drawn by <span style={{ color: '#38bdf8', fontWeight: 800 }}>{drawerName || 'Player'}</span>
+          {t('drawnByLabel', {}, 'Drawn by')}{' '}
+          <span style={{ color: '#38bdf8', fontWeight: 800 }}>{drawerName || t('player', {}, 'Player')}</span>
         </div>
 
         {/* Card Artwork / Icon Circle */}
@@ -164,7 +165,7 @@ export default function EventCardModal({
             borderRadius: '8px',
           }}
         >
-          {card.badge}
+          {t(card.id + '_badge', {}, t(card.badge, {}, card.badge))}
         </div>
 
         {/* Card Title */}
@@ -213,7 +214,7 @@ export default function EventCardModal({
           }}
         >
           <Zap size={15} />
-          <span>{card.summary}</span>
+          <span>{t(card.id + '_summary', {}, t(card.summary, {}, card.summary))}</span>
         </div>
 
         {/* Animated Countdown Timer Bar */}
@@ -270,7 +271,7 @@ export default function EventCardModal({
             onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
           >
             <Clock size={15} />
-            <span>DISMISS / OK ({secondsLeft}s)</span>
+            <span>{t('dismissOk', { seconds: secondsLeft }, `DISMISS / OK (${secondsLeft}s)`)}</span>
             <ArrowRight size={16} />
           </button>
         </div>

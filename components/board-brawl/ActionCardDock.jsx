@@ -116,7 +116,7 @@ export default function ActionCardDock({
           }}
         >
           <Sparkles size={12} />
-          <span>ACTION CARDS ({cards.length}/3)</span>
+          <span>{t('actionCardsTitle', {}, 'ACTION CARDS')} ({cards.length}/3)</span>
         </div>
 
         {/* Hand Cards Fan */}
@@ -171,7 +171,7 @@ export default function ActionCardDock({
                     textTransform: 'uppercase',
                   }}
                 >
-                  {card.rarity}
+                  {t('rarity_' + card.rarity?.toLowerCase(), {}, card.rarity)}
                 </div>
 
                 {/* Card Icon */}
@@ -269,7 +269,7 @@ export default function ActionCardDock({
                 textTransform: 'uppercase',
               }}
             >
-              {selectedCard.rarity} ACTION CARD
+              {t(selectedCard.rarity?.toLowerCase() + 'ActionCard', {}, `${selectedCard.rarity} ACTION CARD`)}
             </div>
 
             {/* Icon */}
@@ -302,7 +302,7 @@ export default function ActionCardDock({
                 marginBottom: '10px',
               }}
             >
-              {selectedCard.badge}
+              {t(selectedCard.id + '_badge', {}, t(selectedCard.badge, {}, selectedCard.badge))}
             </div>
 
             <p style={{ fontSize: '13px', lineHeight: 1.5, color: '#cbd5e1', padding: '0 8px', margin: 0 }}>
@@ -314,7 +314,7 @@ export default function ActionCardDock({
               {selectedCard.id === 'loaded_dice' && (
                 <div>
                   <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '8px' }}>
-                    Select Your Exact Next Roll:
+                    {t('selectNextRoll', {}, 'Select Your Exact Next Roll:')}
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px' }}>
                     {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
@@ -342,10 +342,10 @@ export default function ActionCardDock({
               {selectedCard.id === 'demolition_strike' && (
                 <div>
                   <div style={{ fontSize: '13px', fontWeight: 800, color: '#f87171', marginBottom: '8px' }}>
-                    Direct 3D Map Targeting:
+                    {t('directMapTargeting', {}, 'Direct 3D Map Targeting:')}
                   </div>
                   <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '14px' }}>
-                    Click any highlighted opponent city beacon directly on the 3D world map to demolish!
+                    {t('demolishMapInstruction', {}, 'Click any highlighted opponent city beacon directly on the 3D world map to demolish!')}
                   </div>
                   <button
                     onClick={() => {
@@ -378,7 +378,7 @@ export default function ActionCardDock({
                       boxShadow: '0 4px 14px rgba(239, 68, 68, 0.4)',
                     }}
                   >
-                    <span>🎯 AIM & SELECT TARGET ON BOARD</span>
+                    <span>{t('aimSelectOnBoard', {}, '🎯 AIM & SELECT TARGET ON BOARD')}</span>
                   </button>
                 </div>
               )}
@@ -386,7 +386,7 @@ export default function ActionCardDock({
               {selectedCard.id === 'remote_buy' && (
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>Select Unowned City:</span>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>{t('selectUnownedCity', {}, 'Select Unowned City:')}</span>
                     {onStartMapTargeting && unownedAffordableCities.length > 0 && (
                       <button
                         onClick={() => {
@@ -409,12 +409,12 @@ export default function ActionCardDock({
                           cursor: 'pointer',
                         }}
                       >
-                        🎯 Select on 3D Map
+                        {t('selectOn3dMap', {}, '🎯 Select on 3D Map')}
                       </button>
                     )}
                   </div>
                   {unownedAffordableCities.length === 0 ? (
-                    <div style={{ fontSize: '12px', color: '#f87171' }}>No affordable unowned cities available!</div>
+                    <div style={{ fontSize: '12px', color: '#f87171' }}>{t('noAffordableCities', {}, 'No affordable unowned cities available!')}</div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '140px', overflowY: 'auto' }}>
                       {unownedAffordableCities.slice(0, 6).map((tId) => {
@@ -449,7 +449,7 @@ export default function ActionCardDock({
               {(selectedCard.id === 'gravity_magnet' || selectedCard.id === 'mega_tomato') && (
                 <div>
                   <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '8px' }}>
-                    Select Target Opponent:
+                    {t('selectTargetOpponent', {}, 'Select Target Opponent:')}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {opponents.map((opp) => {
@@ -482,7 +482,7 @@ export default function ActionCardDock({
               {selectedCard.id === 'warp_drive' && (
                 <div>
                   <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '8px' }}>
-                    Select Destination Corner:
+                    {t('selectDestinationCorner', {}, 'Select Destination Corner:')}
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
                     {[
@@ -532,7 +532,7 @@ export default function ActionCardDock({
                   cursor: 'pointer',
                 }}
               >
-                Cancel
+                {t('cancel', {}, 'Cancel')}
               </button>
               <button
                 onClick={handleConfirmPlay}
@@ -554,7 +554,7 @@ export default function ActionCardDock({
                   gap: '6px',
                 }}
               >
-                <span>{selectedCard.actionText || 'PLAY CARD'}</span>
+                <span>{t(selectedCard.id + '_actionText', {}, t(selectedCard.actionText, {}, selectedCard.actionText || t('playCard', {}, 'PLAY CARD')))}</span>
                 <ArrowUpRight size={16} />
               </button>
             </div>

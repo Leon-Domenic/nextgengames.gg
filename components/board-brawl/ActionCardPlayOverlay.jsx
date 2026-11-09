@@ -92,7 +92,7 @@ export default function ActionCardPlayOverlay({ lastActionCardPlayed }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '15px', fontWeight: 900, color: '#f8fafc', letterSpacing: '-0.01em' }}>
-              <span style={{ color: '#38bdf8' }}>{playerName}</span> played {t(card.id + '_title', {}, t(card.title, {}, card.title))}!
+              <span style={{ color: '#38bdf8' }}>{playerName}</span> {t('playedCard', {}, 'played')} {t(card.id + '_title', {}, t(card.title, {}, card.title))}!
             </span>
             <span
               style={{
@@ -107,7 +107,7 @@ export default function ActionCardPlayOverlay({ lastActionCardPlayed }) {
                 flexShrink: 0,
               }}
             >
-              {card.badge}
+              {t(card.id + '_badge', {}, t(card.badge, {}, card.badge))}
             </span>
           </div>
 
@@ -126,7 +126,7 @@ export default function ActionCardPlayOverlay({ lastActionCardPlayed }) {
             >
               <Zap size={12} style={{ color: rarity.border, flexShrink: 0 }} />
               <span>
-                {outcomeText}
+                {t(card.id + '_summary', {}, t(card.summary, {}, t(card.id + '_desc', {}, t(card.description, {}, outcomeText))))}
                 {targetPayload?.targetPlayerName && ` (Target: ${targetPayload.targetPlayerName})`}
               </span>
             </div>
