@@ -817,6 +817,7 @@ export default function Board3D({
           const taxSub = tile.amount ? ('PAY ₩' + Math.round(tile.amount / 1000) + 'K') : 'PAY TAX';
           const eventConfig = {
             chance: { color: '#ec4899', icon: '❓', title: 'CHANCE', sub: 'LUCKY DRAW', subColor: '#be185d' },
+            championship: { color: '#f59e0b', icon: '🏆', title: 'CHAMPIONSHIP', sub: '2X RENT HOST', subColor: '#b45309' },
             armory: { color: '#ef4444', icon: '🍅', title: 'ARMORY', sub: '+2 TOMATOES', subColor: '#b91c1c' },
             tax: { color: '#475569', icon: '💸', title: tile.name.toUpperCase(), sub: taxSub, subColor: '#b91c1c' },
             festival: { color: '#7c3aed', icon: '🎪', title: 'WORLD FAIR', sub: '2X RENT HOST', subColor: '#6d28d9' },
@@ -1224,24 +1225,7 @@ export default function Board3D({
       const delta = clock.getDelta();
       const elapsed = clock.getElapsedTime();
 
-      // Animate Building Pop-in Bounce
-      if (buildingsGroupRef.current) {
-        buildingsGroupRef.current.children.forEach((child) => {
-          if (child.userData?.spawnTime) {
-            const elapsedSpawn = (performance.now() - child.userData.spawnTime) / 420;
-            const baseScale = child.userData.baseScale || 1.0;
-            if (elapsedSpawn < 1.0) {
-              const t = elapsedSpawn;
-              const c4 = (2 * Math.PI) / 3;
-              const progress = t === 0 ? 0 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1;
-              child.scale.setScalar(baseScale * Math.max(0.01, progress));
-            } else {
-              child.scale.setScalar(baseScale);
-              delete child.userData.spawnTime;
-            }
-          }
-        });
-      }
+      // Buildings are 100% static (no size pulsing)
 
       // Idle Hover & Real-time Avatar Animations for Pawns (Heroic scale foot contact y = 0.35)
       pawnMeshesRef.current.forEach(({ group, isMoving }) => {
@@ -1409,10 +1393,10 @@ export default function Board3D({
         resort.userData = {
           tileId,
           isTile: true,
-          spawnTime: performance.now(),
+          // static
           baseScale: resort.scale.x,
         };
-        resort.scale.set(0.01, 0.01, 0.01);
+        resort.scale.set(1.0, 1.0, 1.0);
         group.add(resort);
         return; // Skip house/hotel logic for resorts
       }
@@ -1432,10 +1416,10 @@ export default function Board3D({
         house.userData = {
           tileId,
           isTile: true,
-          spawnTime: performance.now(),
+          // static
           baseScale: house.scale.x,
         };
-        house.scale.set(0.01, 0.01, 0.01);
+        house.scale.set(1.0, 1.0, 1.0);
         group.add(house);
       } else if (prop.level === 3) {
         // Level 3: 2 Cottages side-by-side neatly on the lawn plot!
@@ -1454,10 +1438,10 @@ export default function Board3D({
           house.userData = {
             tileId,
             isTile: true,
-            spawnTime: performance.now(),
+            // static
             baseScale: 1.02,
           };
-          house.scale.set(0.01, 0.01, 0.01);
+          house.scale.set(1.0, 1.0, 1.0);
           group.add(house);
         });
       } else if (prop.level === 4) {
@@ -1474,10 +1458,10 @@ export default function Board3D({
         hotel.userData = {
           tileId,
           isTile: true,
-          spawnTime: performance.now(),
+          // static
           baseScale: hotel.scale.x,
         };
-        hotel.scale.set(0.01, 0.01, 0.01);
+        hotel.scale.set(1.0, 1.0, 1.0);
         group.add(hotel);
       } else if (prop.level >= 5) {
         // Level 5: 1 Golden Landmark centered on the lawn plot (Immune to Buyouts)
@@ -1493,10 +1477,10 @@ export default function Board3D({
         landmark.userData = {
           tileId,
           isTile: true,
-          spawnTime: performance.now(),
+          // static
           baseScale: landmark.scale.x,
         };
-        landmark.scale.set(0.01, 0.01, 0.01);
+        landmark.scale.set(1.0, 1.0, 1.0);
         group.add(landmark);
       }
     });

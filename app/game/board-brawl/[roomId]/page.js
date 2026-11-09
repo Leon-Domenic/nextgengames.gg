@@ -7,6 +7,7 @@ import { getSocket } from '@/lib/socket';
 import { sounds } from '@/lib/audio';
 import ScreenShakeWrapper from '@/components/board-brawl/ScreenShakeWrapper';
 import TomatoOverlay from '@/components/board-brawl/TomatoOverlay';
+import TurnAnnouncementBanner from '@/components/board-brawl/TurnAnnouncementBanner';
 import DiceRoller3D from '@/components/board-brawl/DiceRoller3D';
 import Board3D from '@/components/board-brawl/Board3D';
 import ActionModal from '@/components/board-brawl/ActionModal';
@@ -775,7 +776,15 @@ export default function BoardBrawlArenaPage() {
           }
         `}</style>
         {/* Tomato Sabotage Overlay with Trajectory Flight & Screen Splat */}
-        <TomatoOverlay
+        {/* 2-Second Flight Delay Turn Announcement Banner */}
+            <TurnAnnouncementBanner
+              activePlayer={currentPlayer}
+              isMyTurn={isMyTurn}
+              turnState={gameState?.turnState}
+              turnIndex={(gameState?.round || 0) * 10 + (gameState?.activePlayerIndex || 0)}
+            />
+
+            <TomatoOverlay
           splatEvent={splatEvent}
           currentUserId={myPlayerObj?.id || user?.id}
           players={gameState.players}
