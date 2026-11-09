@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { sounds, MUSIC_PLAYLIST } from '@/lib/audio';
+import { sounds } from '@/lib/audio';
 import {
   SETTINGS_KEYS,
   DEFAULT_SETTINGS,
@@ -30,8 +30,6 @@ import {
   Keyboard,
   Play,
   Pause,
-  SkipForward,
-  SkipBack,
   Eye,
   EyeOff,
   Palette,
@@ -71,7 +69,6 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
   const [musicVolume, setMusicVolume] = useState(45);
   const [sfxMuted, setSfxMuted] = useState(false);
   const [musicMuted, setMusicMuted] = useState(true);
-  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
 
   // Audio specific toggles
   const [stepsAudio, setStepsAudio] = useState(true);
@@ -111,9 +108,6 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
       setMusicVolume(Math.round(sounds.getMusicVolume() * 100));
       setSfxMuted(sounds.isSfxMuted());
       setMusicMuted(sounds.isMusicMuted());
-      if (sounds.getCurrentTrackIndex) {
-        setCurrentTrackIndex(sounds.getCurrentTrackIndex());
-      }
 
       // Settings sync
       const s = getAllSettings();
@@ -205,27 +199,6 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
     const isPlaying = sounds.toggleMusic();
     setMusicMuted(!isPlaying);
     saveSetting(SETTINGS_KEYS.MUSIC_MUTED, !isPlaying);
-  };
-
-  const handleTrackChange = (index) => {
-    if (sounds.setTrack) {
-      sounds.setTrack(index);
-      setCurrentTrackIndex(index);
-    }
-  };
-
-  const handleNextTrack = () => {
-    if (sounds.nextTrack) {
-      sounds.nextTrack();
-      if (sounds.getCurrentTrackIndex) setCurrentTrackIndex(sounds.getCurrentTrackIndex());
-    }
-  };
-
-  const handlePrevTrack = () => {
-    if (sounds.prevTrack) {
-      sounds.prevTrack();
-      if (sounds.getCurrentTrackIndex) setCurrentTrackIndex(sounds.getCurrentTrackIndex());
-    }
   };
 
   // Specific Audio Handlers
@@ -340,7 +313,6 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
     setTimeout(() => setShowResetNotice(false), 2500);
   };
 
-  const currentTrack = MUSIC_PLAYLIST[currentTrackIndex] || MUSIC_PLAYLIST[0];
   const equippedChar = CHARACTER_MAP[equippedCharId] || CHARACTERS[0];
   const equippedDice = DICE_SKIN_MAP[equippedDiceSkinId] || { name: 'Classic Red', icon: '🎲' };
 
@@ -773,7 +745,7 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
                 </div>
               </div>
 
-              {/* Jukebox & Background Music Card */}
+              {/* Board Brawl Ambiance Soundtrack Card */}
               <div
                 style={{
                   background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
@@ -787,112 +759,39 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div
+                    <button
+                      onClick={handleToggleMusic}
+                      title={musicMuted ? 'Play Ambiance Soundtrack' : 'Mute Ambiance Soundtrack'}
                       style={{
                         width: '40px',
                         height: '40px',
                         borderRadius: '12px',
-                        background: '#dcfce7',
-                        color: '#10b981',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Music size={20} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '15px', fontWeight: 800, color: '#064e3b' }}>
-                        Board Brawl Jukebox & Music
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#047857' }}>
-                        Original soundtrack playlist & ambient background audio
-                      </div>
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      background: musicMuted ? '#f1f5f9' : '#10b981',
-                      color: musicMuted ? '#94a3b8' : '#ffffff',
-                      fontWeight: 800,
-                      fontSize: '13px',
-                      padding: '4px 12px',
-                      borderRadius: '10px',
-                      minWidth: '58px',
-                      textAlign: 'center',
-                    }}
-                  >
-                    {musicMuted ? 'PAUSED' : `${musicVolume}%`}
-                  </div>
-                </div>
-
-                {/* Track Title Display & Selector */}
-                <div
-                  style={{
-                    background: '#ffffff',
-                    border: '1px solid #bbf7d0',
-                    borderRadius: '14px',
-                    padding: '10px 14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '10px',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        width: '10px',
-                        height: '10px',
-                        borderRadius: '50%',
-                        background: musicMuted ? '#cbd5e1' : '#10b981',
-                        boxShadow: musicMuted ? 'none' : '0 0 8px #10b981',
-                      }}
-                    />
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div
-                        style={{
-                          fontSize: '13px',
-                          fontWeight: 800,
-                          color: '#0f172a',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                      >
-                        🎵 {currentTrack.title}
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>
-                        Track {currentTrackIndex + 1} of {MUSIC_PLAYLIST.length}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Playback Controls (Prev, Play/Pause, Next) */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <button
-                      onClick={handlePrevTrack}
-                      title="Previous Track"
-                      style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        background: '#ffffff',
-                        color: '#475569',
+                        border: 'none',
+                        background: musicMuted ? '#f1f5f9' : '#dcfce7',
+                        color: musicMuted ? '#94a3b8' : '#10b981',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         cursor: 'pointer',
+                        transition: 'all 0.15s ease',
                       }}
                     >
-                      <SkipBack size={14} />
+                      {musicMuted ? <VolumeX size={20} /> : <Music size={20} />}
                     </button>
+                    <div>
+                      <div style={{ fontSize: '15px', fontWeight: 800, color: '#064e3b' }}>
+                        Board Brawl Ambiance Soundtrack
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#047857' }}>
+                        Original atmospheric background soundtrack
+                      </div>
+                    </div>
+                  </div>
 
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <button
                       onClick={handleToggleMusic}
-                      title={musicMuted ? 'Play Music' : 'Pause Music'}
+                      title={musicMuted ? 'Play Ambiance' : 'Pause Ambiance'}
                       style={{
                         padding: '6px 14px',
                         borderRadius: '8px',
@@ -912,50 +811,22 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
                       {musicMuted ? 'Play' : 'Pause'}
                     </button>
 
-                    <button
-                      onClick={handleNextTrack}
-                      title="Next Track"
+                    <div
                       style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        background: '#ffffff',
-                        color: '#475569',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
+                        background: musicMuted ? '#f1f5f9' : '#10b981',
+                        color: musicMuted ? '#94a3b8' : '#ffffff',
+                        fontWeight: 800,
+                        fontSize: '13px',
+                        padding: '4px 12px',
+                        borderRadius: '10px',
+                        minWidth: '58px',
+                        textAlign: 'center',
                       }}
                     >
-                      <SkipForward size={14} />
-                    </button>
+                      {musicMuted ? 'PAUSED' : `${musicVolume}%`}
+                    </div>
                   </div>
                 </div>
-
-                {/* Track Selector Dropdown */}
-                <select
-                  value={currentTrackIndex}
-                  onChange={(e) => handleTrackChange(Number(e.target.value))}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: '10px',
-                    border: '1px solid #a7f3d0',
-                    background: '#ffffff',
-                    color: '#064e3b',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    outline: 'none',
-                  }}
-                >
-                  {MUSIC_PLAYLIST.map((t, idx) => (
-                    <option key={t.id} value={idx}>
-                      {idx + 1}. {t.title}
-                    </option>
-                  ))}
-                </select>
 
                 {/* Music Volume Slider */}
                 <input
