@@ -92,7 +92,7 @@ export default function StartingPlayerSpinner({
 
   if (!startingSpin || !visible || !players.length) return null;
 
-  const targetPlayer = players[startingSpin.chosenPlayerIndex] || players[0];
+  const targetPlayer = players[startingSpin.chosenPlayerIndex] || players[0] || {};
   const isMe = String(targetPlayer?.id) === String(currentUserId);
   const chosenColor = targetPlayer?.avatarColor || '#38bdf8';
 
@@ -180,7 +180,7 @@ export default function StartingPlayerSpinner({
             <span style={{ color: '#38bdf8' }}>🎉 YOU ROLL FIRST!</span>
           ) : (
             <span style={{ color: chosenColor }}>
-              👑 {targetPlayer.name.toUpperCase()} ROLLS FIRST!
+              👑 {(targetPlayer?.name || targetPlayer?.username || "PLAYER").toUpperCase()} ROLLS FIRST!
             </span>
           )
         ) : (
@@ -300,7 +300,7 @@ export default function StartingPlayerSpinner({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={avatarSrc}
-                  alt={p.name}
+                  alt={p?.name || p?.username || "Player"}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
@@ -320,7 +320,7 @@ export default function StartingPlayerSpinner({
                   whiteSpace: 'nowrap',
                 }}
               >
-                {p.name}
+                {p?.name || p?.username || "Player"}
               </div>
 
               {/* Role / You Tag */}

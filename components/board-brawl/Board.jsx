@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { TILES } from '@/lib/board-brawl/types';
+import { TILES, formatCash } from '@/lib/board-brawl/types';
 import { sounds } from '@/lib/audio';
 import { TOKEN_ICONS } from '@/lib/board-brawl/characters.js';
 import CountryFlag from '@/components/board-brawl/CountryFlag';
