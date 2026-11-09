@@ -32,13 +32,14 @@ export default function ActionBannerOverlay({
   const queueRef = useRef([]);
   const isDisplayingRef = useRef(false);
   const dismissTimerRef = useRef(null);
-  const lastEventIdRef = useRef('');
+  const lastPaymentEventIdRef = useRef('');
+  const lastTradeActionIdRef = useRef('');
 
   // Helper to resolve player info
   const getPlayer = (id) => {
     if (!id) return null;
-    const p = players.find((x) => x.id === id);
-    if (!p) return { name: 'Bank / Pot', avatarToken: 'robot', avatarColor: '#94a3b8' };
+    const p = players.find((x) => String(x.id) === String(id));
+    if (!p) return { name: 'Bank / Pot', avatarToken: 'robot', icon: '🏦', color: '#94a3b8' };
     const char = CHARACTERS.find((c) => c.id === p.avatarToken) || { icon: '👤' };
     return {
       id: p.id,
@@ -73,10 +74,19 @@ export default function ActionBannerOverlay({
     }
   };
 
+  // Immediate full dismissal when user clicks close (X)
+  const dismissBanner = (e) => {
+    if (e) e.stopPropagation();
+    if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+    queueRef.current = [];
+    isDisplayingRef.current = false;
+    setCurrentBanner(null);
+  };
+
   // 1. Process incoming payment events (Rent, Resort Rent, Tax, Buyout)
   useEffect(() => {
-    if (!paymentEvent || !paymentEvent.id || paymentEvent.id === lastEventIdRef.current) return;
-    lastEventIdRef.current = paymentEvent.id;
+    if (!paymentEvent || !paymentEvent.id || paymentEvent.id === lastPaymentEventIdRef.current) return;
+    lastPaymentEventIdRef.current = paymentEvent.id;
 
     const { payerId, receiverId, amount, type, tileId } = paymentEvent;
     const payer = getPlayer(payerId);
@@ -164,8 +174,9 @@ export default function ActionBannerOverlay({
 
   // 2. Process incoming trade events (Deal Proposed, Deal Accepted, Deal Declined)
   useEffect(() => {
-    if (!tradeAction || !tradeAction.timestamp || tradeAction.timestamp === lastEventIdRef.current) return;
-    lastEventIdRef.current = tradeAction.timestamp;
+    const tradeEventId = tradeAction ? `${tradeAction.type}_${tradeAction.trade?.id || tradeAction.trade?.tradeId || ''}_${tradeAction.timestamp || ''}` : '';
+    if (!tradeAction || !tradeEventId || tradeEventId === lastTradeActionIdRef.current) return;
+    lastTradeActionIdRef.current = tradeEventId;
 
     const { type, trade } = tradeAction;
     if (!trade) return;
@@ -177,7 +188,7 @@ export default function ActionBannerOverlay({
 
     if (type === 'proposed' || type === 'countered') {
       const isCounter = type === 'countered';
-      const isForMe = currentUserId && trade.targetId === currentUserId;
+      const isForMe = currentUserId && String(trade.targetId) === String(currentUserId);
 
       // Extract brief summary of offer
       const off = trade.offer || {};
@@ -193,7 +204,7 @@ export default function ActionBannerOverlay({
       }
 
       banner = {
-        id: `trade_${trade.id}_${Date.now()}`,
+        id: `trade_${trade.id || Date.now()}`,
         category: 'trade_proposal',
         icon: <Handshake size={22} className="text-sky-400" />,
         badgeText: isCounter ? 'TRADE COUNTER-OFFER' : 'TRADE DEAL PROPOSED',
@@ -218,8 +229,27 @@ export default function ActionBannerOverlay({
         }
       } catch (e) {}
     } else if (type === 'accepted') {
+      // Extract what proposer gave and target gave from trade.offer if available
+      const off = trade.offer || {};
+      const pGives = [];
+      if (off.proposerCash > 0) pGives.push(`${(off.proposerCash / 1000).toLocaleString()}k CR`);
+      if (off.proposerTileIds?.length) {
+        pGives.push(off.proposerTileIds.map((tid) => TILES[tid]?.name || `#${tid}`).join(', '));
+      }
+      if (off.proposerCardIds?.length) {
+        pGives.push(`${off.proposerCardIds.length} Card(s)`);
+      }
+      const tGives = [];
+      if (off.targetCash > 0) tGives.push(`${(off.targetCash / 1000).toLocaleString()}k CR`);
+      if (off.targetTileIds?.length) {
+        tGives.push(off.targetTileIds.map((tid) => TILES[tid]?.name || `#${tid}`).join(', '));
+      }
+      if (off.targetCardIds?.length) {
+        tGives.push(`${off.targetCardIds.length} Card(s)`);
+      }
+
       banner = {
-        id: `trade_acc_${Date.now()}`,
+        id: `trade_acc_${trade.tradeId || trade.id || Date.now()}`,
         category: 'trade_accepted',
         icon: <CheckCircle2 size={22} className="text-emerald-400" />,
         badgeText: 'DEAL STRUCK & ACCEPTED',
@@ -229,13 +259,15 @@ export default function ActionBannerOverlay({
         title: 'Trade Deal Finalized!',
         payer: proposer,
         receiver: target,
+        proposerGives: pGives.join(' + ') || null,
+        targetGives: tGives.join(' + ') || null,
         summary: trade.summary || 'Assets and Capital Exchanged',
         borderGlow: 'rgba(16, 185, 129, 0.8)',
       };
       try { sounds.playDealStruck?.(); } catch (e) {}
     } else if (type === 'declined') {
       banner = {
-        id: `trade_dec_${Date.now()}`,
+        id: `trade_dec_${trade.tradeId || trade.id || Date.now()}`,
         category: 'trade_declined',
         icon: <XCircle size={22} className="text-rose-400" />,
         badgeText: 'DEAL DECLINED',
@@ -245,7 +277,7 @@ export default function ActionBannerOverlay({
         title: 'Trade Deal Declined',
         payer: proposer,
         receiver: target,
-        summary: 'The trade terms were not accepted',
+        summary: trade.reason === 'cancelled' ? 'Trade offer was withdrawn' : 'The trade terms were rejected',
         borderGlow: 'rgba(239, 68, 68, 0.5)',
       };
     }
@@ -268,23 +300,23 @@ export default function ActionBannerOverlay({
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        pointerEvents: currentBanner.isForMe ? 'auto' : 'none',
+        pointerEvents: 'none', // Lets clicks pass around the banner
         animation: 'actionBannerDrop 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards',
         maxWidth: '92vw',
       }}
     >
-      <style>{'\
-        @keyframes actionBannerDrop {\
-          0% {\
-            opacity: 0;\
-            transform: translate(-50%, -24px) scale(0.92);\
-          }\
-          100% {\
-            opacity: 1;\
-            transform: translate(-50%, 0) scale(1.0);\
-          }\
-        }\
-      '}</style>
+      <style>{`
+        @keyframes actionBannerDrop {
+          0% {
+            opacity: 0;
+            transform: translate(-50%, -24px) scale(0.92);
+          }
+          100% {
+            opacity: 1;
+            transform: translate(-50%, 0) scale(1.0);
+          }
+        }
+      `}</style>
 
       <div
         onClick={() => {
@@ -293,6 +325,7 @@ export default function ActionBannerOverlay({
           }
         }}
         style={{
+          pointerEvents: 'auto', // Banner box and its X button ALWAYS receive clicks!
           display: 'flex',
           flexDirection: 'column',
           gap: '8px',
@@ -331,19 +364,28 @@ export default function ActionBannerOverlay({
           </div>
 
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              showNextBanner();
-            }}
+            onClick={dismissBanner}
             style={{
-              background: 'none',
+              background: 'rgba(255, 255, 255, 0.08)',
               border: 'none',
+              borderRadius: '50%',
               color: '#94a3b8',
               cursor: 'pointer',
-              padding: '2px',
+              padding: '4px',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background 0.15s, color 0.15s',
             }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)';
+              e.currentTarget.style.color = '#f87171';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+              e.currentTarget.style.color = '#94a3b8';
+            }}
+            title="Dismiss banner"
           >
             <X size={15} />
           </button>
@@ -468,6 +510,80 @@ export default function ActionBannerOverlay({
 
         {/* Content Body: Trade Accepted */}
         {currentBanner.category === 'trade_accepted' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+            {/* Players involved */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+              {/* Proposer */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                <span style={{ fontSize: '22px' }}>{currentBanner.payer?.icon}</span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 900, color: currentBanner.payer?.color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '120px' }}>
+                      {currentBanner.payer?.name}
+                    </span>
+                    <span style={{ fontSize: '9px', fontWeight: 800, padding: '1px 6px', borderRadius: '4px', background: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.4)' }}>
+                      PROPOSER
+                    </span>
+                  </div>
+                  {currentBanner.proposerGives && (
+                    <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600 }}>
+                      Gave: <span style={{ color: '#f8fafc' }}>{currentBanner.proposerGives}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Handshake Center Badge */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 900, color: '#34d399', letterSpacing: '0.05em' }}>
+                  <Handshake size={18} />
+                  <span>DEAL STRUCK</span>
+                </div>
+              </div>
+
+              {/* Acceptor / Partner */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, justifyContent: 'flex-end', textAlign: 'right' }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end' }}>
+                    <span style={{ fontSize: '9px', fontWeight: 800, padding: '1px 6px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
+                      ACCEPTED BY
+                    </span>
+                    <span style={{ fontSize: '13px', fontWeight: 900, color: currentBanner.receiver?.color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '120px' }}>
+                      {currentBanner.receiver?.name}
+                    </span>
+                  </div>
+                  {currentBanner.targetGives && (
+                    <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600 }}>
+                      Gave: <span style={{ color: '#f8fafc' }}>{currentBanner.targetGives}</span>
+                    </div>
+                  )}
+                </div>
+                <span style={{ fontSize: '22px' }}>{currentBanner.receiver?.icon}</span>
+              </div>
+            </div>
+
+            {/* Terms Summary Pill */}
+            {currentBanner.summary && (
+              <div
+                style={{
+                  fontSize: '11px',
+                  color: '#cbd5e1',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  padding: '5px 10px',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  fontWeight: 600,
+                }}
+              >
+                {currentBanner.summary}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Content Body: Trade Declined */}
+        {currentBanner.category === 'trade_declined' && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginTop: '4px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ fontSize: '18px' }}>{currentBanner.payer?.icon}</span>
@@ -475,8 +591,8 @@ export default function ActionBannerOverlay({
                 {currentBanner.payer?.name}
               </span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 900, color: '#34d399' }}>
-              <span>🤝 AGREEMENT STRUCK!</span>
+            <div style={{ fontSize: '11px', color: '#fca5a5', fontWeight: 700 }}>
+              {currentBanner.summary}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ fontSize: '13px', fontWeight: 800, color: currentBanner.receiver?.color }}>
@@ -484,13 +600,6 @@ export default function ActionBannerOverlay({
               </span>
               <span style={{ fontSize: '18px' }}>{currentBanner.receiver?.icon}</span>
             </div>
-          </div>
-        )}
-
-        {/* Content Body: Trade Declined */}
-        {currentBanner.category === 'trade_declined' && (
-          <div style={{ fontSize: '12px', color: '#fca5a5', fontWeight: 600, marginTop: '2px' }}>
-            Trade deal between {currentBanner.payer?.name} and {currentBanner.receiver?.name} was cancelled or declined.
           </div>
         )}
       </div>
