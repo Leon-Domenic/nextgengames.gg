@@ -147,7 +147,7 @@ export default function Board({
             <div style={{ textAlign: 'center' }}>
               {tile.type === 'city' ? (
                 <span style={{ fontSize: '9px', color: owner ? owner.avatarColor : 'var(--text-dim)', fontWeight: 700 }}>
-                  ${prop.ownerId ? (tile.rent[Math.min(prop.level - 1, 4)] || tile.rent[0]) : tile.price}
+                  {prop.ownerId ? formatCash(tile.rent[Math.min(prop.level - 1, 4)] || tile.rent[0]) : formatCash(tile.price)}
                 </span>
               ) : (
                 <span style={{ fontSize: '8px', color: 'var(--text-muted)' }}>

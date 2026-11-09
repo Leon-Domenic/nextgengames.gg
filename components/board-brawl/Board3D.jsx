@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
-import { TILES } from '@/lib/board-brawl/types';
+import { TILES, formatCash } from '@/lib/board-brawl/types';
 import { sounds } from '@/lib/audio';
 import { Sparkles } from 'lucide-react';
 import {
@@ -584,7 +584,7 @@ export default function Board3D({
 
           ctx.fillStyle = '#047857';
           ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText('COLLECT 200K CR', 0, 180);
+          ctx.fillText('COLLECT 200K', 0, 180);
 
         } else if (cornerType === 'jail' || cornerType === 'go_to_jail' || p.side === 1) {
           // CORNER 1: POLICE PRECINCT & EXTRADITION GATEWAY
@@ -744,7 +744,7 @@ export default function Board3D({
 
           ctx.fillStyle = '#0369a1';
           ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText('TICKET: 50K CR', 0, 178);
+          ctx.fillText('TICKET: 50K', 0, 178);
 
         } else {
           // CORNER 3: CHAMPIONSHIPS / FESTIVAL (East)
@@ -831,7 +831,7 @@ export default function Board3D({
             ctx.restore();
           }
 
-          const fontSize = name.length > 15 ? 34 : name.length > 11 ? 40 : 46;
+          const fontSize = name.length > 15 ? 28 : name.length > 11 ? 32 : 36;
           drawOutwardText(name, 256, 118, '900 ' + fontSize + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a', 450);
 
           // Price Tag Pill
@@ -844,10 +844,8 @@ export default function Board3D({
           ctx.stroke();
 
           const priceNum = tile.price || 0;
-          const displayPrice = priceNum >= 1000000
-            ? (priceNum / 1000000).toFixed(1) + 'M'
-            : Math.round(priceNum / 1000) + 'K';
-          drawOutwardText(displayPrice + ' CR', 256, 190, '900 42px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a');
+          const displayPrice = formatCash(priceNum, false);
+          drawOutwardText(displayPrice, 256, 190, '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a');
 
           // --- 2. DEDICATED SPACIOUS ARCHITECTURAL ESTATE BUILDING LOT (y = 236 to 880) ---
           // Manicured estate turf base
@@ -935,10 +933,8 @@ export default function Board3D({
           ctx.stroke();
 
           const priceNum = tile.price || 0;
-          const displayPrice = priceNum >= 1000000
-            ? (priceNum / 1000000).toFixed(1) + 'M'
-            : Math.round(priceNum / 1000) + 'K';
-          drawOutwardText(displayPrice + ' CR • RESORT', 256, 190, '900 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0891b2');
+          const displayPrice = formatCash(priceNum, false);
+          drawOutwardText(displayPrice + ' • RESORT', 256, 190, '900 26px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0891b2');
 
           // --- 2. DEDICATED GOLDEN BEACH SAND RESORT LOT (y = 236 to 880) ---
           // Warm Tropical Beach Sand Base
@@ -1011,7 +1007,7 @@ export default function Board3D({
 
         } else {
           // SPECIAL EVENT TILES (Chance, Tax, Mystery, Armory, Festival)
-          const taxSub = tile.amount ? ('PAY ' + Math.round(tile.amount / 1000) + 'K CR') : 'PAY TAX';
+          const taxSub = tile.amount ? ('PAY ' + formatCash(tile.amount, true)) : 'PAY TAX';
           const eventConfig = {
             chance: { color: '#ec4899', icon: '❓', title: 'CHANCE', sub: 'LUCKY DRAW', subColor: '#be185d', bg: '#312e81' },
             championship: { color: '#f59e0b', icon: '🏆', title: 'CHAMPIONSHIP', sub: '2X RENT HOST', subColor: '#b45309', bg: '#451a03' },
@@ -1023,7 +1019,7 @@ export default function Board3D({
             color: '#0284c7',
             icon: tile.icon || '🎯',
             title: tile.name.toUpperCase(),
-            sub: tile.amount ? ('PAY ' + Math.round(tile.amount / 1000) + 'K CR') : (tile.type || '').toUpperCase(),
+            sub: tile.amount ? ('PAY ' + formatCash(tile.amount, true)) : (tile.type || '').toUpperCase(),
             subColor: '#0369a1',
             bg: '#0f172a',
           };
@@ -1040,7 +1036,7 @@ export default function Board3D({
           ctx.fillStyle = '#0f172a';
           ctx.fillRect(16, 72, 480, 4);
 
-          drawOutwardText(cfg.icon + ' ' + cfg.title, 256, 122, '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a', 450);
+          drawOutwardText(cfg.icon + ' ' + cfg.title, 256, 122, '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a', 450);
 
           ctx.fillStyle = '#f8fafc';
           ctx.strokeStyle = '#0f172a';
@@ -1050,7 +1046,7 @@ export default function Board3D({
           ctx.fill();
           ctx.stroke();
 
-          drawOutwardText(cfg.sub, 256, 190, '900 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', cfg.subColor);
+          drawOutwardText(cfg.sub, 256, 190, '900 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', cfg.subColor);
 
           // Dedicated Themed Lot Texture
           ctx.fillStyle = cfg.bg;
@@ -2074,7 +2070,7 @@ export default function Board3D({
       cCtx.font = 'bold 24px monospace';
       cCtx.textAlign = 'center';
       cCtx.textBaseline = 'middle';
-      cCtx.fillText('₩', 64, 32);
+      cCtx.fillText('CR', 64, 32);
 
       const cTex = new THREE.CanvasTexture(cCanvas);
       const cMat = new THREE.MeshBasicMaterial({

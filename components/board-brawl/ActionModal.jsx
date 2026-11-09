@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { TILES } from '@/lib/board-brawl/types';
+import { TILES, formatCash } from '@/lib/board-brawl/types';
 import { sounds } from '@/lib/audio';
 import SmoothTimerBar from '@/components/board-brawl/SmoothTimerBar';
 import { useTranslation } from '@/lib/board-brawl/i18n';
@@ -311,7 +311,7 @@ export default function ActionModal({
                 fontSize: '11px',
                 fontWeight: 900,
               }}>
-                BASE RENT {tile.baseRent?.toLocaleString()} CR
+                BASE RENT {formatCash(tile.baseRent)} CR
               </div>
             </div>
 
@@ -330,7 +330,7 @@ export default function ActionModal({
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 700, color: '#0e7490' }}>💳 Remaining Balance:</span>
                   <span style={{ fontWeight: 900, color: remBalance >= 0 ? '#15803d' : '#b91c1c' }}>
-                    {Math.max(0, remBalance).toLocaleString()} CR
+                    {formatCash(Math.max(0, remBalance))} CR
                   </span>
                 </div>
               )}
@@ -521,7 +521,7 @@ export default function ActionModal({
                 <span style={{ fontSize: '18px' }}>🪙</span>
                 <div>
                   <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase' }}>{t('rentYield')}</div>
-                  <div style={{ fontSize: '15px', fontWeight: 900, color: '#78350f' }}>{nextRent.toLocaleString()} CR</div>
+                  <div style={{ fontSize: '15px', fontWeight: 900, color: '#78350f' }}>{formatCash(nextRent)} CR</div>
                 </div>
               </div>
 
@@ -567,7 +567,7 @@ export default function ActionModal({
                 transition: 'transform 0.1s ease',
               }}
             >
-              <span>{isResort ? 'Acquire Resort' : t('buyAndUpgrade')} ({costToBuild.toLocaleString()} Space Credits)</span>
+              <span>{isResort ? 'Acquire Resort' : t('buyAndUpgrade')} ({formatCash(costToBuild)} CR)</span>
               <span style={{ fontSize: '11px', fontWeight: 800, color: remBalance >= 0 ? '#dcfce7' : '#fee2e2' }}>
                 Remaining Balance: {Math.max(0, remBalance).toLocaleString()} CR
               </span>
@@ -597,7 +597,7 @@ export default function ActionModal({
                 gap: '2px',
               }}
             >
-              <span>{t('upgradeLevel')} ({tile.housePrice?.toLocaleString()} Space Credits)</span>
+              <span>{t('upgradeLevel')} ({formatCash(tile.housePrice)} CR)</span>
               <span style={{ fontSize: '11px', fontWeight: 800, color: remBalance >= 0 ? '#dbeafe' : '#fee2e2' }}>
                 Remaining Balance: {Math.max(0, remBalance).toLocaleString()} CR
               </span>
@@ -615,7 +615,7 @@ export default function ActionModal({
               textAlign: 'center',
               border: '1px solid #a5f3fc',
             }}>
-              🏖️ You own this resort! Current Rent: {currentRent.toLocaleString()} CR ({playerResortsCount} of 4 Resorts owned)
+              🏖️ You own this resort! Current Rent: {formatCash(currentRent)} CR ({playerResortsCount} of 4 Resorts owned)
             </div>
           )}
 
@@ -658,10 +658,10 @@ export default function ActionModal({
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Zap size={18} />
-                    <span>{t('hostileBuyout2x')} ({buyoutCost.toLocaleString()} Space Credits)</span>
+                    <span>{t('hostileBuyout2x')} ({formatCash(buyoutCost)} CR)</span>
                   </div>
                   <span style={{ fontSize: '11px', fontWeight: 800, color: remBuyout >= 0 ? '#fdf2f8' : '#fee2e2' }}>
-                    Remaining Balance: {Math.max(0, remBuyout).toLocaleString()} CR
+                    Remaining Balance: {formatCash(Math.max(0, remBuyout))} CR
                   </span>
                 </button>
               )}

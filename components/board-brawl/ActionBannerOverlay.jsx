@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { TILES } from '@/lib/board-brawl/types.js';
+import { TILES, formatCash } from '@/lib/board-brawl/types.js';
 import { CHARACTERS } from '@/lib/board-brawl/characters.js';
 import { sounds } from '@/lib/audio';
 import {
@@ -193,12 +193,12 @@ export default function ActionBannerOverlay({
       // Extract brief summary of offer
       const off = trade.offer || {};
       const offerParts = [];
-      if (off.proposerCash > 0) offerParts.push(`${(off.proposerCash / 1000).toLocaleString()}k CR`);
+      if (off.proposerCash > 0) offerParts.push(`${formatCash(off.proposerCash)} CR`);
       if (off.proposerTileIds?.length) {
         offerParts.push(off.proposerTileIds.map((tid) => TILES[tid]?.name || `#${tid}`).join(', '));
       }
       const reqParts = [];
-      if (off.targetCash > 0) reqParts.push(`${(off.targetCash / 1000).toLocaleString()}k CR`);
+      if (off.targetCash > 0) reqParts.push(`${formatCash(off.targetCash)} CR`);
       if (off.targetTileIds?.length) {
         reqParts.push(off.targetTileIds.map((tid) => TILES[tid]?.name || `#${tid}`).join(', '));
       }
@@ -232,7 +232,7 @@ export default function ActionBannerOverlay({
       // Extract what proposer gave and target gave from trade.offer if available
       const off = trade.offer || {};
       const pGives = [];
-      if (off.proposerCash > 0) pGives.push(`${(off.proposerCash / 1000).toLocaleString()}k CR`);
+      if (off.proposerCash > 0) pGives.push(`${formatCash(off.proposerCash)} CR`);
       if (off.proposerTileIds?.length) {
         pGives.push(off.proposerTileIds.map((tid) => TILES[tid]?.name || `#${tid}`).join(', '));
       }
@@ -240,7 +240,7 @@ export default function ActionBannerOverlay({
         pGives.push(`${off.proposerCardIds.length} Card(s)`);
       }
       const tGives = [];
-      if (off.targetCash > 0) tGives.push(`${(off.targetCash / 1000).toLocaleString()}k CR`);
+      if (off.targetCash > 0) tGives.push(`${formatCash(off.targetCash)} CR`);
       if (off.targetTileIds?.length) {
         tGives.push(off.targetTileIds.map((tid) => TILES[tid]?.name || `#${tid}`).join(', '));
       }
@@ -402,7 +402,7 @@ export default function ActionBannerOverlay({
                   {currentBanner.payer?.name}
                 </div>
                 <div style={{ fontSize: '11px', color: '#f87171', fontWeight: 700 }}>
-                  -{currentBanner.amount.toLocaleString()} CR
+                  -{formatCash(currentBanner.amount)} CR
                 </div>
               </div>
             </div>
@@ -425,7 +425,7 @@ export default function ActionBannerOverlay({
                   {currentBanner.receiver?.name}
                 </div>
                 <div style={{ fontSize: '11px', color: '#4ade80', fontWeight: 700 }}>
-                  +{currentBanner.amount.toLocaleString()} CR
+                  +{formatCash(currentBanner.amount)} CR
                 </div>
               </div>
               <span style={{ fontSize: '20px' }}>{currentBanner.receiver?.icon}</span>
@@ -466,7 +466,7 @@ export default function ActionBannerOverlay({
                   {currentBanner.payer?.name}
                 </span>
                 <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: '6px' }}>
-                  contributed {currentBanner.amount.toLocaleString()} CR tax
+                  contributed {formatCash(currentBanner.amount)} CR tax
                 </span>
               </div>
             </div>

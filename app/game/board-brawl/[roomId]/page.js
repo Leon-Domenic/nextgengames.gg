@@ -34,7 +34,7 @@ import {
   Users, Bot, Play, MessageSquare, Send, Sparkles, AlertCircle, Copy, CheckCheck,
   Volume2, VolumeX, Crown, ShieldAlert, X, ShoppingBag, Home, Settings, Clock, ArrowRight, Handshake
 } from 'lucide-react';
-import { TILES } from '@/lib/board-brawl/types';
+import { TILES, formatCash } from '@/lib/board-brawl/types';
 
 import { TOKEN_ICONS, CHARACTERS } from '@/lib/board-brawl/characters.js';
 import { useTranslation } from '@/lib/board-brawl/i18n';
@@ -312,7 +312,7 @@ export default function BoardBrawlArenaPage() {
             {
               id: `debit_${badgeId}`,
               type: 'debit',
-              text: `-₩${Number(paymentData.amount || 0).toLocaleString()}`,
+              text: `-${formatCash(paymentData.amount)} CR`,
             },
           ],
         }));
@@ -331,7 +331,7 @@ export default function BoardBrawlArenaPage() {
             {
               id: `credit_${badgeId}`,
               type: 'credit',
-              text: `+₩${Number(paymentData.amount || 0).toLocaleString()}`,
+              text: `+${formatCash(paymentData.amount)} CR`,
             },
           ],
         }));
@@ -2114,7 +2114,7 @@ function PlayerCornerCard({
               alignItems: 'center',
               gap: '6px',
             }}>
-              <span>{player.cash.toLocaleString()}</span>
+              <span>{formatCash(player.cash, false)}</span>
               <span style={{
                 fontSize: '11px',
                 fontWeight: 900,
