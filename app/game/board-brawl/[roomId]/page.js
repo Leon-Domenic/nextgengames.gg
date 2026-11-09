@@ -21,6 +21,7 @@ import SettingsModal from '@/components/board-brawl/SettingsModal';
 import EventCardModal from '@/components/board-brawl/EventCardModal';
 import ActionCardDock from '@/components/board-brawl/ActionCardDock';
 import ActionCardPlayOverlay from '@/components/board-brawl/ActionCardPlayOverlay';
+import ActionBannerOverlay from '@/components/board-brawl/ActionBannerOverlay';
 import FestivalSelectModal from '@/components/board-brawl/FestivalSelectModal';
 import WorldTourSelectModal from '@/components/board-brawl/WorldTourSelectModal';
 import DebtLiquidationModal from '@/components/board-brawl/DebtLiquidationModal';
@@ -94,6 +95,8 @@ export default function BoardBrawlArenaPage() {
   };
   const [inspectedTileId, setInspectedTileId] = useState(null);
   const [lastPaymentEvent, setLastPaymentEvent] = useState(null);
+  const [latestPaymentAction, setLatestPaymentAction] = useState(null);
+  const [latestTradeAction, setLatestTradeAction] = useState(null);
   const [cashFloatingBadges, setCashFloatingBadges] = useState({});
   const [playerReactions, setPlayerReactions] = useState({});
   const [localMatchTimeRemaining, setLocalMatchTimeRemaining] = useState(1200);
@@ -294,6 +297,7 @@ export default function BoardBrawlArenaPage() {
     const handlePaymentEvent = (paymentData) => {
       if (!paymentData) return;
       setLastPaymentEvent(paymentData);
+      setLatestPaymentAction(paymentData);
 
       const timestamp = paymentData.timestamp || Date.now();
       const badgeId = `${timestamp}_${Math.random()}`;
@@ -355,12 +359,32 @@ export default function BoardBrawlArenaPage() {
       }
     };
     socket.on('player_kicked_event', handlePlayerKicked);
-    const handleTradeCompleted = () => {
+    const handleTradeUpdate = (tradeData) => {
+      if (tradeData) {
+        setLatestTradeAction({
+          type: tradeData.status === 'countered' ? 'countered' : 'proposed',
+          trade: tradeData,
+          timestamp: Date.now(),
+        });
+      }
+    };
+    const handleTradeCompleted = (tradeData) => {
       try { sounds.playDealStruck?.(); } catch (e) {}
+      setLatestTradeAction({
+        type: 'accepted',
+        trade: tradeData,
+        timestamp: Date.now(),
+      });
     };
-    const handleTradeDeclined = () => {
+    const handleTradeDeclined = (tradeData) => {
       try { sounds.playBuy?.(); } catch (e) {}
+      setLatestTradeAction({
+        type: 'declined',
+        trade: tradeData,
+        timestamp: Date.now(),
+      });
     };
+    socket.on('trade_update_event', handleTradeUpdate);
     socket.on('trade_completed_event', handleTradeCompleted);
     socket.on('trade_declined_event', handleTradeDeclined);
     socket.on('connect', joinRoom);
@@ -390,6 +414,7 @@ export default function BoardBrawlArenaPage() {
       socket.off('player_reaction_event', handlePlayerReaction);
       socket.off('payment_event', handlePaymentEvent);
       socket.off('player_kicked_event', handlePlayerKicked);
+      socket.off('trade_update_event', handleTradeUpdate);
       socket.off('trade_completed_event', handleTradeCompleted);
       socket.off('trade_declined_event', handleTradeDeclined);
       socket.off('connect', joinRoom);
@@ -906,6 +931,16 @@ export default function BoardBrawlArenaPage() {
 
         {/* Action Card Announcement Banner */}
         <ActionCardPlayOverlay lastActionCardPlayed={actionCardPlayEvent || gameState.lastActionCardPlayed} />
+
+        {/* In-Game Action Banners for Rent, Deals, and Takeovers */}
+        <ActionBannerOverlay
+          paymentEvent={latestPaymentAction}
+          tradeAction={latestTradeAction}
+          players={gameState?.players || []}
+          properties={gameState?.properties || {}}
+          currentUserId={myPlayerObj?.id || user?.id}
+          onOpenTradeDesk={() => setIsTradeModalOpen(true)}
+        />
 
         {/* Cinematic Event Card Draw Modal */}
         {!movementPendingArrival && (
