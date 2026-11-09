@@ -260,6 +260,9 @@ export default function BoardBrawlArenaPage() {
         timestamp: Date.now(),
         uniqueKey: Math.random().toString(36).substring(2, 9),
       });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('ngg_trigger_tomato', { detail: data }));
+      }
     };
 
     const handleTauntSound = ({ sender, tauntId }) => {
