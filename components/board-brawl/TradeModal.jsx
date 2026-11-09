@@ -20,6 +20,7 @@ export default function TradeModal({
   onCounterTrade,
   onRespondTrade,
   onCancelTrade,
+  tradeError = null,
 }) {
   const activeTrade = gameState?.activeTrade;
   const isTradeActive = Boolean(activeTrade && (activeTrade.status === 'pending' || activeTrade.status === 'countered'));
@@ -123,7 +124,17 @@ export default function TradeModal({
     }
   }, [isTradeActive, activeTrade, myPlayer?.id]);
 
-  if (!isOpen || !myPlayer || !targetPlayer) return null;
+  const effectiveTargetPlayer = targetPlayer || (
+    isTradeActive && activeTrade
+      ? (gameState?.players || []).find(p => String(p.id) === String(
+          String(activeTrade.proposerId) === String(myPlayer?.id)
+            ? activeTrade.targetId
+            : activeTrade.proposerId
+        ))
+      : null
+  );
+
+  if (!isOpen || !myPlayer || !effectiveTargetPlayer) return null;
 
   // Resolve properties owned by each player
   const myProperties = Object.keys(gameState.properties || {})
@@ -131,16 +142,16 @@ export default function TradeModal({
     .map(tid => ({ ...TILES[tid], prop: gameState.properties[tid] }));
 
   const targetProperties = Object.keys(gameState.properties || {})
-    .filter(tid => gameState.properties[tid]?.ownerId === targetPlayer.id)
+    .filter(tid => gameState.properties[tid]?.ownerId === effectiveTargetPlayer.id)
     .map(tid => ({ ...TILES[tid], prop: gameState.properties[tid] }));
 
   // Hand Action Cards
   const myCards = myPlayer.cards || [];
-  const targetCards = targetPlayer.cards || [];
+  const targetCards = effectiveTargetPlayer.cards || [];
 
   // Characters
   const myChar = CHARACTERS.find(c => c.id === myPlayer.avatarToken) || CHARACTERS[0];
-  const targetChar = CHARACTERS.find(c => c.id === targetPlayer.avatarToken) || CHARACTERS[0];
+  const targetChar = CHARACTERS.find(c => c.id === effectiveTargetPlayer.avatarToken) || CHARACTERS[0];
 
   // Helper toggle selections
   const toggleGiveTile = (tid) => {
@@ -167,8 +178,8 @@ export default function TradeModal({
   const buildOfferPayload = () => {
     let loanObj = null;
     if (loanEnabled && loanPrincipal > 0) {
-      const borrowerId = loanDirection === 'borrow' ? myPlayer.id : targetPlayer.id;
-      const creditorId = loanDirection === 'lend' ? myPlayer.id : targetPlayer.id;
+      const borrowerId = loanDirection === 'borrow' ? myPlayer.id : effectiveTargetPlayer.id;
+      const creditorId = loanDirection === 'lend' ? myPlayer.id : effectiveTargetPlayer.id;
       const totalRepayment = Math.round(loanPrincipal * (1 + loanInterestRate));
       const perRoundPayment = Math.round(totalRepayment / loanRounds);
 
@@ -198,7 +209,7 @@ export default function TradeModal({
 
   // Validation
   const myMaxCash = myPlayer.cash || 0;
-  const targetMaxCash = targetPlayer.cash || 0;
+  const targetMaxCash = effectiveTargetPlayer.cash || 0;
 
   const myAfterCardCount = myCards.length - giveCardIds.length + reqCardIds.length;
   const targetAfterCardCount = targetCards.length - reqCardIds.length + giveCardIds.length;
@@ -221,7 +232,7 @@ export default function TradeModal({
     const offer = buildOfferPayload();
     onProposeTrade({
       proposerId: myPlayer.id,
-      targetId: targetPlayer.id,
+      targetId: effectiveTargetPlayer.id,
       offer,
     });
   };
@@ -318,6 +329,21 @@ export default function TradeModal({
                 alignItems: 'center',
                 gap: '8px',
               }}>
+                {tradeError && (
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    color: '#fca5a5',
+                    background: 'rgba(239, 68, 68, 0.25)',
+                    border: '1px solid #ef4444',
+                    borderRadius: '8px',
+                    padding: '3px 8px',
+                    marginLeft: '8px',
+                    textTransform: 'none',
+                  }}>
+                    ⚠️ {tradeError}
+                  </span>
+                )}
                 <span>P2P Trade & Negotiation Desk</span>
                 {isTradeActive && (
                   <span style={{
@@ -615,7 +641,7 @@ export default function TradeModal({
                   width: '32px',
                   height: '32px',
                   borderRadius: '8px',
-                  background: targetPlayer.avatarColor || '#ec4899',
+                  background: effectiveTargetPlayer.avatarColor || '#ec4899',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -625,7 +651,7 @@ export default function TradeModal({
                 </div>
                 <div>
                   <div style={{ fontSize: '14px', fontWeight: 900, color: '#a78bfa' }}>
-                    YOU RECEIVE ({targetPlayer.name}&apos;s Assets)
+                    YOU RECEIVE ({effectiveTargetPlayer.name}&apos;s Assets)
                   </div>
                   <div style={{ fontSize: '11px', color: '#94a3b8' }}>
                     Balance: <span style={{ color: '#22c55e', fontFamily: 'monospace', fontWeight: 800 }}>{targetMaxCash.toLocaleString()} CR</span>
@@ -1013,12 +1039,12 @@ export default function TradeModal({
           <div style={{ fontSize: '12px', color: '#94a3b8' }}>
             {isSentByMe && !isCounterEditing && (
               <span style={{ color: '#00f0ff', fontWeight: 800 }}>
-                ⏳ Waiting for {targetPlayer.name} to accept, counter, or decline...
+                ⏳ Waiting for {effectiveTargetPlayer.name} to accept, counter, or decline...
               </span>
             )}
             {isIncomingForMe && !isCounterEditing && (
               <span style={{ color: '#f59e0b', fontWeight: 800 }}>
-                📬 Trade proposed by {targetPlayer.name}! Review terms and respond.
+                📬 Trade proposed by {effectiveTargetPlayer.name}! Review terms and respond.
               </span>
             )}
             {isCounterEditing && (

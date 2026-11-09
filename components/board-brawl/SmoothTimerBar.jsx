@@ -13,6 +13,7 @@ import React, { useEffect, useRef } from 'react';
 export default function SmoothTimerBar({
   secondsRemaining = 25,
   totalDuration = 25,
+  expiresAt = null,
   activeKey = '',
   height = 4,
   borderRadius = 999,
@@ -68,23 +69,30 @@ export default function SmoothTimerBar({
       const s = syncStateRef.current;
       const duration = Math.max(1, totalDuration || 25);
 
-      // Project expected progress based on elapsed time since last server sync
-      const timeSinceSync = Math.max(0, (now - s.lastSyncTime) / 1000);
-      const projectedProgress = Math.max(0, s.targetProgress - (timeSinceSync / duration) * 0.95);
-
-      // Smoothly approach the projected progress
-      const diff = projectedProgress - s.currentProgress;
-      if (diff > 0.08) {
-        // Snapped up (turn reset or anti-snipe)
-        s.currentProgress = projectedProgress;
+      let currentProgress;
+      if (expiresAt) {
+        const remainingMs = Math.max(0, expiresAt - Date.now());
+        currentProgress = Math.min(1.0, Math.max(0, remainingMs / (duration * 1000)));
       } else {
-        // Continuous smooth drain towards target
-        s.currentProgress += diff * Math.min(1.0, delta * 7.5);
-        // Micro-decrement so the bar glides seamlessly without freezing between 1s server ticks
-        s.currentProgress = Math.max(0, Math.min(1.0, s.currentProgress - (delta / duration) * 0.06));
+        // Project expected progress based on elapsed time since last server sync
+        const timeSinceSync = Math.max(0, (now - s.lastSyncTime) / 1000);
+        const projectedProgress = Math.max(0, s.targetProgress - (timeSinceSync / duration) * 0.95);
+
+        // Smoothly approach the projected progress
+        const diff = projectedProgress - s.currentProgress;
+        if (diff > 0.08) {
+          // Snapped up (turn reset or anti-snipe)
+          s.currentProgress = projectedProgress;
+        } else {
+          // Continuous smooth drain towards target
+          s.currentProgress += diff * Math.min(1.0, delta * 7.5);
+          // Micro-decrement so the bar glides seamlessly without freezing between 1s server ticks
+          s.currentProgress = Math.max(0, Math.min(1.0, s.currentProgress - (delta / duration) * 0.06));
+        }
+        currentProgress = s.currentProgress;
       }
 
-      const pct = Math.max(0, Math.min(100, s.currentProgress * 100));
+      const pct = Math.max(0, Math.min(100, currentProgress * 100));
       barEl.style.width = `${pct.toFixed(2)}%`;
 
       // Dynamic color & glow

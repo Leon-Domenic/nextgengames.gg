@@ -280,11 +280,14 @@ app.prepare().then(() => {
           timestamp: Date.now(),
         });
       } else if (action === 'trade_propose') {
-        game.proposeTrade(payload.proposerId, payload.targetId, payload.offer);
+        const res = game.proposeTrade(payload.proposerId, payload.targetId, payload.offer);
+        if (res && !res.success) socket.emit('trade_error', { error: res.error || 'Trade proposal failed' });
       } else if (action === 'trade_counter') {
-        game.counterTrade(payload.playerId, payload.tradeId, payload.updatedOffer);
+        const res = game.counterTrade(payload.playerId, payload.tradeId, payload.updatedOffer);
+        if (res && !res.success) socket.emit('trade_error', { error: res.error || 'Counter-offer failed' });
       } else if (action === 'trade_respond') {
-        game.respondToTrade(payload.playerId, payload.tradeId, payload.response);
+        const res = game.respondToTrade(payload.playerId, payload.tradeId, payload.response);
+        if (res && !res.success) socket.emit('trade_error', { error: res.error || 'Trade response failed' });
       } else if (action === 'trade_cancel') {
         game.cancelTrade(payload.playerId, payload.tradeId);
       }
@@ -293,17 +296,26 @@ app.prepare().then(() => {
     // 5. Dedicated Trade & Negotiation Events
     socket.on('trade_propose', ({ roomId, proposerId, targetId, offer }) => {
       const game = activeGames.get(roomId);
-      if (game) game.proposeTrade(proposerId, targetId, offer);
+      if (game) {
+        const res = game.proposeTrade(proposerId, targetId, offer);
+        if (res && !res.success) socket.emit('trade_error', { error: res.error || 'Trade proposal failed' });
+      }
     });
 
     socket.on('trade_counter', ({ roomId, playerId, tradeId, updatedOffer }) => {
       const game = activeGames.get(roomId);
-      if (game) game.counterTrade(playerId, tradeId, updatedOffer);
+      if (game) {
+        const res = game.counterTrade(playerId, tradeId, updatedOffer);
+        if (res && !res.success) socket.emit('trade_error', { error: res.error || 'Counter-offer failed' });
+      }
     });
 
     socket.on('trade_respond', ({ roomId, playerId, tradeId, response }) => {
       const game = activeGames.get(roomId);
-      if (game) game.respondToTrade(playerId, tradeId, response);
+      if (game) {
+        const res = game.respondToTrade(playerId, tradeId, response);
+        if (res && !res.success) socket.emit('trade_error', { error: res.error || 'Trade response failed' });
+      }
     });
 
     socket.on('trade_cancel', ({ roomId, playerId, tradeId }) => {

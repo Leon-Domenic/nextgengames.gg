@@ -289,7 +289,7 @@ export default function ActionBannerOverlay({
       <div
         onClick={() => {
           if (currentBanner.isForMe && onOpenTradeDesk) {
-            onOpenTradeDesk();
+            onOpenTradeDesk(currentBanner.trade);
           }
         }}
         style={{

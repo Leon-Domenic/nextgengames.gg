@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { CARD_RARITY } from '@/lib/board-brawl/cards';
 import { sounds } from '@/lib/audio';
-import { t } from '@/lib/board-brawl/i18n';
+import { t, useTranslation } from '@/lib/board-brawl/i18n';
 import { Sparkles, Zap, Shield, AlertTriangle, ArrowRight, Clock } from 'lucide-react';
 
 const DISPLAY_DURATION_MS = 7500; // 7.5 seconds display time (7-8s requirement)
@@ -13,6 +13,7 @@ export default function EventCardModal({
   isMyTurn,
   onDismiss,
 }) {
+  const { t } = useTranslation();
   const [remainingMs, setRemainingMs] = useState(DISPLAY_DURATION_MS);
   const onDismissRef = useRef(onDismiss);
   const activeEventKeyRef = useRef('');

@@ -100,6 +100,8 @@ export default function BoardBrawlArenaPage() {
   const [cashFloatingBadges, setCashFloatingBadges] = useState({});
   const [playerReactions, setPlayerReactions] = useState({});
   const [localMatchTimeRemaining, setLocalMatchTimeRemaining] = useState(1200);
+  const [localTurnTimerRemaining, setLocalTurnTimerRemaining] = useState(25);
+  const [tradeError, setTradeError] = useState(null);
   const [tradeTargetPlayer, setTradeTargetPlayer] = useState(null);
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
   const [isThrowingTomato, setIsThrowingTomato] = useState(false);
@@ -939,7 +941,17 @@ export default function BoardBrawlArenaPage() {
           players={gameState?.players || []}
           properties={gameState?.properties || {}}
           currentUserId={myPlayerObj?.id || user?.id}
-          onOpenTradeDesk={() => setIsTradeModalOpen(true)}
+          onOpenTradeDesk={(tradeData) => {
+            const activeTrade = tradeData || gameState?.activeTrade;
+            if (activeTrade) {
+              const otherId = String(activeTrade.proposerId) === String(myPlayerObj?.id)
+                ? activeTrade.targetId
+                : activeTrade.proposerId;
+              const targetP = (gameState?.players || []).find(p => String(p.id) === String(otherId));
+              if (targetP) setTradeTargetPlayer(targetP);
+            }
+            setIsTradeModalOpen(true);
+          }}
         />
 
         {/* Cinematic Event Card Draw Modal */}
@@ -993,7 +1005,7 @@ export default function BoardBrawlArenaPage() {
                   WORLD TOUR: Click any highlighted destination directly on the board to fly! (Ticket: 50,000 CR)
                 </div>
                 <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                  Choose unowned city/resort or your own property • Time Remaining: <span style={{ color: '#fef08a', fontWeight: 800 }}>{gameState.turnTimerRemaining}s</span>
+                  Choose unowned city/resort or your own property • Time Remaining: <span style={{ color: '#fef08a', fontWeight: 800 }}>{localTurnTimerRemaining}s</span>
                 </div>
               </div>
             </div>
@@ -1141,7 +1153,7 @@ export default function BoardBrawlArenaPage() {
             onSettleDebt={handleSettleDebt}
             onOpenTrade={handleOpenEmergencyTrade}
             players={gameState.players}
-            turnTimer={gameState.turnTimerRemaining}
+            turnTimer={localTurnTimerRemaining}
                   turnDuration={gameState.turnDuration || (gameState.mode === 'blitz' ? 25 : 35)}
           />
         )}
@@ -1157,6 +1169,7 @@ export default function BoardBrawlArenaPage() {
           onCounterTrade={handleCounterTrade}
           onRespondTrade={handleRespondTrade}
           onCancelTrade={handleCancelTrade}
+          tradeError={tradeError}
         />
 
         {/* Incoming Trade Notification Toast */}
@@ -1431,8 +1444,9 @@ export default function BoardBrawlArenaPage() {
 
                   {/* Draining Timer Bar */}
                   <SmoothTimerBar
-                    secondsRemaining={gameState.turnTimerRemaining}
+                    secondsRemaining={localTurnTimerRemaining}
                     totalDuration={gameState.turnDuration || (gameState.mode === 'blitz' ? 25 : 35)}
+                    expiresAt={gameState.turnExpiresAt}
                     activeKey={`${currentPlayer?.id}_${gameState.turnState}`}
                     height={4}
                     borderRadius={999}
@@ -1813,7 +1827,7 @@ export default function BoardBrawlArenaPage() {
               }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontSize: '11px', fontWeight: 900, color: '#fde047', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    DECISION ACTIVE ({gameState.turnTimerRemaining}s)
+                    DECISION ACTIVE ({localTurnTimerRemaining}s)
                   </span>
                   <span style={{ fontSize: '12px', color: '#cbd5e1', fontWeight: 700 }}>
                     Buy, Upgrade, or Pass
