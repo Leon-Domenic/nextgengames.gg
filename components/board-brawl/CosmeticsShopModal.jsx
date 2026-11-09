@@ -53,11 +53,11 @@ export default function CosmeticsShopModal({
         const stored = localStorage.getItem('ngg_unlocked_cosmetics');
         if (stored) {
           const parsed = JSON.parse(stored);
-          return new Set(['hat', 'robot', 'kitten', 'pigeon', 'witch', 'traveler', 'classic_red', ...parsed]);
+          return new Set(['hat', 'robot', 'kitten', 'pigeon', 'unicorn', 'witch', 'traveler', 'classic_red', ...parsed]);
         }
       } catch (e) {}
     }
-    return new Set(['hat', 'robot', 'kitten', 'pigeon', 'witch', 'traveler', 'classic_red']);
+    return new Set(['hat', 'robot', 'kitten', 'pigeon', 'unicorn', 'witch', 'traveler', 'classic_red']);
   });
 
   if (!isOpen || !mounted) return null;
