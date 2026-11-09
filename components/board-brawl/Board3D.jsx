@@ -304,19 +304,7 @@ export default function Board3D({
     lCtx.fillStyle = '#16a34a'; // Lush stadium turf base
     lCtx.fillRect(0, 0, 2048, 2048);
 
-    // Diagonal alternating mowed grass stripes (Vibrant emerald light grass vs rich medium turf)
-    const stripeWidth = 56;
-    for (let x = -2048; x < 4096; x += stripeWidth) {
-      const isEven = Math.floor(x / stripeWidth) % 2 === 0;
-      lCtx.fillStyle = isEven ? '#22c55e' : '#16a34a';
-      lCtx.beginPath();
-      lCtx.moveTo(x, 0);
-      lCtx.lineTo(x + stripeWidth, 0);
-      lCtx.lineTo(x + stripeWidth + 2048, 2048);
-      lCtx.lineTo(x + 2048, 2048);
-      lCtx.closePath();
-      lCtx.fill();
-    }
+    
 
     // Elegant Stone Curb / Perimeter Frame directly abutting inner tile edges
     lCtx.strokeStyle = '#334155';
@@ -474,30 +462,34 @@ export default function Board3D({
     TILES.forEach((tile) => {
       const p = getTile3DPos(tile.id, TILES.length);
 
-      // Dynamic High-Res Ultra Crisp Tile Texture (512x512)
+      // Elongated canvas for street tiles (512x896, aspect ratio matches 7.6 x 13.0)
+      // Square canvas for corners (512x512)
       const canvas = document.createElement('canvas');
       canvas.width = 512;
-      canvas.height = 512;
+      canvas.height = p.isCorner ? 512 : 896;
       const ctx = canvas.getContext('2d');
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
 
-      // Base background: Crisp clean bright white slab
+      const cW = canvas.width;
+      const cH = canvas.height;
+
+      // Base background: Crisp clean bright white slab with dark border
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, 512, 512);
+      ctx.fillRect(0, 0, cW, cH);
 
       // High contrast outer dark border
       ctx.lineWidth = 14;
       ctx.strokeStyle = '#0f172a';
-      ctx.strokeRect(7, 7, 498, 498);
+      ctx.strokeRect(7, 7, cW - 14, cH - 14);
 
       // Inner boundary
       ctx.lineWidth = 4;
       ctx.strokeStyle = '#cbd5e1';
-      ctx.strokeRect(16, 16, 480, 480);
+      ctx.strokeRect(16, 16, cW - 32, cH - 32);
 
       if (p.isCorner) {
-        // Authentic Monopoly Corner Field (Pristine square slab, centered emblem & outward-facing header)
+        // Corner Field (Square slab with centered artwork)
         ctx.save();
         ctx.translate(256, 256);
         ctx.rotate(p.canvasAngle);
@@ -505,7 +497,7 @@ export default function Board3D({
         const cornerType = tile.type || (p.side === 0 ? 'start' : p.side === 1 ? 'jail' : p.side === 2 ? 'festival' : 'airport');
 
         if (cornerType === 'start' || p.side === 0) {
-          // START / GO (South Corner): Emerald ribbon, forward chevron arrow, salary pill
+          // CORNER 0: START (South)
           ctx.fillStyle = '#059669';
           ctx.beginPath();
           ctx.roundRect(-165, -220, 330, 74, 18);
@@ -516,7 +508,7 @@ export default function Board3D({
           ctx.textAlign = 'center';
           ctx.fillText('START', 0, -168);
 
-          // Center circular emblem with 🏁
+          // Center Rocket Launchpad Emblem
           ctx.beginPath();
           ctx.arc(0, -10, 72, 0, Math.PI * 2);
           ctx.fillStyle = '#ecfdf5';
@@ -526,7 +518,7 @@ export default function Board3D({
           ctx.stroke();
 
           ctx.font = '76px sans-serif';
-          ctx.fillText('🏁', 0, 16);
+          ctx.fillText('🚀', 0, 16);
 
           // Directional arrow
           ctx.fillStyle = '#047857';
@@ -541,7 +533,7 @@ export default function Board3D({
           ctx.closePath();
           ctx.fill();
 
-          // Salary pill (facing center lawn)
+          // Salary pill
           ctx.fillStyle = '#f8fafc';
           ctx.strokeStyle = '#0f172a';
           ctx.lineWidth = 5;
@@ -552,61 +544,221 @@ export default function Board3D({
 
           ctx.fillStyle = '#047857';
           ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText('COLLECT ₩200K', 0, 180);
+          ctx.fillText('COLLECT 200K CR', 0, 180);
 
-          // Inner track asphalt curve
-          ctx.fillStyle = '#1e293b';
-          ctx.beginPath();
-          ctx.roundRect(-90, 222, 180, 28, 14);
-          ctx.fill();
-          ctx.fillStyle = '#38bdf8';
-          ctx.fillRect(-35, 234, 70, 4);
         } else if (cornerType === 'jail' || p.side === 1) {
-          // LOST ISLAND / PRISON (West Corner): Tropical island cell & bail
-          ctx.fillStyle = '#d97706';
+          // CORNER 1: PRISON FIELD ("2d pic of the prison for the prison field")
+          // Weathered Penitentiary Stone Brick Background
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(-240, -240, 480, 480);
+
+          // Brick masonry mortar seams
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 3;
+          for (let by = -240; by < 240; by += 40) {
+            ctx.beginPath();
+            ctx.moveTo(-240, by);
+            ctx.lineTo(240, by);
+            ctx.stroke();
+            const stagger = Math.floor(by / 40) % 2 === 0 ? 0 : 40;
+            for (let bx = -240 + stagger; bx < 240; bx += 80) {
+              ctx.beginPath();
+              ctx.moveTo(bx, by);
+              ctx.lineTo(bx, by + 40);
+              ctx.stroke();
+            }
+          }
+
+          // Arched Prison Cell Alcove (Deep Black/Navy Interior)
+          ctx.fillStyle = '#020617';
           ctx.beginPath();
-          ctx.roundRect(-170, -220, 340, 74, 18);
+          ctx.roundRect(-140, -110, 280, 220, [30, 30, 8, 8]);
+          ctx.fill();
+          ctx.lineWidth = 6;
+          ctx.strokeStyle = '#334155';
+          ctx.stroke();
+
+          // Inmate silhouette with orange/striped jumpsuit inside the cell!
+          ctx.fillStyle = '#f97316'; // Orange jumpsuit inmate
+          ctx.beginPath();
+          ctx.arc(0, -35, 32, 0, Math.PI * 2); // Inmate head
+          ctx.fill();
+          ctx.fillStyle = '#ea580c';
+          ctx.beginPath();
+          ctx.roundRect(-42, 2, 84, 90, [16, 16, 0, 0]); // Shoulders/torso
+          ctx.fill();
+
+          // Horizontal prison stripes on torso
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(-42, 16, 84, 10);
+          ctx.fillRect(-42, 38, 84, 10);
+          ctx.fillRect(-42, 60, 84, 10);
+
+          // Hands gripping the bars
+          ctx.fillStyle = '#fed7aa'; // Skin tone hands
+          ctx.beginPath();
+          ctx.arc(-42, 10, 12, 0, Math.PI * 2);
+          ctx.arc(42, 10, 12, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Heavy 3D Metallic Steel Cell Bars
+          const barCount = 7;
+          const barSpacing = 240 / (barCount + 1);
+          for (let b = 1; b <= barCount; b++) {
+            const barX = -120 + b * barSpacing;
+            // Bar drop shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(barX + 2, -106, 10, 212);
+
+            // 3D Metallic Bar gradient
+            const bGrad = ctx.createLinearGradient(barX - 5, 0, barX + 5, 0);
+            bGrad.addColorStop(0, '#334155');
+            bGrad.addColorStop(0.3, '#cbd5e1'); // Bright metallic highlight
+            bGrad.addColorStop(0.7, '#64748b');
+            bGrad.addColorStop(1, '#0f172a');
+            ctx.fillStyle = bGrad;
+            ctx.fillRect(barX - 5, -106, 10, 212);
+          }
+
+          // Horizontal Reinforced Steel Crossbars
+          [-60, 40].forEach((crossY) => {
+            const cGrad = ctx.createLinearGradient(0, crossY - 6, 0, crossY + 6);
+            cGrad.addColorStop(0, '#64748b');
+            cGrad.addColorStop(0.5, '#cbd5e1');
+            cGrad.addColorStop(1, '#0f172a');
+            ctx.fillStyle = cGrad;
+            ctx.fillRect(-138, crossY - 6, 276, 12);
+
+            // Chrome Rivets
+            for (let rx = -115; rx <= 115; rx += 46) {
+              ctx.beginPath();
+              ctx.arc(rx, crossY, 3.5, 0, Math.PI * 2);
+              ctx.fillStyle = '#f8fafc';
+              ctx.fill();
+            }
+          });
+
+          // Heavy Hanging Brass Padlock & Steel Chain
+          ctx.fillStyle = '#eab308'; // Padlock body
+          ctx.beginPath();
+          ctx.roundRect(-16, 25, 32, 28, 6);
+          ctx.fill();
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = '#94a3b8'; // Shackle
+          ctx.beginPath();
+          ctx.arc(0, 25, 12, Math.PI, 0);
+          ctx.stroke();
+
+          // Top Header: Hazard Warning Tape + PRISON Banner
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(-180, -225, 360, 74, 16);
+          ctx.clip();
+          // Diagonal hazard stripes
+          for (let hx = -300; hx < 300; hx += 32) {
+            ctx.fillStyle = Math.floor(hx / 32) % 2 === 0 ? '#f59e0b' : '#0f172a';
+            ctx.fillRect(hx, -225, 32, 74);
+          }
+          ctx.restore();
+
+          // PRISON Badge Plate
+          ctx.fillStyle = '#0f172a';
+          ctx.beginPath();
+          ctx.roundRect(-160, -215, 320, 54, 12);
+          ctx.fill();
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = '#f59e0b';
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('⛓️ MAX PRISON', 0, -178);
+
+          // Bottom Bail Pill
+          ctx.fillStyle = '#f8fafc';
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.roundRect(-160, 135, 320, 68, 20);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#b91c1c';
+          ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.fillText('BAIL: 100K CR', 0, 178);
+
+        } else if (cornerType === 'world_tour' || p.side === 2) {
+          // CORNER 2: AIRPORT RUNWAY ("3d plane for the airport, you know the drill")
+          // Dark Runway Tarmac Base
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(-240, -240, 480, 480);
+
+          // Asphalt texture stipple
+          ctx.fillStyle = 'rgba(30, 41, 59, 0.6)';
+          for (let ty = -240; ty < 240; ty += 8) {
+            ctx.fillRect(-240, ty, 480, 4);
+          }
+
+          // Runway White Threshold Piano Keys (||||||||)
+          ctx.fillStyle = '#ffffff';
+          for (let k = -180; k <= 180; k += 28) {
+            ctx.fillRect(k, -110, 14, 55);
+          }
+
+          // Dashed Runway Centerline Stripes
+          ctx.fillStyle = '#ffffff';
+          for (let cl = -40; cl <= 100; cl += 45) {
+            ctx.fillRect(-8, cl, 16, 28);
+          }
+
+          // Runway Painted Designation Number
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '900 48px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('09L', 0, 8);
+
+          // Yellow Taxiway Curved Turnoff Markings
+          ctx.strokeStyle = '#eab308';
+          ctx.lineWidth = 6;
+          ctx.beginPath();
+          ctx.arc(100, 100, 80, Math.PI, 1.5 * Math.PI);
+          ctx.stroke();
+
+          // Green Runway Threshold Light Markers
+          ctx.fillStyle = '#22c55e';
+          [-190, -130, -70, 70, 130, 190].forEach((lx) => {
+            ctx.beginPath();
+            ctx.arc(lx, -125, 7, 0, Math.PI * 2);
+            ctx.fill();
+          });
+
+          // Top Header: WORLD TOUR AIRPORT
+          ctx.fillStyle = '#0284c7';
+          ctx.beginPath();
+          ctx.roundRect(-175, -220, 350, 74, 18);
           ctx.fill();
 
           ctx.fillStyle = '#ffffff';
-          ctx.font = '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('LOST ISLAND', 0, -168);
+          ctx.fillText('✈️ AIRPORT', 0, -168);
 
-          // Center circular emblem
-          ctx.beginPath();
-          ctx.arc(0, -10, 72, 0, Math.PI * 2);
-          ctx.fillStyle = '#fffbeb';
-          ctx.fill();
-          ctx.lineWidth = 6;
-          ctx.strokeStyle = '#d97706';
-          ctx.stroke();
-
-          ctx.font = '78px sans-serif';
-          ctx.fillText('🌴', 0, 16);
-
-          // Bail pill
+          // Bottom Flight Ticket Pill
           ctx.fillStyle = '#f8fafc';
-          ctx.strokeStyle = '#0f172a';
+          ctx.strokeStyle = '#0284c7';
           ctx.lineWidth = 5;
           ctx.beginPath();
-          ctx.roundRect(-155, 135, 310, 68, 20);
+          ctx.roundRect(-160, 135, 320, 68, 20);
           ctx.fill();
           ctx.stroke();
 
-          ctx.fillStyle = '#b45309';
-          ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText('BAIL: ₩100K', 0, 180);
+          ctx.fillStyle = '#0369a1';
+          ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.fillText('TICKET: 50K CR', 0, 178);
 
-          // Inner track asphalt curve
-          ctx.fillStyle = '#1e293b';
-          ctx.beginPath();
-          ctx.roundRect(-90, 222, 180, 28, 14);
-          ctx.fill();
-          ctx.fillStyle = '#38bdf8';
-          ctx.fillRect(-35, 234, 70, 4);
-        } else if (cornerType === 'festival' || p.side === 2) {
-          // CHAMPIONSHIPS / FESTIVAL (North Corner): Trophy & 2X Rent Host
+        } else {
+          // CORNER 3: CHAMPIONSHIPS / FESTIVAL (East)
           ctx.fillStyle = '#7c3aed';
           ctx.beginPath();
           ctx.roundRect(-175, -220, 350, 74, 18);
@@ -617,7 +769,7 @@ export default function Board3D({
           ctx.textAlign = 'center';
           ctx.fillText('CHAMPIONSHIPS', 0, -168);
 
-          // Center circular emblem
+          // Center Gold Trophy Emblem
           ctx.beginPath();
           ctx.arc(0, -10, 72, 0, Math.PI * 2);
           ctx.fillStyle = '#f5f3ff';
@@ -640,65 +792,13 @@ export default function Board3D({
 
           ctx.fillStyle = '#6d28d9';
           ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText('2X RENT HOST', 0, 180);
-
-          // Inner track asphalt curve
-          ctx.fillStyle = '#1e293b';
-          ctx.beginPath();
-          ctx.roundRect(-90, 222, 180, 28, 14);
-          ctx.fill();
-          ctx.fillStyle = '#38bdf8';
-          ctx.fillRect(-35, 234, 70, 4);
-        } else {
-          // WORLD TOUR / AIRPORT (East Corner): Supersonic airliner & fly anywhere
-          ctx.fillStyle = '#0891b2';
-          ctx.beginPath();
-          ctx.roundRect(-170, -220, 340, 74, 18);
-          ctx.fill();
-
-          ctx.fillStyle = '#ffffff';
-          ctx.font = '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText('WORLD TOUR', 0, -168);
-
-          // Center circular emblem
-          ctx.beginPath();
-          ctx.arc(0, -10, 72, 0, Math.PI * 2);
-          ctx.fillStyle = '#ecfeff';
-          ctx.fill();
-          ctx.lineWidth = 6;
-          ctx.strokeStyle = '#0891b2';
-          ctx.stroke();
-
-          ctx.font = '78px sans-serif';
-          ctx.fillText('✈️', 0, 16);
-
-          // Fly Anywhere pill
-          ctx.fillStyle = '#f8fafc';
-          ctx.strokeStyle = '#0f172a';
-          ctx.lineWidth = 5;
-          ctx.beginPath();
-          ctx.roundRect(-160, 135, 320, 68, 20);
-          ctx.fill();
-          ctx.stroke();
-
-          ctx.fillStyle = '#0e7490';
-          ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText('FLY ANYWHERE', 0, 180);
-
-          // Inner track asphalt curve
-          ctx.fillStyle = '#1e293b';
-          ctx.beginPath();
-          ctx.roundRect(-90, 222, 180, 28, 14);
-          ctx.fill();
-          ctx.fillStyle = '#38bdf8';
-          ctx.fillRect(-35, 234, 70, 4);
+          ctx.fillText('2X RENT HOST', 0, 178);
         }
 
         ctx.restore();
       } else {
-        // Helper function to draw text rotated by Math.PI (180 deg) so it points outwards
-        // away from the center of the board, allowing players viewing from outside to read cleanly!
+        // STREET TILE (Elongated 512 x 896 property slab)
+        // Helper function to draw outward text rotated 180 deg
         const drawOutwardText = (text, cx, cy, font, fillStyle, maxW = null) => {
           ctx.save();
           ctx.translate(cx, cy);
@@ -715,68 +815,36 @@ export default function Board3D({
           ctx.restore();
         };
 
-        // --- 1. INNER ZONE: Manicured Light Green Lawn Plot (y = 252 to 500) ---
-        ctx.fillStyle = '#86efac'; // Vibrant light green turf base
-        ctx.fillRect(16, 252, 480, 244);
-
-        // Subtle grass mowing stripes / lawn grid pattern (#4ade80)
-        ctx.fillStyle = '#4ade80';
-        for (let gy = 260; gy < 490; gy += 28) {
-          ctx.fillRect(16, gy, 480, 14);
-        }
-
-        // Dedicated patio garden lot where 3D buildings stand flush
-        ctx.fillStyle = 'rgba(248, 250, 252, 0.42)';
-        ctx.beginPath();
-        ctx.roundRect(40, 280, 432, 190, 14);
-        ctx.fill();
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = 'rgba(34, 197, 94, 0.45)';
-        ctx.stroke();
-
-        // Inner road edge transition curb at bottom
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(16, 494, 480, 4);
-
-        // --- 2. CLEAN STONE CURB BORDER BETWEEN STREET AND LAWN (y = 246 to 254) ---
-        ctx.fillStyle = '#334155';
-        ctx.fillRect(16, 246, 480, 8);
-        ctx.fillStyle = '#94a3b8';
-        ctx.fillRect(16, 246, 480, 2);
-
-        // --- 3. OUTER ZONE: Street Sidewalk (y = 16 to 246) ---
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(16, 16, 480, 230);
-
+        // --- 1. TOP / OUTER ZONE: District Header & Property Pill (y = 16 to 220) ---
         if (tile.type === 'city') {
-          // A. Bold crisp district color stripe at outer edge (y = 16 to 54)
+          // District Color Band
           ctx.fillStyle = tile.color || '#3b82f6';
-          ctx.fillRect(16, 16, 480, 38);
+          ctx.fillRect(16, 16, 480, 56);
 
-          // Subtle glossy highlight on stripe
-          const gloss = ctx.createLinearGradient(0, 16, 0, 35);
-          gloss.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+          // Glossy highlight
+          const gloss = ctx.createLinearGradient(0, 16, 0, 45);
+          gloss.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
           gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
           ctx.fillStyle = gloss;
-          ctx.fillRect(16, 16, 480, 20);
+          ctx.fillRect(16, 16, 480, 30);
 
-          // Dark divider below stripe
+          // Dark divider
           ctx.fillStyle = '#0f172a';
-          ctx.fillRect(16, 54, 480, 3);
+          ctx.fillRect(16, 72, 480, 4);
 
-          // B. Country Flag + City Name in prominent bold clear typography
+          // Country Flag + City Name
           const name = tile.name.toUpperCase();
           const flagStr = tile.flag ? (tile.flag + ' ') : '';
           const fullName = flagStr + name;
           const fontSize = fullName.length > 15 ? 32 : fullName.length > 11 ? 38 : 44;
-          drawOutwardText(fullName, 256, 106, '900 ' + fontSize + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a', 450);
+          drawOutwardText(fullName, 256, 122, '900 ' + fontSize + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a', 450);
 
-          // C. Large readable property price tag pill
+          // Price Tag Pill
           ctx.fillStyle = '#f8fafc';
           ctx.strokeStyle = '#0f172a';
           ctx.lineWidth = 4;
           ctx.beginPath();
-          ctx.roundRect(52, 152, 408, 74, 20);
+          ctx.roundRect(56, 160, 400, 60, 18);
           ctx.fill();
           ctx.stroke();
 
@@ -784,31 +852,82 @@ export default function Board3D({
           const displayPrice = priceNum >= 1000000
             ? (priceNum / 1000000).toFixed(1) + 'M'
             : Math.round(priceNum / 1000) + 'K';
-          drawOutwardText(displayPrice, 256, 189, '900 48px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a');
+          drawOutwardText(displayPrice + ' CR', 256, 190, '900 42px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a');
+
+          // --- 2. DEDICATED SPACIOUS ARCHITECTURAL ESTATE BUILDING LOT (y = 236 to 880) ---
+          // Manicured estate turf base
+          ctx.fillStyle = '#86efac';
+          ctx.fillRect(16, 236, 480, 644);
+
+          // Subtle grass turf stripes
+          ctx.fillStyle = '#4ade80';
+          for (let gy = 246; gy < 870; gy += 32) {
+            ctx.fillRect(16, gy, 480, 16);
+          }
+
+          // Polished Interlocking Paver Foundation Patio where 3D buildings stand flush!
+          ctx.fillStyle = '#f1f5f9';
+          ctx.beginPath();
+          ctx.roundRect(36, 260, 440, 590, 20);
+          ctx.fill();
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.stroke();
+
+          // Subtle herringbone / paver grid lines on patio
+          ctx.strokeStyle = 'rgba(203, 213, 225, 0.7)';
+          ctx.lineWidth = 2;
+          for (let py = 290; py < 830; py += 36) {
+            ctx.beginPath();
+            ctx.moveTo(46, py);
+            ctx.lineTo(466, py);
+            ctx.stroke();
+          }
+
+          // Golden architectural lot brackets at the four corners of construction zone
+          ctx.strokeStyle = 'rgba(217, 119, 6, 0.7)';
+          ctx.lineWidth = 4;
+          // Top-Left bracket
+          ctx.beginPath();
+          ctx.moveTo(56, 300); ctx.lineTo(56, 280); ctx.lineTo(76, 280);
+          ctx.stroke();
+          // Top-Right bracket
+          ctx.beginPath();
+          ctx.moveTo(456, 300); ctx.lineTo(456, 280); ctx.lineTo(436, 280);
+          ctx.stroke();
+          // Bottom-Left bracket
+          ctx.beginPath();
+          ctx.moveTo(56, 810); ctx.lineTo(56, 830); ctx.lineTo(76, 830);
+          ctx.stroke();
+          // Bottom-Right bracket
+          ctx.beginPath();
+          ctx.moveTo(456, 810); ctx.lineTo(456, 830); ctx.lineTo(436, 830);
+          ctx.stroke();
 
         } else if (tile.type === 'resort') {
-          // Resort Outer Zone
+          // RESORT TILE: "sand for the beach resorts"
+          // Tropical Cyan Header Band
           ctx.fillStyle = '#06b6d4';
-          ctx.fillRect(16, 16, 480, 38);
+          ctx.fillRect(16, 16, 480, 56);
 
-          const gloss = ctx.createLinearGradient(0, 16, 0, 35);
-          gloss.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+          const gloss = ctx.createLinearGradient(0, 16, 0, 45);
+          gloss.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
           gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
           ctx.fillStyle = gloss;
-          ctx.fillRect(16, 16, 480, 20);
+          ctx.fillRect(16, 16, 480, 30);
 
           ctx.fillStyle = '#0f172a';
-          ctx.fillRect(16, 54, 480, 3);
+          ctx.fillRect(16, 72, 480, 4);
 
           const rName = tile.name.toUpperCase();
-          drawOutwardText((tile.flag || '🏖️') + ' ' + rName, 256, 106, '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0891b2', 450);
+          drawOutwardText((tile.flag || '🏖️') + ' ' + rName, 256, 122, '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0891b2', 450);
 
           // Resort Price Pill
           ctx.fillStyle = '#f8fafc';
           ctx.strokeStyle = '#06b6d4';
           ctx.lineWidth = 4;
           ctx.beginPath();
-          ctx.roundRect(52, 152, 408, 74, 20);
+          ctx.roundRect(56, 160, 400, 60, 18);
           ctx.fill();
           ctx.stroke();
 
@@ -816,58 +935,133 @@ export default function Board3D({
           const displayPrice = priceNum >= 1000000
             ? (priceNum / 1000000).toFixed(1) + 'M'
             : Math.round(priceNum / 1000) + 'K';
-          drawOutwardText(displayPrice + ' • RESORT', 256, 189, '900 40px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0891b2');
+          drawOutwardText(displayPrice + ' CR • RESORT', 256, 190, '900 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0891b2');
 
-          // Subtle sandy beach tint on the lawn plot
-          ctx.fillStyle = 'rgba(254, 240, 138, 0.25)';
+          // --- 2. DEDICATED GOLDEN BEACH SAND RESORT LOT (y = 236 to 880) ---
+          // Warm Tropical Beach Sand Base
+          ctx.fillStyle = '#fde047'; // Golden sand
+          ctx.fillRect(16, 236, 480, 644);
+
+          // Granular sand stippling grain
+          const sandColors = ['#fef08a', '#fbbf24', '#f59e0b', '#fef9c3', '#d97706'];
+          for (let s = 0; s < 450; s++) {
+            const sx = 24 + ((s * 47) % 464);
+            const sy = 246 + ((s * 83) % 550);
+            const sr = 1 + (s % 3);
+            ctx.fillStyle = sandColors[s % sandColors.length];
+            ctx.beginPath();
+            ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Gentle curved sand dune ripples
+          ctx.strokeStyle = 'rgba(217, 119, 6, 0.22)';
+          ctx.lineWidth = 5;
+          for (let ry = 280; ry < 750; ry += 70) {
+            ctx.beginPath();
+            ctx.moveTo(30, ry);
+            ctx.bezierCurveTo(160, ry - 18, 320, ry + 18, 480, ry);
+            ctx.stroke();
+          }
+
+          // Turquoise Ocean Shoreline with White Foam Waves at lower lot edge!
+          const waterGrad = ctx.createLinearGradient(0, 750, 0, 880);
+          waterGrad.addColorStop(0, 'rgba(6, 182, 212, 0)');
+          waterGrad.addColorStop(0.3, 'rgba(14, 165, 233, 0.6)');
+          waterGrad.addColorStop(0.7, '#0284c7');
+          waterGrad.addColorStop(1, '#0369a1');
+          ctx.fillStyle = waterGrad;
+          ctx.fillRect(16, 750, 480, 130);
+
+          // White Foamy Wave Surf Lines
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+          ctx.lineWidth = 6;
           ctx.beginPath();
-          ctx.roundRect(40, 280, 432, 190, 14);
+          ctx.moveTo(20, 770);
+          ctx.bezierCurveTo(150, 750, 310, 790, 492, 765);
+          ctx.stroke();
+
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(20, 810);
+          ctx.bezierCurveTo(170, 795, 330, 825, 492, 805);
+          ctx.stroke();
+
+          // 2D Beach details: Beach umbrella & towel graphic on the sand!
+          ctx.fillStyle = '#ef4444'; // Red & white beach towel
+          ctx.fillRect(80, 400, 65, 100);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(80, 420, 65, 20);
+          ctx.fillRect(80, 460, 65, 20);
+
+          // Starfish in the sand
+          ctx.fillStyle = '#f97316';
+          ctx.beginPath();
+          ctx.arc(380, 520, 14, 0, Math.PI * 2);
           ctx.fill();
 
+          // Resort boundary frame
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = 'rgba(6, 182, 212, 0.6)';
+          ctx.strokeRect(30, 250, 452, 610);
+
         } else {
-          // Special / Event Street Squares (Chance, Armory, Tax, Festival)
-          const taxSub = tile.amount ? ('PAY ₩' + Math.round(tile.amount / 1000) + 'K') : 'PAY TAX';
+          // SPECIAL EVENT TILES (Chance, Tax, Mystery, Armory, Festival)
+          const taxSub = tile.amount ? ('PAY ' + Math.round(tile.amount / 1000) + 'K CR') : 'PAY TAX';
           const eventConfig = {
-            chance: { color: '#ec4899', icon: '❓', title: 'CHANCE', sub: 'LUCKY DRAW', subColor: '#be185d' },
-            championship: { color: '#f59e0b', icon: '🏆', title: 'CHAMPIONSHIP', sub: '2X RENT HOST', subColor: '#b45309' },
-            armory: { color: '#ef4444', icon: '🍅', title: 'ARMORY', sub: '+2 TOMATOES', subColor: '#b91c1c' },
-            tax: { color: '#475569', icon: '💸', title: tile.name.toUpperCase(), sub: taxSub, subColor: '#b91c1c' },
-            festival: { color: '#7c3aed', icon: '🎪', title: 'WORLD FAIR', sub: '2X RENT HOST', subColor: '#6d28d9' },
+            chance: { color: '#ec4899', icon: '❓', title: 'CHANCE', sub: 'LUCKY DRAW', subColor: '#be185d', bg: '#312e81' },
+            championship: { color: '#f59e0b', icon: '🏆', title: 'CHAMPIONSHIP', sub: '2X RENT HOST', subColor: '#b45309', bg: '#451a03' },
+            armory: { color: '#ef4444', icon: '🍅', title: 'ARMORY', sub: '+2 TOMATOES', subColor: '#b91c1c', bg: '#1e293b' },
+            tax: { color: '#475569', icon: '💸', title: tile.name.toUpperCase(), sub: taxSub, subColor: '#b91c1c', bg: '#0f172a' },
+            festival: { color: '#7c3aed', icon: '🎪', title: 'WORLD FAIR', sub: '2X RENT HOST', subColor: '#6d28d9', bg: '#2e1065' },
           };
           const cfg = eventConfig[tile.type] || {
             color: '#0284c7',
             icon: tile.icon || '🎯',
             title: tile.name.toUpperCase(),
-            sub: tile.amount ? ('PAY ₩' + Math.round(tile.amount / 1000) + 'K') : (tile.type || '').toUpperCase(),
+            sub: tile.amount ? ('PAY ' + Math.round(tile.amount / 1000) + 'K CR') : (tile.type || '').toUpperCase(),
             subColor: '#0369a1',
+            bg: '#0f172a',
           };
 
           ctx.fillStyle = cfg.color;
-          ctx.fillRect(16, 16, 480, 38);
+          ctx.fillRect(16, 16, 480, 56);
 
-          const gloss = ctx.createLinearGradient(0, 16, 0, 35);
-          gloss.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+          const gloss = ctx.createLinearGradient(0, 16, 0, 45);
+          gloss.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
           gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
           ctx.fillStyle = gloss;
-          ctx.fillRect(16, 16, 480, 20);
+          ctx.fillRect(16, 16, 480, 30);
 
           ctx.fillStyle = '#0f172a';
-          ctx.fillRect(16, 54, 480, 3);
+          ctx.fillRect(16, 72, 480, 4);
 
-          drawOutwardText(cfg.icon + ' ' + cfg.title, 256, 106, '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a', 450);
+          drawOutwardText(cfg.icon + ' ' + cfg.title, 256, 122, '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a', 450);
 
           ctx.fillStyle = '#f8fafc';
           ctx.strokeStyle = '#0f172a';
           ctx.lineWidth = 4;
           ctx.beginPath();
-          ctx.roundRect(52, 152, 408, 74, 20);
+          ctx.roundRect(56, 160, 400, 60, 18);
           ctx.fill();
           ctx.stroke();
 
-          drawOutwardText(cfg.sub, 256, 189, '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', cfg.subColor);
+          drawOutwardText(cfg.sub, 256, 190, '900 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', cfg.subColor);
+
+          // Dedicated Themed Lot Texture
+          ctx.fillStyle = cfg.bg;
+          ctx.fillRect(16, 236, 480, 644);
+
+          // Themed Center Icon Embellishment
+          ctx.font = '110px sans-serif';
+          drawOutwardText(cfg.icon, 256, 520, '110px sans-serif', '#ffffff');
+
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+          ctx.strokeRect(36, 260, 440, 590);
         }
       }
-
       const texture = new THREE.CanvasTexture(canvas);
       texture.anisotropy = renderer.capabilities?.getMaxAnisotropy?.() || 16;
       texture.minFilter = THREE.LinearMipmapLinearFilter;
