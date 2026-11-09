@@ -443,9 +443,11 @@ export default function Board3D({
       metalness: 0.1,
     });
 
-    // 7. Luxury Diamond Table Base (Warm Wood Table with Striped Lawn Pitch on Top)
+    // 7. Middle Board Center Pitch (Business Tour Stadium Field)
+    // Sized to 53.0 x 53.0 to perfectly abut the inner perimeter of the tiles.
+    // The board under the tiles on the outer edges is removed so the tiles themselves form the clean outer edge.
     const tableGroup = new THREE.Group();
-    const tableGeom = new THREE.BoxGeometry(92, 3.2, 92);
+    const tableGeom = new THREE.BoxGeometry(53.0, 0.6, 53.0);
     const tableMaterials = [
       woodSideMat, // +X
       woodSideMat, // -X
@@ -456,21 +458,9 @@ export default function Board3D({
     ];
     const tableMesh = new THREE.Mesh(tableGeom, tableMaterials);
     tableMesh.rotation.y = Math.PI / 4; // 45-degree diamond
-    tableMesh.position.y = -1.6;
+    tableMesh.position.y = -0.3;
     tableMesh.receiveShadow = true;
     tableGroup.add(tableMesh);
-
-    // Golden Rim Trim
-    const trimGeom = new THREE.BoxGeometry(94, 0.4, 94);
-    const trimMat = new THREE.MeshStandardMaterial({
-      color: 0xd97706,
-      roughness: 0.25,
-      metalness: 0.85,
-    });
-    const trimMesh = new THREE.Mesh(trimGeom, trimMat);
-    trimMesh.rotation.y = Math.PI / 4;
-    trimMesh.position.y = -0.35;
-    tableGroup.add(trimMesh);
 
     // Center Striped Lawn Pitch with Inner Perimeter Road (Business Tour Green Field)
     const lawnGeom = new THREE.PlaneGeometry(53.0, 53.0);
