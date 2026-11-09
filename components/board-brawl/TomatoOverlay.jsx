@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { sounds } from '@/lib/audio';
 
 // High-fidelity 3D Vector Tomato Component (glossy red sphere with specular shine & star calyx)
@@ -64,37 +64,163 @@ export default function TomatoOverlay({
   players = [],
   onVictimImpact,
 }) {
-  const [activeProjectile, setActiveProjectile] = useState(null);
-  const [cardSplat, setCardSplat] = useState(null);
+  const [renderedProjectiles, setRenderedProjectiles] = useState([]);
+  const [cardSplats, setCardSplats] = useState([]);
   const [screenSplat, setScreenSplat] = useState(null);
   const [wipePercent, setWipePercent] = useState(0);
 
   const wipeCounterRef = useRef(0);
   const animFrameRef = useRef(null);
-  const cardSplatTimerRef = useRef(null);
+  const projectilesRef = useRef([]);
   const screenSplatTimerRef = useRef(null);
-  const trailPositionsRef = useRef([]);
   const seenEventsRef = useRef(new Set());
 
+  // Keep callback and ID refs permanently up-to-date without triggering effect unmounts
+  const onVictimImpactRef = useRef(onVictimImpact);
+  onVictimImpactRef.current = onVictimImpact;
+
+  const currentUserIdRef = useRef(currentUserId);
+  currentUserIdRef.current = currentUserId;
+
+  // Master animation tick function
+  const runAnimationLoop = useCallback(() => {
+    if (animFrameRef.current) return;
+
+    const tick = (now) => {
+      const activeList = projectilesRef.current;
+      if (!activeList || activeList.length === 0) {
+        animFrameRef.current = null;
+        setRenderedProjectiles([]);
+        return;
+      }
+
+      const nextList = [];
+      const updatedRenders = [];
+
+      for (const p of activeList) {
+        const elapsed = now - p.startTime;
+        const t = Math.min(1.0, elapsed / p.duration);
+
+        // Quadratic Bézier: B(t) = (1-t)^2 * P0 + 2(1-t)t * P1 + t^2 * P2
+        const invT = 1.0 - t;
+        const curX = invT * invT * p.sX + 2 * invT * t * p.mX + t * t * p.eX;
+        const curY = invT * invT * p.sY + 2 * invT * t * p.mY + t * t * p.eY;
+
+        const rotationDeg = t * 1080;
+        let curScale;
+        if (p.isVictim) {
+          // Direct charge zooming up to 4.5x screen-covering crash
+          curScale = 0.9 + t * t * 3.6;
+        } else {
+          // Arc trajectory: grows to 1.5 at apex, lands at 1.15
+          curScale = 0.95 + Math.sin(t * Math.PI) * 0.55;
+        }
+
+        p.trails.push({ x: curX, y: curY, scale: curScale * 0.7 });
+        if (p.trails.length > 8) p.trails.shift();
+
+        if (t < 1.0) {
+          p.x = curX;
+          p.y = curY;
+          p.scale = curScale;
+          p.rotation = rotationDeg;
+          nextList.push(p);
+          updatedRenders.push({
+            id: p.id,
+            x: curX,
+            y: curY,
+            scale: curScale,
+            rotation: rotationDeg,
+            trails: [...p.trails],
+            isVictim: p.isVictim,
+          });
+        } else {
+          // === IMPACT UPON ARRIVAL ===
+          try { sounds.playTomatoSplat?.(); } catch (e) {}
+
+          if (p.isVictim) {
+            // ONLY TARGET GETS SCREEN SHAKE & SCREEN SPLATTER!
+            try { onVictimImpactRef.current?.(); } catch (e) {}
+
+            setScreenSplat({
+              active: true,
+              slidingDown: false,
+              fading: false,
+            });
+            setWipePercent(0);
+            wipeCounterRef.current = 0;
+
+            if (screenSplatTimerRef.current) clearTimeout(screenSplatTimerRef.current);
+            screenSplatTimerRef.current = setTimeout(() => {
+              setScreenSplat(prev => prev ? { ...prev, slidingDown: true } : null);
+              setTimeout(() => {
+                setScreenSplat(prev => prev ? { ...prev, fading: true } : null);
+                setTimeout(() => setScreenSplat(null), 700);
+              }, 600);
+            }, 3500);
+          } else {
+            // THROWER OR SPECTATOR:
+            // Wobble target card & show comic card splat on target's card!
+            const cardEl = typeof document !== 'undefined'
+              ? document.getElementById(`player-card-${p.targetPlayerId}`)
+              : null;
+
+            if (cardEl) {
+              cardEl.classList.remove('tomato-wobble');
+              void cardEl.offsetWidth; // force DOM reflow to re-trigger wobble
+              cardEl.classList.add('tomato-wobble');
+              setTimeout(() => cardEl?.classList.remove('tomato-wobble'), 600);
+            }
+
+            const splatId = `${p.id}_card_splat`;
+            setCardSplats(prev => [
+              ...prev,
+              {
+                id: splatId,
+                x: p.eX,
+                y: p.eY,
+                targetName: p.targetName,
+              }
+            ]);
+
+            setTimeout(() => {
+              setCardSplats(prev => prev.filter(s => s.id !== splatId));
+            }, 2800);
+          }
+        }
+      }
+
+      projectilesRef.current = nextList;
+      setRenderedProjectiles(updatedRenders);
+
+      if (nextList.length > 0) {
+        animFrameRef.current = requestAnimationFrame(tick);
+      } else {
+        animFrameRef.current = null;
+      }
+    };
+
+    animFrameRef.current = requestAnimationFrame(tick);
+  }, []);
+
+  // Listen for new splat events
   useEffect(() => {
     if (!splatEvent || !splatEvent.fromPlayerId || !splatEvent.targetPlayerId) return;
 
-    // Deduplicate splat events by unique eventId so re-renders never re-trigger trajectory or duplicate splats
-    const eventId = splatEvent.id || `${splatEvent.fromPlayerId}_${splatEvent.targetPlayerId}_${splatEvent.timestamp || ''}`;
+    const eventId = splatEvent.id || `${splatEvent.fromPlayerId}_${splatEvent.targetPlayerId}_${splatEvent.timestamp || Date.now()}`;
     if (seenEventsRef.current.has(eventId)) return;
     seenEventsRef.current.add(eventId);
+
     if (seenEventsRef.current.size > 200) {
       const it = seenEventsRef.current.values();
       for (let i = 0; i < 50; i++) seenEventsRef.current.delete(it.next().value);
     }
 
-    // Check if the local client is the target/victim
+    const myId = currentUserIdRef.current;
     const isVictim = Boolean(
-      currentUserId &&
-      (splatEvent.targetPlayerId === currentUserId || splatEvent.targetId === currentUserId)
+      myId && (splatEvent.targetPlayerId === myId || splatEvent.targetId === myId)
     );
 
-    // Viewport dimensions
     const vw = typeof window !== 'undefined' ? window.innerWidth : 1200;
     const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
 
@@ -127,152 +253,62 @@ export default function TomatoOverlay({
       eX = r.left + r.width / 2;
       eY = r.top + r.height / 2;
     } else {
-      eX = vw * 0.82;
+      eX = vw * 0.85;
       eY = vh * 0.15;
     }
 
     // 3. Parabolic Quadratic Bézier Control Point
-    // CRITICAL FIX: If cards are in the upper header (y < 35% of vh), swooping upward creates negative Y
-    // which flies off the top of the monitor! Instead, swoop DOWNWARD across the open 3D board so it is 100% visible!
     const mX = (sX + eX) / 2;
     const distance = Math.hypot(eX - sX, eY - sY);
-    const arcHeight = Math.max(140, Math.min(340, distance * 0.32));
+    const arcHeight = Math.max(160, Math.min(340, distance * 0.35));
 
     let mY;
     if (isVictim) {
       // Direct charge towards the camera
-      mY = Math.min(sY, eY) - 80;
-    } else if (sY < vh * 0.38 && eY < vh * 0.38) {
+      mY = Math.min(sY, eY) - 60;
+    } else if (sY < vh * 0.4 && eY < vh * 0.4) {
       // Both cards are at the top: arc downwards into the 3D board view!
       mY = Math.max(sY, eY) + arcHeight;
-    } else if (sY > vh * 0.65 && eY > vh * 0.65) {
+    } else if (sY > vh * 0.6 && eY > vh * 0.6) {
       // Both cards are at the bottom: arc upwards
       mY = Math.min(sY, eY) - arcHeight;
     } else {
-      // Cross-screen diagonal: slight arc clamped inside screen
-      mY = Math.min(sY, eY) - arcHeight * 0.5;
+      mY = (sY + eY) / 2 - arcHeight * 0.4;
     }
 
-    // Clamp mY so the trajectory NEVER escapes the viewport
-    mY = Math.max(80, Math.min(vh - 90, mY));
+    // Clamp mY so trajectory is always visible on screen
+    mY = Math.max(100, Math.min(vh - 120, mY));
 
-    // Play initial swoosh / throw audio
-    try {
-      sounds.playTomatoThrow?.();
-    } catch (e) {}
+    // Play throw audio
+    try { sounds.playTomatoThrow?.(); } catch (e) {}
 
-    // Initialize animation state (850ms for satisfying flight time)
-    const duration = isVictim ? 780 : 880;
-    const startTime = performance.now();
-    trailPositionsRef.current = [];
-
-    // Cancel any previous in-flight animation
-    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-
-    const animateTrajectory = (now) => {
-      const elapsed = now - startTime;
-      const t = Math.min(1.0, elapsed / duration);
-
-      // Quadratic Bézier: B(t) = (1-t)^2 * P0 + 2(1-t)t * P1 + t^2 * P2
-      const invT = 1.0 - t;
-      const curX = invT * invT * sX + 2 * invT * t * mX + t * t * eX;
-      const curY = invT * invT * sY + 2 * invT * t * mY + t * t * eY;
-
-      // 3D rotation & dynamic scale
-      const rotationDeg = t * 1080;
-      let curScale = 0.9;
-      if (isVictim) {
-        // Zooms from normal size up to massive 4.5x screen-shattering impact
-        curScale = 0.9 + t * t * 3.6;
-      } else {
-        // Rises to 1.45 at apex, lands at 1.1 on impact
-        curScale = 0.9 + Math.sin(t * Math.PI) * 0.55;
-      }
-
-      // Record motion trail points (up to 7 particles)
-      trailPositionsRef.current.push({ x: curX, y: curY, scale: curScale * 0.6 });
-      if (trailPositionsRef.current.length > 7) {
-        trailPositionsRef.current.shift();
-      }
-
-      setActiveProjectile({
-        x: curX,
-        y: curY,
-        rotation: rotationDeg,
-        scale: curScale,
-        trails: [...trailPositionsRef.current],
-        isVictim,
-      });
-
-      if (t < 1.0) {
-        animFrameRef.current = requestAnimationFrame(animateTrajectory);
-      } else {
-        // === IMPACT UPON ARRIVAL ===
-        setActiveProjectile(null);
-        trailPositionsRef.current = [];
-
-        // Play squish impact sound
-        try {
-          sounds.playTomatoSplat?.();
-        } catch (e) {}
-
-        if (isVictim) {
-          // Trigger severe screen shake
-          try {
-            onVictimImpact?.();
-          } catch (e) {}
-
-          // Severe impact splatter covering screen
-          setScreenSplat({
-            active: true,
-            slidingDown: false,
-            fading: false,
-          });
-          setWipePercent(0);
-          wipeCounterRef.current = 0;
-
-          // Lasts 3.5 seconds, then ketchup slides down and fades out
-          if (screenSplatTimerRef.current) clearTimeout(screenSplatTimerRef.current);
-          screenSplatTimerRef.current = setTimeout(() => {
-            setScreenSplat(prev => prev ? { ...prev, slidingDown: true } : null);
-            setTimeout(() => {
-              setScreenSplat(prev => prev ? { ...prev, fading: true } : null);
-              setTimeout(() => {
-                setScreenSplat(null);
-              }, 700);
-            }, 600);
-          }, 3500);
-        } else {
-          // Wobble the target player card on impact
-          if (targetCard) {
-            targetCard.classList.add('tomato-wobble');
-            setTimeout(() => targetCard.classList.remove('tomato-wobble'), 500);
-          }
-
-          // Explosive splat with dripping ketchup on the target's avatar
-          setCardSplat({
-            active: true,
-            x: eX,
-            y: eY,
-            targetName: splatEvent.targetPlayerName || 'Opponent',
-          });
-
-          if (cardSplatTimerRef.current) clearTimeout(cardSplatTimerRef.current);
-          cardSplatTimerRef.current = setTimeout(() => {
-            setCardSplat(null);
-          }, 2800);
-        }
-      }
+    // Add projectile
+    const newProjectile = {
+      id: eventId,
+      sX, sY, mX, mY, eX, eY,
+      startTime: performance.now(),
+      duration: isVictim ? 780 : 880,
+      isVictim,
+      targetPlayerId: splatEvent.targetPlayerId,
+      targetName: splatEvent.targetPlayerName || 'Opponent',
+      trails: [],
+      x: sX,
+      y: sY,
+      scale: isVictim ? 1.0 : 0.95,
+      rotation: 0,
     };
 
-    animFrameRef.current = requestAnimationFrame(animateTrajectory);
+    projectilesRef.current.push(newProjectile);
+    runAnimationLoop();
+  }, [splatEvent, runAnimationLoop]);
 
+  // Cleanup on unmount only
+  useEffect(() => {
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-      if (cardSplatTimerRef.current) clearTimeout(cardSplatTimerRef.current);
       if (screenSplatTimerRef.current) clearTimeout(screenSplatTimerRef.current);
     };
-  }, [splatEvent, currentUserId, onVictimImpact]);
+  }, []);
 
   // Interactive wipe mechanic: swipe/drag cursor across screen to clean off early
   const handleWipeInteraction = () => {
@@ -289,8 +325,8 @@ export default function TomatoOverlay({
 
   return (
     <>
-      {/* 1. Quadratic Bézier Parabolic Projectile Flight */}
-      {activeProjectile && (
+      {/* 1. Quadratic Bézier Parabolic Projectiles Flight */}
+      {renderedProjectiles.length > 0 && (
         <div
           style={{
             position: 'fixed',
@@ -300,71 +336,76 @@ export default function TomatoOverlay({
             overflow: 'visible',
           }}
         >
-          {/* Motion Trail Particles */}
-          {activeProjectile.trails.map((pt, idx) => {
-            const trailOpacity = ((idx + 1) / activeProjectile.trails.length) * 0.6;
-            return (
+          {renderedProjectiles.map((proj) => (
+            <React.Fragment key={proj.id}>
+              {/* Motion Trail Particles */}
+              {proj.trails.map((pt, idx) => {
+                const trailOpacity = ((idx + 1) / proj.trails.length) * 0.65;
+                return (
+                  <div
+                    key={`${proj.id}-trail-${idx}`}
+                    style={{
+                      position: 'absolute',
+                      left: pt.x,
+                      top: pt.y,
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      background: 'radial-gradient(circle, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 0.4) 55%, transparent 100%)',
+                      transform: `translate(-50%, -50%) scale(${pt.scale * 0.8})`,
+                      opacity: trailOpacity,
+                      filter: 'blur(3px)',
+                    }}
+                  />
+                );
+              })}
+
+              {/* Main 3D Spinning Tomato Sprite */}
               <div
-                key={`trail-${idx}`}
                 style={{
                   position: 'absolute',
-                  left: pt.x,
-                  top: pt.y,
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  background: 'radial-gradient(circle, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 0.4) 55%, transparent 100%)',
-                  transform: `translate(-50%, -50%) scale(${pt.scale * 0.8})`,
-                  opacity: trailOpacity,
-                  filter: 'blur(3px)',
+                  left: proj.x,
+                  top: proj.y,
+                  transform: 'translate(-50%, -50%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  willChange: 'left, top',
                 }}
-              />
-            );
-          })}
+              >
+                {/* Speed Streak Flare */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    width: '84px',
+                    height: '40px',
+                    borderRadius: '999px',
+                    background: 'radial-gradient(ellipse, rgba(239, 68, 68, 0.7) 0%, transparent 75%)',
+                    filter: 'blur(6px)',
+                    zIndex: -1,
+                    transform: 'scale(1.4)',
+                  }}
+                />
 
-          {/* Main 3D Spinning Tomato Sprite */}
-          <div
-            style={{
-              position: 'absolute',
-              left: activeProjectile.x,
-              top: activeProjectile.y,
-              transform: 'translate(-50%, -50%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              willChange: 'left, top',
-            }}
-          >
-            {/* Speed Streak Flare */}
-            <div
-              style={{
-                position: 'absolute',
-                width: '80px',
-                height: '36px',
-                borderRadius: '999px',
-                background: 'radial-gradient(ellipse, rgba(239, 68, 68, 0.65) 0%, transparent 75%)',
-                filter: 'blur(6px)',
-                zIndex: -1,
-                transform: 'scale(1.4)',
-              }}
-            />
-
-            <TomatoSprite
-              size={56}
-              rotation={activeProjectile.rotation}
-              scale={activeProjectile.scale}
-            />
-          </div>
+                <TomatoSprite
+                  size={60}
+                  rotation={proj.rotation}
+                  scale={proj.scale}
+                />
+              </div>
+            </React.Fragment>
+          ))}
         </div>
       )}
 
       {/* 2. Target Player Card Splat with Dripping Ketchup & Comic Popup */}
-      {cardSplat && cardSplat.active && (
+      {cardSplats.map((splat) => (
         <div
+          key={splat.id}
           style={{
             position: 'fixed',
-            left: cardSplat.x,
-            top: cardSplat.y,
+            left: splat.x,
+            top: splat.y,
             transform: 'translate(-50%, -50%)',
             zIndex: 99997,
             pointerEvents: 'none',
@@ -437,9 +478,9 @@ export default function TomatoOverlay({
             </svg>
           </div>
         </div>
-      )}
+      ))}
 
-      {/* 3. Severe Impact Screen Splatter (Target's Screen Covered with Juicy Viscous Decal) */}
+      {/* 3. Severe Impact Screen Splatter (ONLY for the Target whose screen got hit!) */}
       {screenSplat && screenSplat.active && (
         <div
           onMouseMove={handleWipeInteraction}
@@ -462,7 +503,7 @@ export default function TomatoOverlay({
             transition: 'transform 0.8s ease-in, opacity 0.7s ease-out',
           }}
         >
-          {/* Massive Screen-Covering Juicy Splat SVG with Running Ketchup Drips covering 85-90% of screen */}
+          {/* Massive Screen-Covering Juicy Splat SVG */}
           <div
             style={{
               position: 'relative',
@@ -482,19 +523,14 @@ export default function TomatoOverlay({
                 filter: 'drop-shadow(0 20px 45px rgba(0, 0, 0, 0.9))',
               }}
             >
-              {/* Base Thick Deep-Red Visceral Splat */}
               <path
                 d="M 250,45 C 310,-10 390,15 420,70 C 460,135 520,165 500,225 C 485,285 410,315 360,325 C 300,340 270,370 240,355 C 190,330 150,375 110,335 C 50,295 20,240 35,185 C 48,130 90,80 145,95 C 185,108 215,115 250,45 Z"
                 fill="#7f1d1d"
               />
-
-              {/* Mid Layer Juicy Crimson Sauce */}
               <path
                 d="M 235,70 C 285,30 355,50 375,95 C 405,145 450,175 425,225 C 400,270 345,285 305,280 C 255,270 225,300 200,285 C 160,265 130,295 100,265 C 60,225 45,185 60,145 C 75,105 120,105 165,115 C 200,125 215,95 235,70 Z"
                 fill="#b91c1c"
               />
-
-              {/* Top Fresh Puree & Highlights */}
               <path
                 d="M 240,95 C 275,60 325,75 340,115 C 365,155 395,175 375,215 C 350,250 310,255 275,250 C 240,245 220,265 195,255 C 165,240 145,260 125,240 C 95,210 90,175 105,145 C 120,115 155,115 190,125 C 215,130 225,110 240,95 Z"
                 fill="#ef4444"
@@ -614,14 +650,15 @@ export default function TomatoOverlay({
         }
 
         .tomato-wobble {
-          animation: cardWobble 0.48s cubic-bezier(0.36, 0.07, 0.19, 0.97) both !important;
+          animation: cardWobble 0.52s cubic-bezier(0.36, 0.07, 0.19, 0.97) both !important;
         }
 
         @keyframes cardWobble {
-          10%, 90% { transform: translate3d(-3px, 0, 0) rotate(-1.5deg); }
-          20%, 80% { transform: translate3d(4px, 0, 0) rotate(2deg); }
-          30%, 50%, 70% { transform: translate3d(-5px, 0, 0) rotate(-2.5deg); }
-          40%, 60% { transform: translate3d(5px, 0, 0) rotate(2.5deg); }
+          10%, 90% { transform: scale(0.97) rotate(-2.5deg); }
+          20%, 80% { transform: scale(1.03) rotate(3deg); }
+          30%, 50%, 70% { transform: scale(0.98) rotate(-3.5deg); }
+          40%, 60% { transform: scale(1.02) rotate(3.5deg); }
+          100% { transform: scale(1) rotate(0deg); }
         }
       `}</style>
     </>

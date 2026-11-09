@@ -254,6 +254,7 @@ export default function BoardBrawlArenaPage() {
       setSplatEvent({
         ...data,
         timestamp: Date.now(),
+        uniqueKey: Math.random().toString(36).substring(2, 9),
       });
     };
 
@@ -846,6 +847,10 @@ export default function BoardBrawlArenaPage() {
     setIsTradeModalOpen(false);
   };
 
+  const handleVictimImpact = useCallback(() => {
+    setShakeTrigger(prev => prev + 1);
+  }, []);
+
   const copyInviteLink = () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://nextgengames.gg';
     navigator.clipboard.writeText(`${origin}/game/board-brawl/${roomId}?mode=${modeQuery}`);
@@ -893,7 +898,7 @@ export default function BoardBrawlArenaPage() {
           splatEvent={splatEvent}
           currentUserId={myPlayerObj?.id || user?.id}
           players={gameState.players}
-          onVictimImpact={() => setShakeTrigger(prev => prev + 1)}
+          onVictimImpact={handleVictimImpact}
         />
 
         {/* Action Card Announcement Banner */}
