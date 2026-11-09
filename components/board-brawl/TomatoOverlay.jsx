@@ -163,7 +163,7 @@ export default function TomatoOverlay({
       id: eventId,
       sX, sY, mX, mY, eX, eY,
       startTime: performance.now(),
-      duration: isVictim ? 780 : 880,
+      duration: isVictim ? 880 : 1100,
       isVictim,
       targetPlayerId: eventData.targetPlayerId,
       targetName: eventData.targetPlayerName || 'Opponent',
