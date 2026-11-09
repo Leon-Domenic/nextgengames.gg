@@ -32,7 +32,8 @@ import {
   Users, Bot, Play, MessageSquare, Send, Sparkles, AlertCircle, Copy, CheckCheck,
   Volume2, VolumeX, Crown, ShieldAlert, X, ShoppingBag, Home, Settings, Clock, ArrowRight, Handshake
 } from 'lucide-react';
-import { TILES } from '@/lib/board-brawl/types';
+import { TILES } from '@/lib/board-brawl/types';
+
 import { TOKEN_ICONS, CHARACTERS } from '@/lib/board-brawl/characters.js';
 import { useTranslation } from '@/lib/board-brawl/i18n';
 
@@ -73,7 +74,8 @@ export default function BoardBrawlArenaPage() {
   const [localMatchTimeRemaining, setLocalMatchTimeRemaining] = useState(1200);
   const [tradeTargetPlayer, setTradeTargetPlayer] = useState(null);
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
-  const [isThrowingTomato, setIsThrowingTomato] = useState(false);
+  const [isThrowingTomato, setIsThrowingTomato] = useState(false);
+
   const [activeCardTargeting, setActiveCardTargeting] = useState(null);
 
   // Pawn Movement Arrival & Modal Deferral State
@@ -631,7 +633,27 @@ export default function BoardBrawlArenaPage() {
         label: 'Demolition Strike Target',
         icon: '💣',
         color: 0xef4444,
-        eligibleTileIds,
+        eligibleTileIds: oppTileIds,
+        onSelectTarget: (tileId) => {
+          handlePlayActionCard(activeCardTargeting.cardId, { tileId });
+          setActiveCardTargeting(null);
+        },
+      };
+    }
+
+    
+    // 2b. Action Card: Remote Buy / Venture Buyout
+    if (activeCardTargeting?.type === 'remote_buy') {
+      const unownedIds = activeCardTargeting.eligibleTileIds || TILES
+        .filter(t => t.type === 'city' && !gameState?.properties?.[t.id]?.ownerId)
+        .map(t => t.id);
+      return {
+        active: true,
+        type: 'remote_buy',
+        label: 'Select City to Remotely Buy',
+        icon: '🎯',
+        color: 0x10b981,
+        eligibleTileIds: unownedIds,
         onSelectTarget: (tileId) => {
           handlePlayActionCard(activeCardTargeting.cardId, { tileId });
           setActiveCardTargeting(null);

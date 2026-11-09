@@ -381,8 +381,33 @@ export default function ActionCardDock({
 
               {selectedCard.id === 'remote_buy' && (
                 <div>
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '8px' }}>
-                    Select Unowned City to Remotely Buy:
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>Select Unowned City:</span>
+                    {onStartMapTargeting && unownedAffordableCities.length > 0 && (
+                      <button
+                        onClick={() => {
+                          onStartMapTargeting({
+                            cardId: selectedCard.id,
+                            cardTitle: selectedCard.title,
+                            type: 'remote_buy',
+                            eligibleTileIds: unownedAffordableCities.map(Number),
+                          });
+                          setSelectedCard(null);
+                        }}
+                        style={{
+                          background: 'rgba(16, 185, 129, 0.2)',
+                          border: '1px solid #10b981',
+                          color: '#34d399',
+                          borderRadius: '6px',
+                          padding: '3px 8px',
+                          fontSize: '11px',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        🎯 Select on 3D Map
+                      </button>
+                    )}
                   </div>
                   {unownedAffordableCities.length === 0 ? (
                     <div style={{ fontSize: '12px', color: '#f87171' }}>No affordable unowned cities available!</div>
