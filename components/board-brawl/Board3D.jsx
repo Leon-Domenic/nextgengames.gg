@@ -149,6 +149,7 @@ export default function Board3D({
   onInspectTile,
   onPawnMovementStart,
   onPawnMovementComplete,
+  targetingMode = null,
 }) {
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
@@ -170,6 +171,14 @@ export default function Board3D({
   const cashTransfersRef = useRef([]);
   const lastPaymentIdRef = useRef(null);
   const lastRollIdRef = useRef(null);
+
+  const targetingModeRef = useRef(targetingMode);
+  const lastHoveredTargetTileRef = useRef(null);
+  const targetingGroupRef = useRef(null);
+
+  useEffect(() => {
+    targetingModeRef.current = targetingMode;
+  }, [targetingMode]);
 
   const onTileClickRef = useRef(onTileClick);
   const onInspectTileRef = useRef(onInspectTile);
@@ -897,6 +906,11 @@ export default function Board3D({
     buildingsGroupRef.current = buildingsGroup;
     scene.add(buildingsGroup);
 
+    // 8c. 3D Target Beacons Group
+    const targetingGroup = new THREE.Group();
+    targetingGroupRef.current = targetingGroup;
+    scene.add(targetingGroup);
+
     // 8b. Physical 3D Corner Monuments (Start Archway, Resort Island, Championship Colosseum, World Tour Pier)
     const monumentsGroup = new THREE.Group();
     const cornerMonuments = [];
@@ -1079,6 +1093,9 @@ export default function Board3D({
       const targets = [...tileMeshesRef.current];
       if (buildingsGroupRef.current) {
         targets.push(...buildingsGroupRef.current.children);
+      }
+      if (targetingGroupRef.current) {
+        targets.push(...targetingGroupRef.current.children);
       }
       return raycaster.intersectObjects(targets, true);
     };
