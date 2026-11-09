@@ -8,6 +8,7 @@ import { sounds } from '@/lib/audio';
 import ScreenShakeWrapper from '@/components/board-brawl/ScreenShakeWrapper';
 import TomatoOverlay from '@/components/board-brawl/TomatoOverlay';
 import TurnAnnouncementBanner from '@/components/board-brawl/TurnAnnouncementBanner';
+import StartingPlayerSpinner from '@/components/board-brawl/StartingPlayerSpinner';
 import SmoothTimerBar from '@/components/board-brawl/SmoothTimerBar';
 import DiceRoller3D from '@/components/board-brawl/DiceRoller3D';
 import Board3D from '@/components/board-brawl/Board3D';
@@ -915,52 +916,67 @@ export default function BoardBrawlArenaPage() {
             to { opacity: 1; transform: translate(-50%, 0) scale(1); }
           }
         `}</style>
-        {/* Tomato Sabotage Overlay with Trajectory Flight & Screen Splat */}
-        {/* 2-Second Flight Delay Turn Announcement Banner */}
-            <TurnAnnouncementBanner
-              activePlayer={currentPlayer}
-              isMyTurn={isMyTurn}
-              turnState={gameState?.turnState}
-              turnIndex={(gameState?.round || 0) * 10 + (gameState?.activePlayerIndex || 0)}
-            />
+        {/* In-Game Overlays & Turn Banners: STRICTLY ONLY during live match */}
+        {gameState.status === 'playing' && (
+          <>
+            {/* Opening Turn Decision Spin Animation */}
+            {gameState.startingSpin && (
+              <StartingPlayerSpinner
+                startingSpin={gameState.startingSpin}
+                players={gameState.players || []}
+                currentUserId={myPlayerObj?.id || user?.id}
+              />
+            )}
+
+            {/* Turn Announcement Banner (delayed until opening spin completes) */}
+            {!gameState.startingSpin && (
+              <TurnAnnouncementBanner
+                activePlayer={currentPlayer}
+                isMyTurn={isMyTurn}
+                turnState={gameState?.turnState}
+                turnIndex={(gameState?.round || 0) * 10 + (gameState?.activePlayerIndex || 0)}
+              />
+            )}
 
             <TomatoOverlay
-          splatEvent={splatEvent}
-          currentUserId={myPlayerObj?.id || user?.id}
-          players={gameState.players}
-          onVictimImpact={handleVictimImpact}
-        />
+              splatEvent={splatEvent}
+              currentUserId={myPlayerObj?.id || user?.id}
+              players={gameState.players}
+              onVictimImpact={handleVictimImpact}
+            />
 
-        {/* Action Card Announcement Banner */}
-        <ActionCardPlayOverlay lastActionCardPlayed={actionCardPlayEvent || gameState.lastActionCardPlayed} />
+            {/* Action Card Announcement Banner */}
+            <ActionCardPlayOverlay lastActionCardPlayed={actionCardPlayEvent || gameState.lastActionCardPlayed} />
 
-        {/* In-Game Action Banners for Rent, Deals, and Takeovers */}
-        <ActionBannerOverlay
-          paymentEvent={latestPaymentAction}
-          tradeAction={latestTradeAction}
-          players={gameState?.players || []}
-          properties={gameState?.properties || {}}
-          currentUserId={myPlayerObj?.id || user?.id}
-          onOpenTradeDesk={(tradeData) => {
-            const activeTrade = tradeData || gameState?.activeTrade;
-            if (activeTrade) {
-              const otherId = String(activeTrade.proposerId) === String(myPlayerObj?.id)
-                ? activeTrade.targetId
-                : activeTrade.proposerId;
-              const targetP = (gameState?.players || []).find(p => String(p.id) === String(otherId));
-              if (targetP) setTradeTargetPlayer(targetP);
-            }
-            setIsTradeModalOpen(true);
-          }}
-        />
+            {/* In-Game Action Banners for Rent, Deals, and Takeovers */}
+            <ActionBannerOverlay
+              paymentEvent={latestPaymentAction}
+              tradeAction={latestTradeAction}
+              players={gameState?.players || []}
+              properties={gameState?.properties || {}}
+              currentUserId={myPlayerObj?.id || user?.id}
+              onOpenTradeDesk={(tradeData) => {
+                const activeTrade = tradeData || gameState?.activeTrade;
+                if (activeTrade) {
+                  const otherId = String(activeTrade.proposerId) === String(myPlayerObj?.id)
+                    ? activeTrade.targetId
+                    : activeTrade.proposerId;
+                  const targetP = (gameState?.players || []).find(p => String(p.id) === String(otherId));
+                  if (targetP) setTradeTargetPlayer(targetP);
+                }
+                setIsTradeModalOpen(true);
+              }}
+            />
 
-        {/* Cinematic Event Card Draw Modal */}
-        {!movementPendingArrival && (
-          <EventCardModal
-            eventData={gameState.activeEventCard}
-            isMyTurn={isMyTurn}
-            onDismiss={handleDismissEventCard}
-          />
+            {/* Cinematic Event Card Draw Modal */}
+            {!movementPendingArrival && (
+              <EventCardModal
+                eventData={gameState.activeEventCard}
+                isMyTurn={isMyTurn}
+                onDismiss={handleDismissEventCard}
+              />
+            )}
+          </>
         )}
 
         {/* Hand Action Cards Dock */}
@@ -1792,7 +1808,7 @@ export default function BoardBrawlArenaPage() {
                 <DiceRoller3D
                   dice={gameState.dice}
                   lastResult={gameState.lastDiceResult}
-                  canRoll={isMyTurn && gameState.turnState === 'roll'}
+                  canRoll={isMyTurn && gameState.turnState === 'roll' && !gameState.startingSpin}
                   onRoll={handleRollDice}
                   turnTimer={gameState.turnTimerRemaining}
                   turnDuration={gameState.turnDuration || (gameState.mode === 'blitz' ? 25 : 35)}
