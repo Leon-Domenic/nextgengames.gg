@@ -112,6 +112,19 @@ export default function ActionModal({
 
   const costToBuild = isResort ? tile.price : tierCost(selectedTier);
   const canAfford = player?.cash >= costToBuild;
+  const playerCash = player?.cash || 0;
+  const remBalance = playerCash - costToBuild;
+  const remBuyout = playerCash - buyoutCost;
+
+  const costTier1 = tierCost(1);
+  const costTier2 = tierCost(2);
+  const costTier3 = tierCost(3);
+  const costTier4 = tierCost(4);
+
+  const remTier1 = playerCash - costTier1;
+  const remTier2 = playerCash - costTier2;
+  const remTier3 = playerCash - costTier3;
+  const remTier4 = playerCash - costTier4;
 
   // Rent calculations
   const RESORT_IDS = [6, 12, 20, 28];
@@ -319,6 +332,14 @@ export default function ActionModal({
               gap: '6px',
               border: '1px solid #a5f3fc',
             }}>
+              {!prop.ownerId && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 700, color: '#0e7490' }}>💳 Remaining Balance:</span>
+                  <span style={{ fontWeight: 900, color: remBalance >= 0 ? '#15803d' : '#b91c1c' }}>
+                    {Math.max(0, remBalance).toLocaleString()} CR
+                  </span>
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 700, color: '#0e7490' }}>📈 Rent Multiplier:</span>
                 <span style={{ fontWeight: 900, color: '#0891b2' }}>2x per Resort Owned (1x, 2x, 4x, 8x)</span>
@@ -345,7 +366,7 @@ export default function ActionModal({
                   background: selectedTier === 1 ? 'linear-gradient(180deg, #eff6ff, #dbeafe)' : '#f8fafc',
                   border: selectedTier === 1 ? '2px solid #2563eb' : '1px solid #e2e8f0',
                   borderRadius: '14px',
-                  padding: '10px 4px',
+                  padding: '8px 4px',
                   textAlign: 'center',
                   cursor: !prop.ownerId ? 'pointer' : 'default',
                   transform: selectedTier === 1 ? 'scale(1.04)' : 'scale(1)',
@@ -354,8 +375,19 @@ export default function ActionModal({
                 }}
               >
                 <div style={{ fontSize: '10px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>{t('plot')}</div>
-                <div style={{ fontSize: '20px', margin: '4px 0' }}>🌱</div>
-                <div style={{ fontSize: '11px', fontWeight: 900, color: '#0f172a' }}>{Math.round(tile.price / 1000)}K CR</div>
+                <div style={{ fontSize: '18px', margin: '2px 0' }}>🌱</div>
+                <div style={{ fontSize: '11px', fontWeight: 900, color: '#0f172a' }}>{Math.round(costTier1 / 1000)}K CR</div>
+                <div style={{
+                  fontSize: '9px',
+                  fontWeight: 800,
+                  color: remTier1 >= 0 ? '#15803d' : '#b91c1c',
+                  background: remTier1 >= 0 ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                  borderRadius: '4px',
+                  padding: '2px 3px',
+                  marginTop: '3px',
+                }}>
+                  {remTier1 >= 0 ? `Left: ${Math.round(remTier1 / 1000)}k` : 'Short!'}
+                </div>
               </div>
 
               {/* Slot 2: Cottage */}
@@ -365,7 +397,7 @@ export default function ActionModal({
                   background: selectedTier === 2 ? 'linear-gradient(180deg, #ecfdf5, #d1fae5)' : '#f8fafc',
                   border: selectedTier === 2 ? '2px solid #10b981' : '1px solid #e2e8f0',
                   borderRadius: '14px',
-                  padding: '10px 4px',
+                  padding: '8px 4px',
                   textAlign: 'center',
                   cursor: (!prop.ownerId || isOwner) ? 'pointer' : 'default',
                   transform: selectedTier === 2 ? 'scale(1.04)' : 'scale(1)',
@@ -374,9 +406,20 @@ export default function ActionModal({
                 }}
               >
                 <div style={{ fontSize: '10px', fontWeight: 800, color: '#059669', textTransform: 'uppercase' }}>{t('cottage')}</div>
-                <div style={{ fontSize: '20px', margin: '4px 0' }}>🏡</div>
+                <div style={{ fontSize: '18px', margin: '2px 0' }}>🏡</div>
                 <div style={{ fontSize: '11px', fontWeight: 900, color: '#0f172a' }}>
-                  {Math.round((prop.ownerId ? tile.housePrice : tile.price + tile.housePrice) / 1000)}K CR
+                  {Math.round(costTier2 / 1000)}K CR
+                </div>
+                <div style={{
+                  fontSize: '9px',
+                  fontWeight: 800,
+                  color: remTier2 >= 0 ? '#15803d' : '#b91c1c',
+                  background: remTier2 >= 0 ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                  borderRadius: '4px',
+                  padding: '2px 3px',
+                  marginTop: '3px',
+                }}>
+                  {remTier2 >= 0 ? `Left: ${Math.round(remTier2 / 1000)}k` : 'Short!'}
                 </div>
               </div>
 
@@ -387,7 +430,7 @@ export default function ActionModal({
                   background: selectedTier === 3 ? 'linear-gradient(180deg, #fff7ed, #ffedd5)' : '#f8fafc',
                   border: selectedTier === 3 ? '2px solid #f97316' : '1px solid #e2e8f0',
                   borderRadius: '14px',
-                  padding: '10px 4px',
+                  padding: '8px 4px',
                   textAlign: 'center',
                   cursor: (!prop.ownerId || isOwner) ? 'pointer' : 'default',
                   transform: selectedTier === 3 ? 'scale(1.04)' : 'scale(1)',
@@ -396,9 +439,20 @@ export default function ActionModal({
                 }}
               >
                 <div style={{ fontSize: '10px', fontWeight: 800, color: '#ea580c', textTransform: 'uppercase' }}>{t('hotel')}</div>
-                <div style={{ fontSize: '20px', margin: '4px 0' }}>🏢</div>
+                <div style={{ fontSize: '18px', margin: '2px 0' }}>🏢</div>
                 <div style={{ fontSize: '11px', fontWeight: 900, color: '#0f172a' }}>
-                  {Math.round((prop.ownerId ? tile.housePrice : tile.price + tile.housePrice * 2) / 1000)}K CR
+                  {Math.round(costTier3 / 1000)}K CR
+                </div>
+                <div style={{
+                  fontSize: '9px',
+                  fontWeight: 800,
+                  color: remTier3 >= 0 ? '#15803d' : '#b91c1c',
+                  background: remTier3 >= 0 ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                  borderRadius: '4px',
+                  padding: '2px 3px',
+                  marginTop: '3px',
+                }}>
+                  {remTier3 >= 0 ? `Left: ${Math.round(remTier3 / 1000)}k` : 'Short!'}
                 </div>
               </div>
 
@@ -409,7 +463,7 @@ export default function ActionModal({
                   background: selectedTier === 4 ? 'linear-gradient(180deg, #fefce8, #fef08a)' : '#f8fafc',
                   border: selectedTier === 4 ? '2px solid #eab308' : '1px solid #e2e8f0',
                   borderRadius: '14px',
-                  padding: '10px 4px',
+                  padding: '8px 4px',
                   textAlign: 'center',
                   cursor: (!prop.ownerId || isOwner) ? 'pointer' : 'default',
                   transform: selectedTier === 4 ? 'scale(1.04)' : 'scale(1)',
@@ -419,9 +473,20 @@ export default function ActionModal({
                 }}
               >
                 <div style={{ fontSize: '9px', fontWeight: 900, color: '#ca8a04', textTransform: 'uppercase' }}>{t('landmark')}</div>
-                <div style={{ fontSize: '20px', margin: '4px 0' }}>👑</div>
+                <div style={{ fontSize: '18px', margin: '2px 0' }}>👑</div>
                 <div style={{ fontSize: '11px', fontWeight: 900, color: '#0f172a' }}>
-                  {Math.round((prop.ownerId ? tile.housePrice : tile.price + tile.housePrice * 3) / 1000)}K CR
+                  {Math.round(costTier4 / 1000)}K CR
+                </div>
+                <div style={{
+                  fontSize: '9px',
+                  fontWeight: 800,
+                  color: remTier4 >= 0 ? '#15803d' : '#b91c1c',
+                  background: remTier4 >= 0 ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                  borderRadius: '4px',
+                  padding: '2px 3px',
+                  marginTop: '3px',
+                }}>
+                  {remTier4 >= 0 ? `Left: ${Math.round(remTier4 / 1000)}k` : 'Short!'}
                 </div>
               </div>
             </div>
@@ -490,24 +555,28 @@ export default function ActionModal({
               disabled={!canAfford}
               style={{
                 width: '100%',
-                padding: '14px 20px',
+                padding: '12px 20px',
                 background: canAfford ? (isResort ? 'linear-gradient(180deg, #06b6d4 0%, #0891b2 100%)' : 'linear-gradient(180deg, #22c55e 0%, #16a34a 100%)') : '#cbd5e1',
                 border: 'none',
                 borderRadius: '18px',
                 color: '#ffffff',
                 fontWeight: 900,
-                fontSize: '16px',
+                fontSize: '15px',
                 letterSpacing: '0.5px',
                 cursor: canAfford ? 'pointer' : 'not-allowed',
                 boxShadow: canAfford ? '0 10px 20px -5px rgba(6, 182, 212, 0.4), inset 0 2px 2px rgba(255,255,255,0.4)' : 'none',
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '8px',
+                gap: '2px',
                 transition: 'transform 0.1s ease',
               }}
             >
               <span>{isResort ? 'Acquire Resort' : t('buyAndUpgrade')} ({costToBuild.toLocaleString()} Space Credits)</span>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: remBalance >= 0 ? '#dcfce7' : '#fee2e2' }}>
+                Remaining Balance: {Math.max(0, remBalance).toLocaleString()} CR
+              </span>
             </button>
           )}
 
@@ -518,18 +587,26 @@ export default function ActionModal({
               disabled={!canAfford}
               style={{
                 width: '100%',
-                padding: '14px 20px',
+                padding: '12px 20px',
                 background: canAfford ? 'linear-gradient(180deg, #3b82f6 0%, #2563eb 100%)' : '#cbd5e1',
                 border: 'none',
                 borderRadius: '18px',
                 color: '#ffffff',
                 fontWeight: 900,
-                fontSize: '16px',
+                fontSize: '15px',
                 cursor: canAfford ? 'pointer' : 'not-allowed',
                 boxShadow: canAfford ? '0 10px 20px -5px rgba(37, 99, 235, 0.4)' : 'none',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '2px',
               }}
             >
               <span>{t('upgradeLevel')} ({tile.housePrice?.toLocaleString()} Space Credits)</span>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: remBalance >= 0 ? '#dbeafe' : '#fee2e2' }}>
+                Remaining Balance: {Math.max(0, remBalance).toLocaleString()} CR
+              </span>
             </button>
           )}
 
@@ -569,7 +646,7 @@ export default function ActionModal({
                   disabled={!canBuyout}
                   style={{
                     width: '100%',
-                    padding: '14px 20px',
+                    padding: '12px 20px',
                     background: canBuyout ? 'linear-gradient(180deg, #ec4899 0%, #d946ef 100%)' : '#cbd5e1',
                     border: 'none',
                     borderRadius: '18px',
@@ -579,13 +656,19 @@ export default function ActionModal({
                     cursor: canBuyout ? 'pointer' : 'not-allowed',
                     boxShadow: canBuyout ? '0 10px 20px -5px rgba(217, 70, 239, 0.4)' : 'none',
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '8px',
+                    gap: '2px',
                   }}
                 >
-                  <Zap size={18} />
-                  <span>{t('hostileBuyout2x')} ({buyoutCost.toLocaleString()} Space Credits)</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Zap size={18} />
+                    <span>{t('hostileBuyout2x')} ({buyoutCost.toLocaleString()} Space Credits)</span>
+                  </div>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: remBuyout >= 0 ? '#fdf2f8' : '#fee2e2' }}>
+                    Remaining Balance: {Math.max(0, remBuyout).toLocaleString()} CR
+                  </span>
                 </button>
               )}
             </>
