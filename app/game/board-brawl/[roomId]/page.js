@@ -605,7 +605,7 @@ export default function BoardBrawlArenaPage() {
 
 
   // Compute active targeting mode for direct 3D board selection & highlights
-  const activeTargetingMode = useMemo(() => {
+  const getActiveTargetingMode = () => {
     // 1. World Tour Flight Selection
     if (isMyTurn && gameState?.turnState === 'flight_select' && !movementPendingArrival) {
       const eligibleTileIds = TILES.map(t => t.id).filter(id => id !== myPlayerObj?.position);
@@ -631,7 +631,7 @@ export default function BoardBrawlArenaPage() {
         label: 'Demolition Strike Target',
         icon: '💣',
         color: 0xef4444,
-        eligibleTileIds: oppTileIds,
+        eligibleTileIds,
         onSelectTarget: (tileId) => {
           handlePlayActionCard(activeCardTargeting.cardId, { tileId });
           setActiveCardTargeting(null);
@@ -656,7 +656,8 @@ export default function BoardBrawlArenaPage() {
     }
 
     return null;
-  }, [isMyTurn, gameState?.turnState, movementPendingArrival, myPlayerObj, gameState?.properties, activeCardTargeting]);
+  };
+  const activeTargetingMode = getActiveTargetingMode();
 
   const handleSkipFlight = () => {
     if (!socket || !activePlayerId) return;
