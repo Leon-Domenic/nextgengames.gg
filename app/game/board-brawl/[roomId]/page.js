@@ -603,6 +603,61 @@ export default function BoardBrawlArenaPage() {
     });
   };
 
+
+  // Compute active targeting mode for direct 3D board selection & highlights
+  const activeTargetingMode = useMemo(() => {
+    // 1. World Tour Flight Selection
+    if (isMyTurn && gameState?.turnState === 'flight_select' && !movementPendingArrival) {
+      const eligibleTileIds = TILES.map(t => t.id).filter(id => id !== myPlayerObj?.position);
+      return {
+        active: true,
+        type: 'flight',
+        label: 'World Tour Flight Destination',
+        icon: '✈️',
+        color: 0x38bdf8,
+        eligibleTileIds,
+        onSelectTarget: (tileId) => handleSelectFlightDestination(tileId),
+      };
+    }
+
+    // 2. Action Card: Demolition Strike / Earthquake
+    if (activeCardTargeting?.type === 'demolition') {
+      const oppTileIds = activeCardTargeting.eligibleTileIds || Object.entries(gameState?.properties || {})
+        .filter(([id, prop]) => prop?.ownerId && prop.ownerId !== myPlayerObj?.id && TILES[id]?.type === 'city')
+        .map(([id]) => Number(id));
+      return {
+        active: true,
+        type: 'demolition',
+        label: 'Demolition Strike Target',
+        icon: '💣',
+        color: 0xef4444,
+        eligibleTileIds: oppTileIds,
+        onSelectTarget: (tileId) => {
+          handlePlayActionCard(activeCardTargeting.cardId, { tileId });
+          setActiveCardTargeting(null);
+        },
+      };
+    }
+
+    // 3. World Championship / Festival Select (Tile 24 Championship or Tile 22 World Fair)
+    if (isMyTurn && gameState?.turnState === 'festival_select' && !movementPendingArrival) {
+      const myCities = Object.entries(gameState?.properties || {})
+        .filter(([id, prop]) => prop?.ownerId === myPlayerObj?.id && TILES[id]?.type === 'city')
+        .map(([id]) => Number(id));
+      return {
+        active: true,
+        type: 'festival',
+        label: 'World Championship Host City',
+        icon: '🏆',
+        color: 0xf59e0b,
+        eligibleTileIds: myCities,
+        onSelectTarget: (tileId) => handleSetFestival(tileId),
+      };
+    }
+
+    return null;
+  }, [isMyTurn, gameState?.turnState, movementPendingArrival, myPlayerObj, gameState?.properties, activeCardTargeting]);
+
   const handleSkipFlight = () => {
     if (!socket || !activePlayerId) return;
     socket.emit('game_action', {
@@ -810,6 +865,7 @@ export default function BoardBrawlArenaPage() {
             myPlayer={myPlayerObj}
             gameState={gameState}
             onPlayCard={handlePlayActionCard}
+            onStartMapTargeting={(targetCfg) => setActiveCardTargeting(targetCfg)}
             disabled={!isMyTurn && gameState.turnState !== 'roll' && gameState.turnState !== 'action'}
           />
         )}
@@ -1575,6 +1631,7 @@ export default function BoardBrawlArenaPage() {
               diceSkin={myPlayerObj?.diceSkin || equippedDiceSkin}
               communityJackpot={gameState.communityJackpot || 100000}
               centerContent={null}
+              targetingMode={activeTargetingMode}
               onTileClick={(tileId) => setInspectedTileId(tileId)}
               onInspectTile={(tileId) => setInspectedTileId(tileId)}
               onPawnMovementStart={handlePawnMovementStart}

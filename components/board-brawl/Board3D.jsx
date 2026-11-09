@@ -1227,6 +1227,21 @@ export default function Board3D({
 
       // Buildings are 100% static (no size pulsing)
 
+      // Animate 3D Targeting Beacons (Spinning downward waypoints, breathing ground halo rings)
+      if (targetingGroupRef.current && targetingGroupRef.current.children.length > 0) {
+        targetingGroupRef.current.children.forEach((beacon) => {
+          const { ring, marker, baseY, phase } = beacon.userData || {};
+          if (marker) {
+            marker.rotation.y += delta * 2.4;
+            marker.rotation.x = Math.sin(elapsed * 2.2 + phase) * 0.12;
+            marker.position.y = baseY + Math.sin(elapsed * 3.5 + phase) * 0.35;
+          }
+          if (ring && ring.material) {
+            ring.material.opacity = 0.5 + Math.sin(elapsed * 4.0 + phase) * 0.25;
+          }
+        });
+      }
+
       // Idle Hover & Real-time Avatar Animations for Pawns (Heroic scale foot contact y = 0.35)
       pawnMeshesRef.current.forEach(({ group, isMoving }) => {
         if (!isMoving && group) {
@@ -1834,6 +1849,117 @@ export default function Board3D({
       triggerDiceRoll(lastDiceResult.d1 || 1, d2Val, skin);
     }
   }, [lastDiceResult, triggerDiceRoll, players, diceSkin]);
+
+  // Synchronize 3D Direct Map Targeting Beacons & Valid Target Highlighting
+  useEffect(() => {
+    if (!sceneReady || !sceneRef.current) return;
+
+    // Reset all tile emissive styles
+    tileMeshesRef.current.forEach((tMesh) => {
+      if (tMesh) {
+        const topMat = tMesh.material?.[2];
+        if (topMat?.emissive) {
+          topMat.emissive.setHex(0x000000);
+          topMat.emissiveIntensity = 0;
+        }
+        tMesh.position.y = 0.17;
+      }
+    });
+
+    // Clear existing beacons
+    if (targetingGroupRef.current) {
+      while (targetingGroupRef.current.children.length > 0) {
+        const child = targetingGroupRef.current.children[0];
+        targetingGroupRef.current.remove(child);
+        child.traverse?.((obj) => {
+          if (obj.geometry) obj.geometry.dispose();
+          if (obj.material) {
+            if (Array.isArray(obj.material)) obj.material.forEach(m => m?.dispose?.());
+            else obj.material?.dispose?.();
+          }
+        });
+      }
+    }
+
+    if (targetingMode?.active && Array.isArray(targetingMode.eligibleTileIds) && targetingMode.eligibleTileIds.length > 0) {
+      const beaconColor = targetingMode.color || 0x38bdf8;
+
+      targetingMode.eligibleTileIds.forEach((tileId, idx) => {
+        // Highlight tile surface with glowing emissive
+        const tMesh = tileMeshesRef.current[tileId];
+        if (tMesh) {
+          const topMat = tMesh.material?.[2];
+          if (topMat?.emissive) {
+            topMat.emissive.setHex(beaconColor);
+            topMat.emissiveIntensity = 0.55;
+          }
+        }
+
+        // Add 3D Floating Holographic Beacon Marker above tile
+        if (targetingGroupRef.current) {
+          const p = getTile3DPos(tileId, TILES.length);
+          const beaconGroup = new THREE.Group();
+          beaconGroup.position.set(p.x, 0, p.z);
+          beaconGroup.userData = { tileId, isTile: true, isTargetBeacon: true };
+
+          // Ground Pulsing Halo Ring
+          const ringGeom = new THREE.RingGeometry(1.4, 2.1, 32);
+          ringGeom.rotateX(-Math.PI / 2);
+          const ringMat = new THREE.MeshBasicMaterial({
+            color: beaconColor,
+            transparent: true,
+            opacity: 0.65,
+            side: THREE.DoubleSide,
+          });
+          const ringMesh = new THREE.Mesh(ringGeom, ringMat);
+          ringMesh.position.y = 0.28;
+          ringMesh.userData = { tileId, isTile: true };
+          beaconGroup.add(ringMesh);
+
+          // Translucent Light Column
+          const beamGeom = new THREE.CylinderGeometry(0.3, 1.2, 3.2, 16, 1, true);
+          const beamMat = new THREE.MeshBasicMaterial({
+            color: beaconColor,
+            transparent: true,
+            opacity: 0.2,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+          });
+          const beamMesh = new THREE.Mesh(beamGeom, beamMat);
+          beamMesh.position.y = 1.9;
+          beamMesh.userData = { tileId, isTile: true };
+          beaconGroup.add(beamMesh);
+
+          // Floating 3D Octahedral Waypoint Crystal
+          const markerGeom = new THREE.OctahedronGeometry(0.75, 0);
+          const markerMat = new THREE.MeshStandardMaterial({
+            color: beaconColor,
+            emissive: beaconColor,
+            emissiveIntensity: 0.85,
+            roughness: 0.2,
+            metalness: 0.8,
+          });
+          const markerMesh = new THREE.Mesh(markerGeom, markerMat);
+          markerMesh.position.y = 3.6;
+          markerMesh.userData = { tileId, isTile: true };
+          beaconGroup.add(markerMesh);
+
+          beaconGroup.userData = {
+            tileId,
+            isTile: true,
+            ring: ringMesh,
+            beam: beamMesh,
+            marker: markerMesh,
+            baseY: 3.6,
+            phase: (idx * 0.7) % (Math.PI * 2),
+          };
+
+          targetingGroupRef.current.add(beaconGroup);
+        }
+      });
+    }
+  }, [targetingMode, sceneReady]);
+
 
   return (
     <div style={{
