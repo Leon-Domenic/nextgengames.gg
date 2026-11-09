@@ -14,28 +14,50 @@ export default function EventCardModal({
   onDismiss,
 }) {
   const [remainingMs, setRemainingMs] = useState(DISPLAY_DURATION_MS);
+  const onDismissRef = useRef(onDismiss);
+  const activeEventKeyRef = useRef('');
+  const startTimeRef = useRef(null);
 
   useEffect(() => {
-    if (!eventData) return;
-    try {
-      sounds.playCardDraw?.();
-    } catch (e) {}
+    onDismissRef.current = onDismiss;
+  }, [onDismiss]);
 
-    setRemainingMs(DISPLAY_DURATION_MS);
-    const startTime = Date.now();
+  const eventKey = eventData
+    ? `${eventData.card?.id || 'card'}_${eventData.drawerId || ''}_${eventData.timestamp || ''}`
+    : '';
+
+  useEffect(() => {
+    if (!eventData || !eventData.card || !eventKey) return;
+
+    // Only start a fresh timer if this is a genuinely NEW event card draw
+    if (activeEventKeyRef.current !== eventKey) {
+      activeEventKeyRef.current = eventKey;
+      // Anchor start time to eventData.timestamp if recent, otherwise current time
+      const now = Date.now();
+      const eventTime = eventData.timestamp && Math.abs(now - eventData.timestamp) < DISPLAY_DURATION_MS
+        ? eventData.timestamp
+        : now;
+      startTimeRef.current = eventTime;
+
+      try {
+        sounds.playCardDraw?.();
+      } catch (e) {}
+    }
 
     const interval = setInterval(() => {
-      const elapsed = Date.now() - startTime;
+      if (!startTimeRef.current) return;
+      const elapsed = Date.now() - startTimeRef.current;
       const left = Math.max(0, DISPLAY_DURATION_MS - elapsed);
       setRemainingMs(left);
+
       if (left <= 0) {
         clearInterval(interval);
-        onDismiss?.();
+        onDismissRef.current?.();
       }
     }, 50);
 
     return () => clearInterval(interval);
-  }, [eventData, onDismiss]);
+  }, [eventKey]);
 
   if (!eventData || !eventData.card) return null;
 

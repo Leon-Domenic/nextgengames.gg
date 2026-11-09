@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { CARD_RARITY } from '@/lib/board-brawl/cards';
 import { sounds } from '@/lib/audio';
 import { t } from '@/lib/board-brawl/i18n';
@@ -9,9 +9,16 @@ import { Zap, Sparkles, Shield, Flame, Info } from 'lucide-react';
 export default function ActionCardPlayOverlay({ lastActionCardPlayed }) {
   const [visible, setVisible] = useState(false);
   const [data, setData] = useState(null);
+  const lastKeyRef = useRef('');
+
+  const playKey = lastActionCardPlayed && lastActionCardPlayed.card
+    ? `${lastActionCardPlayed.card.id}_${lastActionCardPlayed.timestamp || lastActionCardPlayed.playerId || ''}`
+    : '';
 
   useEffect(() => {
-    if (!lastActionCardPlayed || !lastActionCardPlayed.card) return;
+    if (!lastActionCardPlayed || !lastActionCardPlayed.card || !playKey) return;
+    if (lastKeyRef.current === playKey) return; // Prevent restart on identical broadcast
+    lastKeyRef.current = playKey;
 
     setData(lastActionCardPlayed);
     setVisible(true);
@@ -22,13 +29,12 @@ export default function ActionCardPlayOverlay({ lastActionCardPlayed }) {
       try { sounds.playCardPlay?.(); } catch (e) {}
     }
 
-    // Retain notification on screen for at least 3.5 seconds (4000ms)
     const timer = setTimeout(() => {
       setVisible(false);
     }, 4000);
 
     return () => clearTimeout(timer);
-  }, [lastActionCardPlayed]);
+  }, [playKey]);
 
   if (!visible || !data) return null;
 

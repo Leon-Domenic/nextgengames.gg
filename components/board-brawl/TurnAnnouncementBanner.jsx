@@ -58,7 +58,7 @@ export default function TurnAnnouncementBanner({
     }, 2200);
 
     return () => clearTimeout(timer);
-  }, [activePlayer, isMyTurn, turnState, turnIndex]);
+  }, [activePlayer?.id, isMyTurn, turnState, turnIndex]);
 
   if (!banner) return null;
 
