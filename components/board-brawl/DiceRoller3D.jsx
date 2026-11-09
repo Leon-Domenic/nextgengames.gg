@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { sounds } from '@/lib/audio';
+import SmoothTimerBar from '@/components/board-brawl/SmoothTimerBar';
 import { DICE_SKIN_MAP, DICE_SKINS } from '@/lib/board-brawl/diceSkins';
 import { useTranslation } from '@/lib/board-brawl/i18n';
 import { Dices, Sparkles, Clock, ShieldAlert } from 'lucide-react';
@@ -227,21 +228,14 @@ export default function DiceRoller3D({
           </button>
 
           {/* Active Roll Timer Countdown Bar */}
-          <div style={{
-            width: '100%',
-            height: '5px',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            borderRadius: '999px',
-            overflow: 'hidden',
-          }}>
-            <div style={{
-              height: '100%',
-              width: `${progressPct}%`,
-              backgroundColor: (turnTimer || 0) > 6 ? '#22c55e' : (turnTimer || 0) > 3 ? '#f59e0b' : '#ef4444',
-              transition: isResetting ? 'none' : 'width 0.95s linear, background-color 0.3s ease',
-              boxShadow: (turnTimer || 0) <= 3 ? '0 0 10px #ef4444' : 'none',
-            }} />
-          </div>
+          <SmoothTimerBar
+            secondsRemaining={turnTimer}
+            totalDuration={maxDuration}
+            activeKey={`dice_${isMyTurn}_${canRoll}`}
+            height={5}
+            borderRadius={999}
+            containerStyle={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+          />
 
           {isInJail && (
             <button

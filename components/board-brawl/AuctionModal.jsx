@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { TILES } from '@/lib/board-brawl/types';
 import { sounds } from '@/lib/audio';
+import SmoothTimerBar from '@/components/board-brawl/SmoothTimerBar';
 import { Zap, Clock, Gavel, ShieldCheck, Trophy, AlertTriangle, ArrowUpRight } from 'lucide-react';
 
 export default function AuctionModal({
@@ -109,23 +110,14 @@ export default function AuctionModal({
         </div>
 
         {/* 10-Second Countdown Progress Bar */}
-        <div style={{
-          width: '100%',
-          height: '6px',
-          background: 'rgba(255, 255, 255, 0.1)',
-          position: 'relative',
-          overflow: 'hidden',
-        }}>
-          <div style={{
-            width: `${timerPct}%`,
-            height: '100%',
-            background: isAntiSnipe
-              ? 'linear-gradient(90deg, #f97316 0%, #ef4444 100%)'
-              : 'linear-gradient(90deg, #06b6d4 0%, #3b82f6 100%)',
-            transition: 'width 0.9s linear',
-            boxShadow: isAntiSnipe ? '0 0 10px #ef4444' : '0 0 8px #38bdf8',
-          }} />
-        </div>
+        <SmoothTimerBar
+          secondsRemaining={auction.timeLeft}
+          totalDuration={10}
+          activeKey={`auction_${auction.propertyId}`}
+          height={6}
+          borderRadius={0}
+          containerStyle={{ background: 'rgba(255, 255, 255, 0.1)' }}
+        />
 
         {/* Body Content */}
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>

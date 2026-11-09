@@ -23,9 +23,9 @@ import {
 
 // Authentic Monopoly 45-Degree Diamond Perimeter Math
 // 4 Sides with Square Corner Fields and Outward-Facing Cards
-export function getTile3DPos(id, totalTiles = 48) {
+export function getTile3DPos(id, totalTiles = 32) {
   const R_outer = 56;
-  const trackDepth = 8.5; // Depth of the track from outer board edge to inner lawn
+  const trackDepth = 13.0; // Elongated tiles leaving spacious lots for 3D houses
   const tilesPerSide = Math.max(1, Math.floor(totalTiles / 4));
   const numStreetTiles = Math.max(1, tilesPerSide - 1);
   const sideLength = R_outer * Math.SQRT2; // ~79.2 units
@@ -119,7 +119,7 @@ export function getPawnTile3DPos(id, totalTiles = 32, subOffset = null) {
   const p = getTile3DPos(id, totalTiles);
   const pos = new THREE.Vector3(p.x, 0.35, p.z);
   if (!p.isCorner) {
-    const streetOffset = new THREE.Vector3(0, 0, -2.0);
+    const streetOffset = new THREE.Vector3(0, 0, -4.0);
     streetOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
     pos.add(streetOffset);
   }
@@ -300,34 +300,37 @@ export default function Board3D({
     lCtx.imageSmoothingEnabled = true;
     lCtx.imageSmoothingQuality = 'high';
 
-    // 6a. Dark Asphalt Road Perimeter (Encircles the center pitch between lawn and street tiles)
-    lCtx.fillStyle = '#1e293b'; // Charcoal asphalt base
+    // 6a. Pure Emerald Stadium Lawn Pitch (Clean grass pitch directly meeting board tiles - no second road!)
+    lCtx.fillStyle = '#16a34a'; // Lush stadium turf base
     lCtx.fillRect(0, 0, 2048, 2048);
 
-    // Subtle asphalt road grain / noise
-    lCtx.fillStyle = 'rgba(15, 23, 42, 0.4)';
-    for (let r = 0; r < 2048; r += 8) {
-      lCtx.fillRect(0, r, 2048, 4);
+    // Diagonal alternating mowed grass stripes (Vibrant emerald light grass vs rich medium turf)
+    const stripeWidth = 56;
+    for (let x = -2048; x < 4096; x += stripeWidth) {
+      const isEven = Math.floor(x / stripeWidth) % 2 === 0;
+      lCtx.fillStyle = isEven ? '#22c55e' : '#16a34a';
+      lCtx.beginPath();
+      lCtx.moveTo(x, 0);
+      lCtx.lineTo(x + stripeWidth, 0);
+      lCtx.lineTo(x + stripeWidth + 2048, 2048);
+      lCtx.lineTo(x + 2048, 2048);
+      lCtx.closePath();
+      lCtx.fill();
     }
 
-    // Dashed road lane divider markings encircling the perimeter
-    lCtx.save();
-    lCtx.strokeStyle = '#f8fafc'; // Crisp dashed white center line marking
+    // Elegant Stone Curb / Perimeter Frame directly abutting inner tile edges
+    lCtx.strokeStyle = '#334155';
+    lCtx.lineWidth = 24;
+    lCtx.strokeRect(12, 12, 2048 - 24, 2048 - 24);
+
+    lCtx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
     lCtx.lineWidth = 10;
-    lCtx.setLineDash([48, 30]);
-    lCtx.strokeRect(96, 96, 2048 - 192, 2048 - 192);
-    lCtx.restore();
+    lCtx.strokeRect(36, 36, 2048 - 72, 2048 - 72);
 
-    // Road curb / stone border separating asphalt road from green lawn pitch
-    lCtx.lineWidth = 12;
-    lCtx.strokeStyle = '#475569';
-    lCtx.strokeRect(184, 184, 2048 - 368, 2048 - 368);
-
-    // 6b. Center Green Field (Vibrant Mowed Lawn Stadium Pitch)
-    // Clipped neatly inside the inner perimeter road
+    // 6b. Center Field Graphics
     lCtx.save();
     lCtx.beginPath();
-    lCtx.rect(190, 190, 1668, 1668);
+    lCtx.rect(40, 40, 2048 - 80, 2048 - 80);
     lCtx.clip();
 
     // Diagonal alternating mowed grass stripes (Vibrant emerald light grass vs rich medium turf)
@@ -449,7 +452,7 @@ export default function Board3D({
     tableGroup.add(trimMesh);
 
     // Center Striped Lawn Pitch with Inner Perimeter Road (Business Tour Green Field)
-    const lawnGeom = new THREE.PlaneGeometry(63.5, 63.5);
+    const lawnGeom = new THREE.PlaneGeometry(53.0, 53.0);
     const lawnMesh = new THREE.Mesh(lawnGeom, lawnMat);
     lawnMesh.rotation.x = -Math.PI / 2;
     lawnMesh.rotation.z = Math.PI / 4;
@@ -923,13 +926,10 @@ export default function Board3D({
     monumentsGroup.add(startMonument);
     cornerMonuments.push(startMonument);
 
-    // Corner 1: West (PRISON / LOST ISLAND)
+    // Corner 1: West (PRISON FIELD)
+    // The user requested: "2d pic of the prison for the prison field"
+    // We leave Corner 1 open and unobstructed so the high-resolution 2D prison illustration is prominent!
     const pIsland = getTile3DPos(8, TILES.length);
-    const islandMonument = create3DIslandMonument();
-    islandMonument.position.set(pIsland.x - 1.2, 0.35, pIsland.z);
-    islandMonument.rotation.y = Math.PI / 4;
-    monumentsGroup.add(islandMonument);
-    cornerMonuments.push(islandMonument);
 
     // Corner 2: North (WORLD TOUR / AIRPORT)
     const pTour = getTile3DPos(16, TILES.length);
@@ -1414,7 +1414,7 @@ export default function Board3D({
       const tile = TILES.find((t) => t.id === tileId) || TILES[tileId];
       if (tile?.type === 'resort') {
         const resort = create3DResortAccent(ownerColor);
-        const localOffset = new THREE.Vector3(0, 0, 2.125);
+        const localOffset = new THREE.Vector3(0, 0, 1.8);
         localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
         resort.position.set(p.x + localOffset.x, 0.35, p.z + localOffset.z);
         resort.rotation.y = p.rotationY;
@@ -1437,7 +1437,7 @@ export default function Board3D({
       if (prop.level === 2) {
         // Level 2: 1 Cottage centered on the lawn plot
         const house = create3DHouse(ownerColor);
-        const localOffset = new THREE.Vector3(0, 0, 2.125);
+        const localOffset = new THREE.Vector3(0, 0, 1.8);
         localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
         house.position.set(p.x + localOffset.x, 0.35, p.z + localOffset.z);
         house.rotation.y = p.rotationY;
@@ -1455,11 +1455,11 @@ export default function Board3D({
         group.add(house);
       } else if (prop.level === 3) {
         // Level 3: 2 Cottages side-by-side neatly on the lawn plot!
-        const offsets = [-1.55, 1.55];
+        const offsets = [-1.75, 1.75];
         offsets.forEach((offsetX) => {
           const house = create3DHouse(ownerColor);
           house.scale.set(1.02, 1.02, 1.02);
-          const localOffset = new THREE.Vector3(offsetX, 0, 2.125);
+          const localOffset = new THREE.Vector3(offsetX, 0, 1.8);
           localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
           house.position.set(p.x + localOffset.x, 0.35, p.z + localOffset.z);
           house.rotation.y = p.rotationY;
@@ -1479,7 +1479,7 @@ export default function Board3D({
       } else if (prop.level === 4) {
         // Level 4: 1 Hotel / Skyscraper centered on the lawn plot
         const hotel = create3DHotel(ownerColor);
-        const localOffset = new THREE.Vector3(0, 0, 2.125);
+        const localOffset = new THREE.Vector3(0, 0, 1.8);
         localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
         hotel.position.set(p.x + localOffset.x, 0.35, p.z + localOffset.z);
         hotel.rotation.y = p.rotationY;
@@ -1498,7 +1498,7 @@ export default function Board3D({
       } else if (prop.level >= 5) {
         // Level 5: 1 Golden Landmark centered on the lawn plot (Immune to Buyouts)
         const landmark = create3DLandmark(ownerColor);
-        const localOffset = new THREE.Vector3(0, 0, 2.125);
+        const localOffset = new THREE.Vector3(0, 0, 1.8);
         localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
         landmark.position.set(p.x + localOffset.x, 0.35, p.z + localOffset.z);
         landmark.rotation.y = p.rotationY;

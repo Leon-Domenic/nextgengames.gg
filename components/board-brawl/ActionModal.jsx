@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { TILES } from '@/lib/board-brawl/types';
 import { sounds } from '@/lib/audio';
+import SmoothTimerBar from '@/components/board-brawl/SmoothTimerBar';
 import { useTranslation } from '@/lib/board-brawl/i18n';
 import { Zap, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
 
@@ -164,22 +165,14 @@ export default function ActionModal({
       animation: 'modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
     }}>
       {/* Turn Countdown Progress Bar */}
-      <div style={{
-        width: '100%',
-        height: '5px',
-        backgroundColor: 'rgba(0, 0, 0, 0.12)',
-        position: 'relative',
-        overflow: 'hidden',
-        flexShrink: 0,
-      }}>
-        <div style={{
-          height: '100%',
-          width: `${progressPct}%`,
-          backgroundColor: (turnTimer || 0) > 6 ? '#22c55e' : (turnTimer || 0) > 3 ? '#f59e0b' : '#ef4444',
-          transition: isResetting ? 'none' : 'width 0.95s linear, background-color 0.3s ease',
-          boxShadow: (turnTimer || 0) <= 3 ? '0 0 8px #ef4444' : 'none',
-        }} />
-      </div>
+      <SmoothTimerBar
+        secondsRemaining={turnTimer}
+        totalDuration={maxDuration}
+        activeKey={`action_${currentTileId}`}
+        height={5}
+        borderRadius={0}
+        containerStyle={{ backgroundColor: 'rgba(0, 0, 0, 0.12)', flexShrink: 0 }}
+      />
 
       {/* Top Business Tour Style Curved Ribbon Header */}
       <div style={{

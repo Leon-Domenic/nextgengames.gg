@@ -8,6 +8,7 @@ import { sounds } from '@/lib/audio';
 import ScreenShakeWrapper from '@/components/board-brawl/ScreenShakeWrapper';
 import TomatoOverlay from '@/components/board-brawl/TomatoOverlay';
 import TurnAnnouncementBanner from '@/components/board-brawl/TurnAnnouncementBanner';
+import SmoothTimerBar from '@/components/board-brawl/SmoothTimerBar';
 import DiceRoller3D from '@/components/board-brawl/DiceRoller3D';
 import Board3D from '@/components/board-brawl/Board3D';
 import ActionModal from '@/components/board-brawl/ActionModal';
@@ -115,21 +116,21 @@ export default function BoardBrawlArenaPage() {
     }
   }, [gameState?.turnState]);
 
-  // Sync match timer with server state
-  useEffect(() => {
-    if (gameState?.matchTimeRemaining != null) {
-      setLocalMatchTimeRemaining(gameState.matchTimeRemaining);
-    }
-  }, [gameState?.matchTimeRemaining]);
-
-  // Smooth local 1-second countdown ticker
+  // Monotonic high-precision match countdown timer (no stutter or fighting between intervals)
   useEffect(() => {
     if (gameState?.status !== 'playing') return;
-    const timer = setInterval(() => {
-      setLocalMatchTimeRemaining(prev => Math.max(0, prev - 1));
-    }, 1000);
+    const updateTime = () => {
+      if (gameState.matchStartTime && gameState.matchDuration) {
+        const elapsed = Math.floor((Date.now() - gameState.matchStartTime) / 1000);
+        setLocalMatchTimeRemaining(Math.max(0, gameState.matchDuration - elapsed));
+      } else if (gameState.matchTimeRemaining != null) {
+        setLocalMatchTimeRemaining(gameState.matchTimeRemaining);
+      }
+    };
+    updateTime();
+    const timer = setInterval(updateTime, 500);
     return () => clearInterval(timer);
-  }, [gameState?.status]);
+  }, [gameState?.status, gameState?.matchStartTime, gameState?.matchDuration]);
 
   const formatMatchTime = (seconds) => {
     if (seconds == null || isNaN(seconds)) return '20:00';
@@ -1362,21 +1363,13 @@ export default function BoardBrawlArenaPage() {
                   </div>
 
                   {/* Draining Timer Bar */}
-                  <div style={{
-                    width: '100%',
-                    height: '4px',
-                    background: 'rgba(255, 255, 255, 0.12)',
-                    borderRadius: '999px',
-                    overflow: 'hidden',
-                  }}>
-                    <div style={{
-                      height: '100%',
-                      width: `${Math.min(100, Math.max(0, ((gameState.turnTimerRemaining || 0) / (gameState.turnDuration || (gameState.mode === 'blitz' ? 25 : 35))) * 100))}%`,
-                      background: (gameState.turnTimerRemaining || 0) > 6 ? '#22c55e' : (gameState.turnTimerRemaining || 0) > 3 ? '#f59e0b' : '#ef4444',
-                      transition: (gameState.turnTimerRemaining || 0) >= ((gameState.turnDuration || (gameState.mode === 'blitz' ? 25 : 35)) - 1) ? 'none' : 'width 0.95s linear, background-color 0.3s ease',
-                      boxShadow: (gameState.turnTimerRemaining || 0) <= 3 ? '0 0 8px #ef4444' : 'none',
-                    }} />
-                  </div>
+                  <SmoothTimerBar
+                    secondsRemaining={gameState.turnTimerRemaining}
+                    totalDuration={gameState.turnDuration || (gameState.mode === 'blitz' ? 25 : 35)}
+                    activeKey={`${currentPlayer?.id}_${gameState.turnState}`}
+                    height={4}
+                    borderRadius={999}
+                  />
                 </div>
               )}
 
@@ -1688,6 +1681,7 @@ export default function BoardBrawlArenaPage() {
                   canRoll={isMyTurn && gameState.turnState === 'roll'}
                   onRoll={handleRollDice}
                   turnTimer={gameState.turnTimerRemaining}
+                  turnDuration={gameState.turnDuration || (gameState.mode === 'blitz' ? 25 : 35)}
                   isMyTurn={isMyTurn}
                   activePlayerName={currentPlayer?.name}
                   diceSkin={myPlayerObj?.diceSkin || equippedDiceSkin}
@@ -1885,23 +1879,18 @@ function PlayerCornerCard({
 
       {/* Active Turn Running Progress Bar */}
       {isCurrent && !isBankrupt && (
-        <div style={{
-          width: '100%',
-          height: '4px',
-          background: 'rgba(0, 0, 0, 0.15)',
-          position: 'relative',
-          overflow: 'hidden',
-          borderTopLeftRadius: '14px',
-          borderTopRightRadius: '14px',
-        }}>
-          <div style={{
-            height: '100%',
-            width: `${Math.min(100, Math.max(0, ((timer || 0) / (turnDuration || 25)) * 100))}%`,
-            background: (timer || 0) > 6 ? '#22c55e' : (timer || 0) > 3 ? '#f59e0b' : '#ef4444',
-            transition: isResetting ? 'none' : 'width 0.95s linear, background-color 0.3s ease',
-            boxShadow: (timer || 0) <= 3 ? '0 0 8px #ef4444' : 'none',
-          }} />
-        </div>
+        <SmoothTimerBar
+          secondsRemaining={timer}
+          totalDuration={turnDuration}
+          activeKey={`card_${player.id}_${isCurrent}`}
+          height={4}
+          borderRadius={0}
+          containerStyle={{
+            borderTopLeftRadius: '14px',
+            borderTopRightRadius: '14px',
+            background: 'rgba(0, 0, 0, 0.15)',
+          }}
+        />
       )}
 
       {/* Colored Top Ribbon with Name & VIP Badge */}
