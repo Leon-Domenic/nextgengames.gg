@@ -215,24 +215,56 @@ export default function Board3D({
       const aspect = w / h;
       cam.aspect = aspect;
 
-      // Check camera mode setting: 'topdown' (76 deg) vs 'isometric'/'follow' (43 deg)
+      // Check camera mode setting: 'topdown' (2D normal square) vs 'follow' / 'isometric' (3D angled diamond)
       const camMode = typeof window !== 'undefined' ? (localStorage.getItem('ngg_camera_mode') || 'follow') : 'follow';
-      const pitchDeg = camMode === 'topdown' ? 76 : 43;
-      const pitchRad = (pitchDeg * Math.PI) / 180;
 
-      // Distance dynamically tuned:
-      // On widescreen (aspect >= 1.55), fills ~82% of height leaving room for HUD.
-      // On narrower screens, zooms out so width fits cleanly.
-      let dist = camMode === 'topdown' ? 120 : 140;
-      if (aspect < 1.55) {
-        dist = (camMode === 'topdown' ? 120 : 140) * (1.55 / Math.max(aspect, 0.7));
+      if (camMode === 'topdown') {
+        // ========================================================
+        // 1. 2D TOP-DOWN NORMAL SQUARE VIEW
+        // ========================================================
+        // The diamond board has corners at (0, 0, ±56) and (±56, 0, 0).
+        // By aligning the camera's up-vector along the diagonal (-45°),
+        // the board appears as a standard horizontal/vertical SQUARE (like classic Monopoly),
+        // fitting widescreen monitors with maximum clarity and zero distortion.
+        const pitchRad = (89.5 * Math.PI) / 180;
+        
+        let dist = 162;
+        if (aspect < 1.55) {
+          dist = 162 * (1.55 / Math.max(aspect, 0.65));
+        }
+
+        const posY = dist * Math.sin(pitchRad);
+        const posZ = dist * Math.cos(pitchRad);
+
+        cam.position.set(0, posY, posZ);
+        cam.up.set(Math.SQRT1_2, 0, -Math.SQRT1_2); // Rotates diamond by 45° into a perfect normal square!
+        cam.lookAt(0, 0, 0);
+      } else {
+        // ========================================================
+        // 2. 3D ANGLED DIAMOND VIEW (REFRAMED SO SOUTH TIP IS NEVER CUT OFF)
+        // ========================================================
+        // Pitch: 41° gives a dramatic 3D perspective of 3D houses & monuments.
+        // Target: Shifted south to (0, 0, 13.5) so the near South corner (Corner 0 / Start)
+        // is elevated above the bottom Roll Button and Action Card dock.
+        // Distance: 172 units guarantees the entire diamond (North, South, East, West)
+        // is 100% inside the viewport on all resolutions.
+        const pitchDeg = 41;
+        const pitchRad = (pitchDeg * Math.PI) / 180;
+        const targetZ = 13.5;
+
+        let dist = 172;
+        if (aspect < 1.55) {
+          dist = 172 * (1.55 / Math.max(aspect, 0.65));
+        }
+
+        const posY = dist * Math.sin(pitchRad);
+        const posZ = targetZ + dist * Math.cos(pitchRad);
+
+        cam.position.set(0, posY, posZ);
+        cam.up.set(0, 1, 0); // Standard upright camera
+        cam.lookAt(0, 0, targetZ);
       }
 
-      const posY = dist * Math.sin(pitchRad);
-      const posZ = dist * Math.cos(pitchRad);
-
-      cam.position.set(0, posY, posZ);
-      cam.lookAt(0, -3, 0);
       cam.updateProjectionMatrix();
     };
 

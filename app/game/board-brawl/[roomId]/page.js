@@ -68,6 +68,30 @@ export default function BoardBrawlArenaPage() {
   const [showChatPanel, setShowChatPanel] = useState(false);
   const [showInGameShop, setShowInGameShop] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [activeCamMode, setActiveCamMode] = useState('follow');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ngg_camera_mode') || 'follow';
+      setActiveCamMode(saved);
+      const handleCamSync = () => {
+        const cur = localStorage.getItem('ngg_camera_mode') || 'follow';
+        setActiveCamMode(cur);
+      };
+      window.addEventListener('ngg_settings_changed', handleCamSync);
+      return () => window.removeEventListener('ngg_settings_changed', handleCamSync);
+    }
+  }, []);
+
+  const handleToggleCamera = () => {
+    const next = activeCamMode === 'topdown' ? 'follow' : 'topdown';
+    setActiveCamMode(next);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ngg_camera_mode', next);
+      window.dispatchEvent(new Event('ngg_settings_changed'));
+    }
+    try { sounds.playClick?.(); } catch (e) {}
+  };
   const [inspectedTileId, setInspectedTileId] = useState(null);
   const [lastPaymentEvent, setLastPaymentEvent] = useState(null);
   const [cashFloatingBadges, setCashFloatingBadges] = useState({});
@@ -1483,6 +1507,39 @@ export default function BoardBrawlArenaPage() {
                 }}
               >
                 {musicPlaying ? <Volume2 size={22} /> : <VolumeX size={22} />}
+              </button>
+
+              {/* 2D Square / 3D Diamond View Toggle Button */}
+              <button
+                onClick={handleToggleCamera}
+                title={activeCamMode === 'topdown' ? 'Switch to 3D Angled Diamond View' : 'Switch to 2D Normal Square View'}
+                aria-label="Toggle 2D Square / 3D Diamond View"
+                style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '14px',
+                  background: activeCamMode === 'topdown'
+                    ? 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)'
+                    : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                  border: activeCamMode === 'topdown' ? '2px solid #c084fc' : '2px solid #38bdf8',
+                  color: '#ffffff',
+                  boxShadow: activeCamMode === 'topdown'
+                    ? '0 4px 14px rgba(139, 92, 246, 0.4)'
+                    : '0 4px 14px rgba(2, 132, 199, 0.4)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontWeight: 900,
+                  fontSize: '11px',
+                  lineHeight: '1.0',
+                  gap: '2px',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span style={{ fontSize: '15px' }}>{activeCamMode === 'topdown' ? '📐' : '🎲'}</span>
+                <span>{activeCamMode === 'topdown' ? '2D' : '3D'}</span>
               </button>
 
               <button

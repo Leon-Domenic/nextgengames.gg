@@ -1012,9 +1012,9 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
                   {[
-                    { id: 'follow', name: 'Dynamic Follow', desc: 'Auto-centers moving pawns' },
+                    { id: 'follow', name: '3D Diamond', desc: 'Angled diamond perspective (always in frame)' },
                     { id: 'isometric', name: 'Isometric 45°', desc: 'Classic diamond perspective' },
-                    { id: 'topdown', name: 'Top-Down 2D', desc: "Tactical bird's eye view" },
+                    { id: 'topdown', name: '2D Normal Square', desc: 'Classic horizontal & vertical square' },
                   ].map((m) => (
                     <button
                       key={m.id}
