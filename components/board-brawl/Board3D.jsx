@@ -184,6 +184,7 @@ export default function Board3D({
   const diceMeshesRef = useRef([]);
   const diceSimRef = useRef({ active: false, progress: 1.0, targetRotation1: null, targetRotation2: null });
   const monumentsRef = useRef([]);
+  const prisonMonumentRef = useRef(null);
   const banknoteStacksRef = useRef([]);
   const cashGroupRef = useRef(null);
   const cashTransfersRef = useRef([]);
@@ -1129,6 +1130,8 @@ export default function Board3D({
     prisonField.rotation.y = Math.PI / 4;   // Angled nicely towards main camera
     monumentsGroup.add(prisonField);
     cornerMonuments.push(prisonField);
+    prisonMonumentRef.current = prisonField;
+    scene.userData.prisonMonument = prisonField;
 
     // Corner 2: North (WORLD TOUR / AIRPORT)
     const pTour = getTile3DPos(16, TILES.length);
@@ -1809,6 +1812,10 @@ export default function Board3D({
         entry.targetTile = player.position || 8;
 
         try { sounds.playDistress?.(playerToken); } catch (e) {}
+        try {
+          prisonMonumentRef.current?.userData?.openDoor?.();
+          sounds.playPrisonDoorOpen?.();
+        } catch (e) {}
 
         const startCoords = entry.group.position.clone();
         const prisonTarget = getPrisonField3DPos(idx, players.length);
@@ -1829,6 +1836,10 @@ export default function Board3D({
             entry.group.position.copy(prisonTarget);
             entry.group.rotation.y = 0;
             entry.isMoving = false;
+            try {
+              prisonMonumentRef.current?.userData?.closeDoor?.(true);
+              sounds.playPrisonDoorSlam?.();
+            } catch (e) {}
             try { sounds.playCardPlay?.(); } catch (e) {}
           }
         };
@@ -1841,6 +1852,10 @@ export default function Board3D({
         entry.isImprisoned = false;
         if (entry.targetTile === player.position) {
           entry.isMoving = true;
+          try {
+            prisonMonumentRef.current?.userData?.openDoor?.();
+            sounds.playPrisonDoorOpen?.();
+          } catch (e) {}
           const startCoords = entry.group.position.clone();
           const boardExit = getPawnTile3DPos(8, TILES.length, entry.subOffset);
           const escapeDuration = 800;
@@ -1860,6 +1875,9 @@ export default function Board3D({
               entry.currentTile = 8;
               entry.targetTile = 8;
               entry.isMoving = false;
+              try {
+                prisonMonumentRef.current?.userData?.closeDoor?.(false);
+              } catch (e) {}
             }
           };
           requestAnimationFrame(escapeAnim);
