@@ -8,6 +8,7 @@ import { Sparkles } from 'lucide-react';
 import {
   create3DHouse,
   create3DHotel,
+  create3DLandmark,
   create3DResortAccent,
   createOwnerCrest,
   createProceduralPawn,
@@ -111,6 +112,21 @@ export function getTile3DPos(id, totalTiles = 48) {
       indexInSide,
     };
   }
+}
+
+// Compute accurate 3D position for player pawns along the outer street zone
+export function getPawnTile3DPos(id, totalTiles = 32, subOffset = null) {
+  const p = getTile3DPos(id, totalTiles);
+  const pos = new THREE.Vector3(p.x, 0.35, p.z);
+  if (!p.isCorner) {
+    const streetOffset = new THREE.Vector3(0, 0, -2.0);
+    streetOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
+    pos.add(streetOffset);
+  }
+  if (subOffset) {
+    pos.add(subOffset);
+  }
+  return pos;
 }
 
 export default function Board3D({
@@ -287,9 +303,9 @@ export default function Board3D({
 
     // Dashed road lane divider markings encircling the perimeter
     lCtx.save();
-    lCtx.strokeStyle = 'rgba(254, 240, 138, 0.9)'; // Luminous road yellow
+    lCtx.strokeStyle = '#f8fafc'; // Crisp dashed white center line marking
     lCtx.lineWidth = 10;
-    lCtx.setLineDash([44, 28]);
+    lCtx.setLineDash([48, 30]);
     lCtx.strokeRect(96, 96, 2048 - 192, 2048 - 192);
     lCtx.restore();
 
@@ -309,7 +325,7 @@ export default function Board3D({
     const stripeWidth = 56;
     for (let x = -2048; x < 4096; x += stripeWidth) {
       const isEven = Math.floor(x / stripeWidth) % 2 === 0;
-      lCtx.fillStyle = isEven ? '#4ade80' : '#22c55e';
+      lCtx.fillStyle = isEven ? '#22c55e' : '#16a34a';
       lCtx.beginPath();
       lCtx.moveTo(x, 0);
       lCtx.lineTo(x + stripeWidth, 0);
@@ -436,88 +452,8 @@ export default function Board3D({
 
     // 7b. Elevated Outer Curb / Terrace Strip (Width ~4.0, Height ~0.45, Soft Stone & Lawn Trim)
     // Placed behind each of the 4 diamond street sides outside the track
-    const curbGroup = new THREE.Group();
-    const curbMeshes = [];
-    const R_outer = 56;
-    const trackDepth = 8.5;
-    const sideLength = R_outer * Math.SQRT2; // ~79.2
-    const streetSpan = sideLength - 2 * trackDepth; // ~62.2 units
-    const curbWidth = 4.0;
-    const curbHeight = 0.45;
-
-    const apexes = [
-      new THREE.Vector2(0, R_outer),      // Corner 0: South (START)
-      new THREE.Vector2(-R_outer, 0),     // Corner 1: West (PRISON)
-      new THREE.Vector2(0, -R_outer),     // Corner 2: North (CHAMPIONSHIPS)
-      new THREE.Vector2(R_outer, 0),      // Corner 3: East (WORLD TOUR)
-    ];
-
-    const sideRotations = [
-      (3 * Math.PI) / 4,   // Side 0
-      Math.PI / 4,         // Side 1
-      -Math.PI / 4,        // Side 2
-      (-3 * Math.PI) / 4,  // Side 3
-    ];
-
-    const stoneMat = new THREE.MeshStandardMaterial({
-      color: 0x334155, // Slate soft stone curb
-      roughness: 0.65,
-      metalness: 0.15,
-    });
-
-    const terraceLawnMat = new THREE.MeshStandardMaterial({
-      color: 0x16a34a, // Manicured terrace lawn top
-      roughness: 0.82,
-      metalness: 0.05,
-    });
-
-    const curbTrimMat = new THREE.MeshStandardMaterial({
-      color: 0xd97706, // Polished brass / golden curb edge trim
-      roughness: 0.35,
-      metalness: 0.75,
-    });
-
-    for (let side = 0; side < 4; side++) {
-      const pStart = apexes[side];
-      const pEnd = apexes[(side + 1) % 4];
-      const u_edge = new THREE.Vector2().subVectors(pEnd, pStart).normalize();
-      const mid = new THREE.Vector2().addVectors(pStart, pEnd).multiplyScalar(0.5);
-      let u_in = new THREE.Vector2(-u_edge.y, u_edge.x);
-      if (u_in.dot(mid) > 0) u_in.negate();
-      const u_out = u_in.clone().negate();
-
-      // Outer edge of the street lies along mid. Center of curb is curbWidth / 2 outward.
-      const curbCenter = mid.clone().add(u_out.clone().multiplyScalar(curbWidth / 2));
-
-      const sideCurbGroup = new THREE.Group();
-      sideCurbGroup.position.set(curbCenter.x, curbHeight / 2, curbCenter.y);
-      sideCurbGroup.rotation.y = sideRotations[side];
-
-      // Base stone curb with lawn top (+Y face is terraceLawnMat)
-      const curbGeom = new THREE.BoxGeometry(streetSpan, curbHeight, curbWidth);
-      const curbMesh = new THREE.Mesh(curbGeom, [stoneMat, stoneMat, terraceLawnMat, stoneMat, stoneMat, stoneMat]);
-      curbMesh.castShadow = true;
-      curbMesh.receiveShadow = true;
-      sideCurbGroup.add(curbMesh);
-
-      // Inner street-side golden bevel trim (faces street tiles at local Z = +curbWidth / 2)
-      const innerTrimGeom = new THREE.BoxGeometry(streetSpan + 0.1, 0.08, 0.28);
-      const innerTrim = new THREE.Mesh(innerTrimGeom, curbTrimMat);
-      innerTrim.position.set(0, curbHeight / 2 + 0.02, curbWidth / 2 - 0.14);
-      sideCurbGroup.add(innerTrim);
-
-      // Outer stone terrace railing edge (at local Z = -curbWidth / 2)
-      const outerTrimGeom = new THREE.BoxGeometry(streetSpan + 0.1, 0.06, 0.22);
-      const outerTrim = new THREE.Mesh(outerTrimGeom, stoneMat);
-      outerTrim.position.set(0, curbHeight / 2 + 0.02, -curbWidth / 2 + 0.11);
-      sideCurbGroup.add(outerTrim);
-
-      curbGroup.add(sideCurbGroup);
-      curbMeshes.push(curbMesh);
-    }
-
-    curbMeshesRef.current = curbMeshes;
-    scene.add(curbGroup);
+    // 7b. Inner board layout (no clumsy external terrace)
+    curbMeshesRef.current = [];
 
     // 7. 48 Perimeter 3D Tiles (Monopoly Flush Square Corners & Outward-Facing Slabs)
     const tileGroup = new THREE.Group();
@@ -767,98 +703,118 @@ export default function Board3D({
           ctx.restore();
         };
 
-        if (tile.type === 'resort') {
-          // Vibrant Cyan / Tropical Resort Field (Outward-facing header, beach icon, and price pill)
-          ctx.fillStyle = '#06b6d4';
-          ctx.fillRect(18, 18, 476, 126);
+        // --- 1. INNER ZONE: Manicured Light Green Lawn Plot (y = 252 to 500) ---
+        ctx.fillStyle = '#86efac'; // Vibrant light green turf base
+        ctx.fillRect(16, 252, 480, 244);
 
-          // Subtle gloss gradient
-          const gloss = ctx.createLinearGradient(0, 18, 0, 80);
+        // Subtle grass mowing stripes / lawn grid pattern (#4ade80)
+        ctx.fillStyle = '#4ade80';
+        for (let gy = 260; gy < 490; gy += 28) {
+          ctx.fillRect(16, gy, 480, 14);
+        }
+
+        // Dedicated patio garden lot where 3D buildings stand flush
+        ctx.fillStyle = 'rgba(248, 250, 252, 0.42)';
+        ctx.beginPath();
+        ctx.roundRect(40, 280, 432, 190, 14);
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(34, 197, 94, 0.45)';
+        ctx.stroke();
+
+        // Inner road edge transition curb at bottom
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(16, 494, 480, 4);
+
+        // --- 2. CLEAN STONE CURB BORDER BETWEEN STREET AND LAWN (y = 246 to 254) ---
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(16, 246, 480, 8);
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(16, 246, 480, 2);
+
+        // --- 3. OUTER ZONE: Street Sidewalk (y = 16 to 246) ---
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(16, 16, 480, 230);
+
+        if (tile.type === 'city') {
+          // A. Bold crisp district color stripe at outer edge (y = 16 to 54)
+          ctx.fillStyle = tile.color || '#3b82f6';
+          ctx.fillRect(16, 16, 480, 38);
+
+          // Subtle glossy highlight on stripe
+          const gloss = ctx.createLinearGradient(0, 16, 0, 35);
           gloss.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
           gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
           ctx.fillStyle = gloss;
-          ctx.fillRect(18, 18, 476, 62);
+          ctx.fillRect(16, 16, 480, 20);
 
-          // Dark divider line below header
+          // Dark divider below stripe
           ctx.fillStyle = '#0f172a';
-          ctx.fillRect(18, 142, 476, 4);
+          ctx.fillRect(16, 54, 480, 3);
 
-          // Country flag and district name in bold white pointing outwards
-          drawOutwardText(`${tile.flag || '🏖️'} ${tile.country || 'RESORT'}`, 256, 81, '900 40px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#ffffff');
-
-          // Resort palm tree icon
-          drawOutwardText('🏖️', 256, 205, '76px sans-serif', '#0891b2');
-
-          // Resort name in bold dark slate pointing outwards
-          const rName = tile.name.toUpperCase();
-          const rFontSize = rName.length > 13 ? 38 : rName.length > 10 ? 44 : 50;
-          drawOutwardText(rName, 256, 275, `900 ${rFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`, '#0f172a', 440);
-
-          // Ultra high-contrast bold price pill
-          ctx.fillStyle = '#f8fafc';
-          ctx.strokeStyle = '#06b6d4';
-          ctx.lineWidth = 5;
-          ctx.beginPath();
-          ctx.roundRect(50, 325, 412, 94, 24);
-          ctx.fill();
-          ctx.stroke();
-
-          const rPrice = tile.price >= 1000000
-            ? `₩${(tile.price / 1000000).toFixed(1)}M`
-            : `₩${Math.round(tile.price / 1000)}K`;
-          drawOutwardText(`${rPrice} • RESORT`, 256, 372, '900 42px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0891b2');
-
-          // Asphalt track stripe at inner edge
-          ctx.fillStyle = '#1e293b';
-          ctx.fillRect(18, 444, 476, 50);
-          ctx.fillStyle = '#06b6d4';
-          ctx.fillRect(150, 466, 212, 6);
-        } else if (tile.type === 'city') {
-          // District color ribbon (top 132px) - FACES OUTSIDE OF BOARD
-          ctx.fillStyle = tile.color || '#3b82f6';
-          ctx.fillRect(18, 18, 476, 126);
-
-          // Subtle gloss gradient
-          const gloss = ctx.createLinearGradient(0, 18, 0, 80);
-          gloss.addColorStop(0, 'rgba(255, 255, 255, 0.35)');
-          gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
-          ctx.fillStyle = gloss;
-          ctx.fillRect(18, 18, 476, 62);
-
-          // Divider line below header
-          ctx.fillStyle = '#0f172a';
-          ctx.fillRect(18, 142, 476, 4);
-
-          // Country flag and district name in bold white pointing outwards
-          drawOutwardText(`${tile.flag || ''} ${tile.country || ''}`, 256, 81, '900 42px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#ffffff');
-
-          // City name in ultra-bold dark slate pointing outwards
+          // B. Country Flag + City Name in prominent bold clear typography
           const name = tile.name.toUpperCase();
-          const fontSize = name.length > 9 ? 46 : name.length > 7 ? 52 : 62;
-          drawOutwardText(name, 256, 246, `900 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`, '#0f172a', 440);
+          const flagStr = tile.flag ? (tile.flag + ' ') : '';
+          const fullName = flagStr + name;
+          const fontSize = fullName.length > 15 ? 32 : fullName.length > 11 ? 38 : 44;
+          drawOutwardText(fullName, 256, 106, '900 ' + fontSize + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a', 450);
 
-          // Ultra high-contrast bold price pill
+          // C. Large readable property price tag pill
           ctx.fillStyle = '#f8fafc';
           ctx.strokeStyle = '#0f172a';
-          ctx.lineWidth = 5;
+          ctx.lineWidth = 4;
           ctx.beginPath();
-          ctx.roundRect(50, 325, 412, 94, 24);
+          ctx.roundRect(52, 152, 408, 74, 20);
           ctx.fill();
           ctx.stroke();
 
-          const displayPrice = tile.price >= 1000000
-            ? `₩${(tile.price / 1000000).toFixed(1)}M`
-            : `₩${Math.round(tile.price / 1000)}K`;
-          drawOutwardText(displayPrice, 256, 372, '900 54px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a');
+          const priceNum = tile.price || 0;
+          const displayPrice = priceNum >= 1000000
+            ? (priceNum / 1000000).toFixed(1) + 'M'
+            : Math.round(priceNum / 1000) + 'K';
+          drawOutwardText(displayPrice, 256, 189, '900 48px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a');
 
-          // Asphalt track stripe at inner edge
-          ctx.fillStyle = '#1e293b';
-          ctx.fillRect(18, 444, 476, 50);
-          ctx.fillStyle = '#38bdf8';
-          ctx.fillRect(150, 466, 212, 6);
+        } else if (tile.type === 'resort') {
+          // Resort Outer Zone
+          ctx.fillStyle = '#06b6d4';
+          ctx.fillRect(16, 16, 480, 38);
+
+          const gloss = ctx.createLinearGradient(0, 16, 0, 35);
+          gloss.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+          gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
+          ctx.fillStyle = gloss;
+          ctx.fillRect(16, 16, 480, 20);
+
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(16, 54, 480, 3);
+
+          const rName = tile.name.toUpperCase();
+          drawOutwardText((tile.flag || '🏖️') + ' ' + rName, 256, 106, '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0891b2', 450);
+
+          // Resort Price Pill
+          ctx.fillStyle = '#f8fafc';
+          ctx.strokeStyle = '#06b6d4';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.roundRect(52, 152, 408, 74, 20);
+          ctx.fill();
+          ctx.stroke();
+
+          const priceNum = tile.price || 0;
+          const displayPrice = priceNum >= 1000000
+            ? (priceNum / 1000000).toFixed(1) + 'M'
+            : Math.round(priceNum / 1000) + 'K';
+          drawOutwardText(displayPrice + ' • RESORT', 256, 189, '900 40px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0891b2');
+
+          // Subtle sandy beach tint on the lawn plot
+          ctx.fillStyle = 'rgba(254, 240, 138, 0.25)';
+          ctx.beginPath();
+          ctx.roundRect(40, 280, 432, 190, 14);
+          ctx.fill();
+
         } else {
-          // Perimeter Event Squares (Chance, Armory, Tax, Festival) - FACES OUTSIDE OF BOARD
-          const taxSub = tile.amount ? `PAY ₩${Math.round(tile.amount / 1000)}K` : 'PAY TAX';
+          // Special / Event Street Squares (Chance, Armory, Tax, Festival)
+          const taxSub = tile.amount ? ('PAY ₩' + Math.round(tile.amount / 1000) + 'K') : 'PAY TAX';
           const eventConfig = {
             chance: { color: '#ec4899', icon: '❓', title: 'CHANCE', sub: 'LUCKY DRAW', subColor: '#be185d' },
             armory: { color: '#ef4444', icon: '🍅', title: 'ARMORY', sub: '+2 TOMATOES', subColor: '#b91c1c' },
@@ -869,42 +825,33 @@ export default function Board3D({
             color: '#0284c7',
             icon: tile.icon || '🎯',
             title: tile.name.toUpperCase(),
-            sub: tile.amount ? `PAY ₩${Math.round(tile.amount / 1000)}K` : (tile.type || '').toUpperCase(),
+            sub: tile.amount ? ('PAY ₩' + Math.round(tile.amount / 1000) + 'K') : (tile.type || '').toUpperCase(),
             subColor: '#0369a1',
           };
 
           ctx.fillStyle = cfg.color;
-          ctx.fillRect(18, 18, 476, 126);
+          ctx.fillRect(16, 16, 480, 38);
 
-          // Subtle gloss gradient
-          const gloss = ctx.createLinearGradient(0, 18, 0, 80);
-          gloss.addColorStop(0, 'rgba(255, 255, 255, 0.35)');
+          const gloss = ctx.createLinearGradient(0, 16, 0, 35);
+          gloss.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
           gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
           ctx.fillStyle = gloss;
-          ctx.fillRect(18, 18, 476, 62);
+          ctx.fillRect(16, 16, 480, 20);
 
           ctx.fillStyle = '#0f172a';
-          ctx.fillRect(18, 142, 476, 4);
+          ctx.fillRect(16, 54, 480, 3);
 
-          drawOutwardText(cfg.title, 256, 81, '900 42px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#ffffff');
-          drawOutwardText(cfg.icon, 256, 246, '92px sans-serif', '#0f172a');
+          drawOutwardText(cfg.icon + ' ' + cfg.title, 256, 106, '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a', 450);
 
-          // Pill box
           ctx.fillStyle = '#f8fafc';
           ctx.strokeStyle = '#0f172a';
-          ctx.lineWidth = 5;
+          ctx.lineWidth = 4;
           ctx.beginPath();
-          ctx.roundRect(50, 325, 412, 94, 24);
+          ctx.roundRect(52, 152, 408, 74, 20);
           ctx.fill();
           ctx.stroke();
 
-          drawOutwardText(cfg.sub, 256, 372, '900 44px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', cfg.subColor);
-
-          // Asphalt track stripe at inner edge
-          ctx.fillStyle = '#1e293b';
-          ctx.fillRect(18, 444, 476, 50);
-          ctx.fillStyle = '#38bdf8';
-          ctx.fillRect(150, 466, 212, 6);
+          drawOutwardText(cfg.sub, 256, 189, '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', cfg.subColor);
         }
       }
 
@@ -961,29 +908,29 @@ export default function Board3D({
     monumentsGroup.add(startMonument);
     cornerMonuments.push(startMonument);
 
-    // Corner 1: West (RESORT ISLAND)
-    const pIsland = getTile3DPos(12, TILES.length);
+    // Corner 1: West (PRISON / LOST ISLAND)
+    const pIsland = getTile3DPos(8, TILES.length);
     const islandMonument = create3DIslandMonument();
     islandMonument.position.set(pIsland.x - 1.2, 0.35, pIsland.z);
     islandMonument.rotation.y = Math.PI / 4;
     monumentsGroup.add(islandMonument);
     cornerMonuments.push(islandMonument);
 
-    // Corner 2: North (WORLD CHAMPIONSHIP)
-    const pChamp = getTile3DPos(24, TILES.length);
-    const champMonument = create3DChampionshipMonument();
-    champMonument.position.set(pChamp.x, 0.35, pChamp.z - 1.2);
-    champMonument.rotation.y = 0;
-    monumentsGroup.add(champMonument);
-    cornerMonuments.push(champMonument);
-
-    // Corner 3: East (WORLD TOUR)
-    const pTour = getTile3DPos(36, TILES.length);
+    // Corner 2: North (WORLD TOUR / AIRPORT)
+    const pTour = getTile3DPos(16, TILES.length);
     const tourMonument = create3DWorldTourMonument();
-    tourMonument.position.set(pTour.x + 1.2, 0.35, pTour.z);
-    tourMonument.rotation.y = -Math.PI / 4;
+    tourMonument.position.set(pTour.x, 0.35, pTour.z - 1.2);
+    tourMonument.rotation.y = 0;
     monumentsGroup.add(tourMonument);
     cornerMonuments.push(tourMonument);
+
+    // Corner 3: East (WORLD CHAMPIONSHIP / ARMORY)
+    const pChamp = getTile3DPos(24, TILES.length);
+    const champMonument = create3DChampionshipMonument();
+    champMonument.position.set(pChamp.x + 1.2, 0.35, pChamp.z);
+    champMonument.rotation.y = -Math.PI / 4;
+    monumentsGroup.add(champMonument);
+    cornerMonuments.push(champMonument);
 
     monumentsRef.current = cornerMonuments;
     scene.add(monumentsGroup);
@@ -1277,6 +1224,25 @@ export default function Board3D({
       const delta = clock.getDelta();
       const elapsed = clock.getElapsedTime();
 
+      // Animate Building Pop-in Bounce
+      if (buildingsGroupRef.current) {
+        buildingsGroupRef.current.children.forEach((child) => {
+          if (child.userData?.spawnTime) {
+            const elapsedSpawn = (performance.now() - child.userData.spawnTime) / 420;
+            const baseScale = child.userData.baseScale || 1.0;
+            if (elapsedSpawn < 1.0) {
+              const t = elapsedSpawn;
+              const c4 = (2 * Math.PI) / 3;
+              const progress = t === 0 ? 0 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1;
+              child.scale.setScalar(baseScale * Math.max(0.01, progress));
+            } else {
+              child.scale.setScalar(baseScale);
+              delete child.userData.spawnTime;
+            }
+          }
+        });
+      }
+
       // Idle Hover & Real-time Avatar Animations for Pawns (Heroic scale foot contact y = 0.35)
       pawnMeshesRef.current.forEach(({ group, isMoving }) => {
         if (!isMoving && group) {
@@ -1428,57 +1394,110 @@ export default function Board3D({
       });
       group.add(crest);
 
-      // 2. 3D Miniature Tropical Beach Resort Accent on the Elevated Outer Terrace Curb for Resorts
+      // 2. 3D Miniature Tropical Beach Resort Accent on Inner Lawn Plot for Resorts
       const tile = TILES.find((t) => t.id === tileId) || TILES[tileId];
       if (tile?.type === 'resort') {
         const resort = create3DResortAccent(ownerColor);
-        const localOffset = new THREE.Vector3(0, 0, -5.1);
+        const localOffset = new THREE.Vector3(0, 0, 2.125);
         localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
-        resort.position.set(p.x + localOffset.x, 0.45, p.z + localOffset.z);
+        resort.position.set(p.x + localOffset.x, 0.35, p.z + localOffset.z);
         resort.rotation.y = p.rotationY;
 
         resort.traverse((obj) => {
           obj.userData = { tileId, isTile: true };
         });
+        resort.userData = {
+          tileId,
+          isTile: true,
+          spawnTime: performance.now(),
+          baseScale: resort.scale.x,
+        };
+        resort.scale.set(0.01, 0.01, 0.01);
         group.add(resort);
         return; // Skip house/hotel logic for resorts
       }
 
-      // 3. 3D Miniature Houses (Levels 2-4) on the Elevated Outer Terrace Curb
-      // Relocated to outer perimeter terrace behind the color header (localOffset.z = -5.1)
-      if (prop.level >= 2 && prop.level <= 4) {
-        const houseCount = prop.level - 1;
-        const offsets = houseCount === 1 ? [0] : houseCount === 2 ? [-1.2, 1.2] : [-1.7, 0, 1.7];
+      // 3. Stylized Low-Poly 3D Buildings on Inner Lawn Plot (Business Tour Progression)
+      if (prop.level === 2) {
+        // Level 2: 1 Cottage centered on the lawn plot
+        const house = create3DHouse(ownerColor);
+        const localOffset = new THREE.Vector3(0, 0, 2.125);
+        localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
+        house.position.set(p.x + localOffset.x, 0.35, p.z + localOffset.z);
+        house.rotation.y = p.rotationY;
 
+        house.traverse((obj) => {
+          obj.userData = { tileId, isTile: true };
+        });
+        house.userData = {
+          tileId,
+          isTile: true,
+          spawnTime: performance.now(),
+          baseScale: house.scale.x,
+        };
+        house.scale.set(0.01, 0.01, 0.01);
+        group.add(house);
+      } else if (prop.level === 3) {
+        // Level 3: 2 Cottages side-by-side neatly on the lawn plot!
+        const offsets = [-1.55, 1.55];
         offsets.forEach((offsetX) => {
           const house = create3DHouse(ownerColor);
-          const localOffset = new THREE.Vector3(offsetX, 0, -5.1);
+          house.scale.set(1.02, 1.02, 1.02);
+          const localOffset = new THREE.Vector3(offsetX, 0, 2.125);
           localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
-          house.position.set(p.x + localOffset.x, 0.45, p.z + localOffset.z);
-
-          // Rotate slightly inward toward the street
-          const inwardAngle = offsetX < -0.1 ? 0.12 : offsetX > 0.1 ? -0.12 : 0;
-          house.rotation.y = p.rotationY + inwardAngle;
+          house.position.set(p.x + localOffset.x, 0.35, p.z + localOffset.z);
+          house.rotation.y = p.rotationY;
 
           house.traverse((obj) => {
             obj.userData = { tileId, isTile: true };
           });
+          house.userData = {
+            tileId,
+            isTile: true,
+            spawnTime: performance.now(),
+            baseScale: 1.02,
+          };
+          house.scale.set(0.01, 0.01, 0.01);
           group.add(house);
         });
-      }
-
-      // 3. 3D Luxury Hotel / Skyscraper (Level 5) on the Elevated Outer Terrace Curb
-      if (prop.level >= 5) {
+      } else if (prop.level === 4) {
+        // Level 4: 1 Hotel / Skyscraper centered on the lawn plot
         const hotel = create3DHotel(ownerColor);
-        const localOffset = new THREE.Vector3(0, 0, -5.1);
+        const localOffset = new THREE.Vector3(0, 0, 2.125);
         localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
-        hotel.position.set(p.x + localOffset.x, 0.45, p.z + localOffset.z);
+        hotel.position.set(p.x + localOffset.x, 0.35, p.z + localOffset.z);
         hotel.rotation.y = p.rotationY;
 
         hotel.traverse((obj) => {
           obj.userData = { tileId, isTile: true };
         });
+        hotel.userData = {
+          tileId,
+          isTile: true,
+          spawnTime: performance.now(),
+          baseScale: hotel.scale.x,
+        };
+        hotel.scale.set(0.01, 0.01, 0.01);
         group.add(hotel);
+      } else if (prop.level >= 5) {
+        // Level 5: 1 Golden Landmark centered on the lawn plot (Immune to Buyouts)
+        const landmark = create3DLandmark(ownerColor);
+        const localOffset = new THREE.Vector3(0, 0, 2.125);
+        localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
+        landmark.position.set(p.x + localOffset.x, 0.35, p.z + localOffset.z);
+        landmark.rotation.y = p.rotationY;
+
+        landmark.traverse((obj) => {
+          obj.userData = { tileId, isTile: true };
+        });
+        landmark.userData = {
+          tileId,
+          isTile: true,
+          spawnTime: performance.now(),
+          baseScale: landmark.scale.x,
+        };
+        landmark.scale.set(0.01, 0.01, 0.01);
+        group.add(landmark);
       }
     });
   }, [properties, players, sceneReady]);
@@ -1511,12 +1530,11 @@ export default function Board3D({
         }
 
         const pawnGroup = createProceduralPawn(playerToken, playerColor);
-        const startPos = getTile3DPos(player.position || 0, TILES.length);
-
         const subAngle = (idx * Math.PI * 2) / Math.max(1, players.length);
-        const subOffset = new THREE.Vector3(Math.cos(subAngle) * 1.3, 0, Math.sin(subAngle) * 1.3);
+        const subOffset = new THREE.Vector3(Math.cos(subAngle) * 0.9, 0, Math.sin(subAngle) * 0.9);
+        const startPos = getPawnTile3DPos(player.position || 0, TILES.length, subOffset);
 
-        pawnGroup.position.set(startPos.x + subOffset.x, 0.35, startPos.z + subOffset.z);
+        pawnGroup.position.copy(startPos);
         scene.add(pawnGroup);
 
         entry = {
@@ -1559,13 +1577,8 @@ export default function Board3D({
         const isWorldTourFlight = fromTile === 16 || path.length > 12;
         if (isWorldTourFlight) {
           try { sounds.playFlightTakeoff?.(); } catch (err) {}
-          const targetCoords = getTile3DPos(toTile, TILES.length);
+          const targetPos = getPawnTile3DPos(toTile, TILES.length, entry.subOffset);
           const startCoords = entry.group.position.clone();
-          const targetPos = new THREE.Vector3(
-            targetCoords.x + entry.subOffset.x,
-            0.35,
-            targetCoords.z + entry.subOffset.z
-          );
 
           const flightDuration = 1800; // 1.8 seconds cinematic flight
           const flightStartTime = performance.now();
@@ -1663,13 +1676,8 @@ export default function Board3D({
           }
 
           const nextTileId = path[stepIndex];
-          const targetCoords = getTile3DPos(nextTileId, TILES.length);
+          const targetPos = getPawnTile3DPos(nextTileId, TILES.length, entry.subOffset);
           const startCoords = entry.group.position.clone();
-          const targetPos = new THREE.Vector3(
-            targetCoords.x + entry.subOffset.x,
-            0.35,
-            targetCoords.z + entry.subOffset.z
-          );
 
           sounds.playPawnStep?.();
 
