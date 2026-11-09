@@ -33,12 +33,9 @@ export default function EventCardModal({
     // Only start a fresh timer if this is a genuinely NEW event card draw
     if (activeEventKeyRef.current !== eventKey) {
       activeEventKeyRef.current = eventKey;
-      // Anchor start time to eventData.timestamp if recent, otherwise current time
-      const now = Date.now();
-      const eventTime = eventData.timestamp && Math.abs(now - eventData.timestamp) < DISPLAY_DURATION_MS
-        ? eventData.timestamp
-        : now;
-      startTimeRef.current = eventTime;
+      // Start fresh from the exact moment the card modal is mounted/presented on screen
+      startTimeRef.current = Date.now();
+      setRemainingMs(DISPLAY_DURATION_MS);
 
       try {
         sounds.playCardDraw?.();

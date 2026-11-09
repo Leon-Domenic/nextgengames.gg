@@ -1905,15 +1905,26 @@ export default function Board3D({
           return;
         }
 
-        // Direct High-Altitude Parabolic Soaring Flight for World Tour
+        // Direct High-Altitude Soaring Flight along Board Perimeter for World Tour
         const isWorldTourFlight = fromTile === 16 || path.length > 12;
         if (isWorldTourFlight) {
           try { sounds.playFlightTakeoff?.(); } catch (err) {}
-          const targetPos = getPawnTile3DPos(toTile, TILES.length, entry.subOffset);
           const startCoords = entry.group.position.clone();
+          const totalTileCount = TILES.length || 32;
 
-          const flightDuration = 1800; // 1.8 seconds cinematic flight
+          // Build continuous perimeter waypoint spline so pawn visibly flies along board route
+          const waypoints = [startCoords.clone()];
+          path.forEach((t) => {
+            waypoints.push(getPawnTile3DPos(t, totalTileCount, entry.subOffset));
+          });
+
+          // Catmull-Rom 3D Curve along the perimeter track
+          const flightCurve = new THREE.CatmullRomCurve3(waypoints, false, 'catmullrom', 0.15);
+
+          // Flight duration scales with distance (1900ms - 2800ms)
+          const flightDuration = Math.min(2800, Math.max(1900, path.length * 95));
           const flightStartTime = performance.now();
+          let hasClaimedStartInFlight = false;
 
           const flightAnim = () => {
             const now = performance.now();
@@ -1921,17 +1932,33 @@ export default function Board3D({
 
             // Smooth cubic ease-in-out curve
             const ease = fp < 0.5 ? 4 * fp * fp * fp : 1 - Math.pow(-2 * fp + 2, 3) / 2;
-            entry.group.position.lerpVectors(startCoords, targetPos, ease);
+            const curvePos = flightCurve.getPointAt(ease);
 
-            // Soaring vertical parabolic arc up to y = 8.5
-            const arcY = Math.sin(fp * Math.PI) * 8.5;
-            entry.group.position.y = 0.35 + arcY;
+            // Parabolic soaring flight arc (up to y = 5.2 cruising altitude)
+            const arcY = Math.sin(fp * Math.PI) * 5.2;
+            entry.group.position.set(curvePos.x, 0.35 + arcY, curvePos.z);
 
-            // Heading & Banking alignment
-            const dx = targetPos.x - startCoords.x;
-            const dz = targetPos.z - startCoords.z;
-            entry.group.rotation.y = Math.atan2(dx, dz);
-            entry.group.rotation.z = Math.sin(fp * Math.PI) * 0.25;
+            // Heading & Banking alignment along curve
+            const tangent = flightCurve.getTangentAt(Math.min(0.999, ease + 0.005));
+            entry.group.rotation.y = Math.atan2(tangent.x, tangent.z);
+            entry.group.rotation.z = Math.sin(fp * Math.PI) * 0.22;
+
+            // Check if flight crosses over START (Tile 0) and trigger salary celebration
+            if (!hasClaimedStartInFlight && path.includes(0)) {
+              const startIdx = path.indexOf(0);
+              const startRatio = (startIdx + 0.5) / path.length;
+              if (ease >= startRatio) {
+                hasClaimedStartInFlight = true;
+                try {
+                  sounds.playCash?.();
+                  sounds.playDoublesSurge?.();
+                } catch (err) {}
+
+                // Spawn flying cash notes from START monument into the soaring pawn
+                const pStart = getPawnTile3DPos(0, totalTileCount);
+                spawnFlyingCash(pStart, entry.group.position, 200000);
+              }
+            }
 
             if (fp < 1.0) {
               requestAnimationFrame(flightAnim);
@@ -2012,6 +2039,15 @@ export default function Board3D({
           const startCoords = entry.group.position.clone();
 
           sounds.playPawnStep?.();
+
+          // If step lands on or passes START (Tile 0), trigger cash animation
+          if (nextTileId === 0) {
+            try {
+              sounds.playCash?.();
+            } catch (e) {}
+            const pStart = getPawnTile3DPos(0, TILES.length);
+            spawnFlyingCash(pStart, targetPos, 200000);
+          }
 
           let t = 0;
           const hopDuration = 180;

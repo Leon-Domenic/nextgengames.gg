@@ -165,6 +165,25 @@ export default function ActionBannerOverlay({
         tileFlag: '🏛️',
         borderGlow: 'rgba(16, 185, 129, 0.6)',
       };
+    } else if (type === 'salary') {
+      banner = {
+        id: paymentEvent.id,
+        category: 'salary',
+        type,
+        icon: <Sparkles size={22} className="text-yellow-400" />,
+        badgeText: 'START SALARY',
+        badgeBg: 'rgba(234, 179, 8, 0.2)',
+        badgeBorder: '#eab308',
+        badgeColor: '#fef08a',
+        title: 'Planetary Orbit Completed!',
+        payer: { name: 'Intergalactic Treasury', icon: '🏛️', color: '#eab308' },
+        receiver,
+        amount: amount || 200000,
+        tileName: 'START',
+        tileFlag: '🚀',
+        borderGlow: 'rgba(234, 179, 8, 0.7)',
+      };
+      try { sounds.playCash?.(); sounds.playDoublesSurge?.(); } catch (e) {}
     }
 
     if (banner) {
@@ -472,6 +491,26 @@ export default function ActionBannerOverlay({
             </div>
             <div style={{ fontSize: '12px', fontWeight: 800, color: '#34d399' }}>
               ➔ Community Pot
+            </div>
+          </div>
+        )}
+
+        {/* Content Body: Salary / Pass Start */}
+        {currentBanner.category === 'salary' && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', marginTop: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '20px' }}>🚀</span>
+              <div>
+                <span style={{ fontSize: '13px', fontWeight: 800, color: currentBanner.receiver?.color }}>
+                  {currentBanner.receiver?.name}
+                </span>
+                <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: '6px' }}>
+                  passed START & collected salary
+                </span>
+              </div>
+            </div>
+            <div style={{ fontSize: '14px', fontWeight: 900, color: '#fef08a' }}>
+              +{formatCash(currentBanner.amount)} CR
             </div>
           </div>
         )}
