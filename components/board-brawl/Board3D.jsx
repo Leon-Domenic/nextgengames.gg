@@ -229,9 +229,9 @@ export default function Board3D({
         // fitting widescreen monitors with maximum clarity and zero distortion.
         const pitchRad = (89.5 * Math.PI) / 180;
         
-        let dist = 162;
+        let dist = 126;
         if (aspect < 1.55) {
-          dist = 162 * (1.55 / Math.max(aspect, 0.65));
+          dist = 126 * (1.55 / Math.max(aspect, 0.65));
         }
 
         const posY = dist * Math.sin(pitchRad);
@@ -251,11 +251,10 @@ export default function Board3D({
         // is 100% inside the viewport on all resolutions.
         const pitchDeg = 41;
         const pitchRad = (pitchDeg * Math.PI) / 180;
-        const targetZ = 13.5;
-
-        let dist = 172;
+        const targetZ = 11.5;
+        let dist = 136;
         if (aspect < 1.55) {
-          dist = 172 * (1.55 / Math.max(aspect, 0.65));
+          dist = 136 * (1.55 / Math.max(aspect, 0.65));
         }
 
         const posY = dist * Math.sin(pitchRad);
@@ -1186,28 +1185,39 @@ export default function Board3D({
     scene.add(cashGroup);
     cashGroupRef.current = cashGroup;
 
-    // 8d. Floating High-Roller Banknote Stacks (4 Quadrants outside outer board curb)
+    // 8d. Grounded Real-Time Player Cash Stacks (4 Quadrants outside diamond board)
+    // Sits flat on the floor plane (y = -2.18) with zero floating / bobbing
     const banknoteStacksGroup = new THREE.Group();
     const banknoteStacks = [];
     const stackCoords = [
-      { x: -46, z: 46, rotY: Math.PI / 4 },
-      { x: -46, z: -46, rotY: (3 * Math.PI) / 4 },
-      { x: 46, z: -46, rotY: (-3 * Math.PI) / 4 },
-      { x: 46, z: 46, rotY: -Math.PI / 4 },
+      { x: -44, z: 38, rotY: Math.PI / 4 },        // P0 (South-West)
+      { x: 44, z: -38, rotY: (-3 * Math.PI) / 4 }, // P1 (North-East)
+      { x: -44, z: -38, rotY: (3 * Math.PI) / 4 },  // P2 (North-West)
+      { x: 44, z: 38, rotY: -Math.PI / 4 },        // P3 (South-East)
     ];
 
     stackCoords.forEach((coord, idx) => {
-      const stack = create3DBanknoteStack();
-      stack.scale.set(1.4, 1.4, 1.4);
-      stack.position.set(coord.x, 2.6, coord.z);
-      stack.rotation.y = coord.rotY;
-      stack.userData = {
-        baseY: 2.6,
-        phase: idx * (Math.PI / 2),
-        baseRotY: coord.rotY,
+      const pData = players[idx];
+      const stackHolder = new THREE.Group();
+      stackHolder.position.set(coord.x, -2.18, coord.z);
+      stackHolder.rotation.y = coord.rotY;
+
+      if (pData) {
+        const stack = create3DBanknoteStack(pData.cash, pData.avatarColor || pData.color, pData.name);
+        stack.scale.set(1.25, 1.25, 1.25);
+        stackHolder.add(stack);
+        stackHolder.visible = true;
+      } else {
+        stackHolder.visible = false;
+      }
+
+      stackHolder.userData = {
+        coord,
+        playerIdx: idx,
       };
-      banknoteStacksGroup.add(stack);
-      banknoteStacks.push(stack);
+
+      banknoteStacksGroup.add(stackHolder);
+      banknoteStacks.push(stackHolder);
     });
 
     banknoteStacksRef.current = banknoteStacks;
@@ -1547,13 +1557,7 @@ export default function Board3D({
         cashTransfersRef.current = activeNotes;
       }
 
-      // Update Floating High-Roller Banknote Stacks (gentle atmospheric bobbing & sway)
-      banknoteStacksRef.current.forEach((stack) => {
-        if (stack && stack.userData) {
-          stack.position.y = stack.userData.baseY + Math.sin(elapsed * 1.6 + stack.userData.phase) * 0.42;
-          stack.rotation.y = stack.userData.baseRotY + Math.sin(elapsed * 0.8 + stack.userData.phase) * 0.1;
-        }
-      });
+      // Grounded High-Roller Banknote Stacks (firmly grounded on floor - no floating)
 
       // 3D Physics Dice Simulation (Finishes cleanly after ~0.75s and STOPS)
       const sim = diceSimRef.current;
@@ -1748,6 +1752,32 @@ export default function Board3D({
       }
     });
   }, [properties, players, sceneReady]);
+
+  // Synchronize Grounded Player Cash Stacks with real player cash balances
+  useEffect(() => {
+    if (!sceneReady || !banknoteStacksRef.current || !banknoteStacksRef.current.length) return;
+
+    banknoteStacksRef.current.forEach((stackHolder, idx) => {
+      const pData = players[idx];
+      if (!pData) {
+        stackHolder.visible = false;
+        return;
+      }
+      stackHolder.visible = true;
+
+      // Clear existing children
+      while (stackHolder.children.length > 0) {
+        const obj = stackHolder.children[0];
+        stackHolder.remove(obj);
+        if (obj.geometry) obj.geometry.dispose();
+      }
+
+      // Rebuild with updated live cash amount, player color & name
+      const newStack = create3DBanknoteStack(pData.cash, pData.avatarColor || pData.color, pData.name);
+      newStack.scale.set(1.25, 1.25, 1.25);
+      stackHolder.add(newStack);
+    });
+  }, [players, sceneReady]);
 
   // Synchronize Player Pawns with Diamond Hop Animations
   useEffect(() => {
