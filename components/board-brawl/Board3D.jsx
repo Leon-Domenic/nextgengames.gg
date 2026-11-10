@@ -153,6 +153,377 @@ export function getPawnTile3DPos(id, totalTiles = 32, subOffset = null) {
 // Automatically renders dynamic rent badges on the inner rim of street tiles
 // that update in real-time when houses are built or festivals are hosted.
 // ============================================================================
+
+// ============================================================================
+// DISTRICT PAVING RENDERER (Distinct Ground Textures Per Color Group)
+// Cobblestone vs Stone vs Bricks vs Terracotta vs Granite vs Marble vs Slate
+// ============================================================================
+function drawDistrictEstateLot(ctx, colorGroup, x, y, w, h) {
+  ctx.save();
+
+  // Outer estate lot background clip / fill
+  if (colorGroup === 'brown') {
+    // ----------------------------------------------------
+    // 1. BROWN: Polished Rich Timber Plank Decking (Matches South street in reference screenshot!)
+    // ----------------------------------------------------
+    ctx.fillStyle = '#2d1a0f'; // Deep timber foundation
+    ctx.fillRect(x, y, w, h);
+
+    // Patio boundary
+    ctx.fillStyle = '#4a2e18'; // Rich mahogany wood base
+    ctx.beginPath();
+    ctx.roundRect(x + 18, y + 22, w - 36, h - 40, 16);
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#6d4c41';
+    ctx.stroke();
+
+    // Procedural Polished Wooden Planks with Grain Lines & Brass Nails
+    const plankH = 46;
+    const woodColors = ['#5d4037', '#4e342e', '#6d4c41', '#3e2723'];
+    let pIdx = 0;
+    for (let py = y + 28; py < y + h - 25; py += plankH) {
+      ctx.fillStyle = woodColors[pIdx % woodColors.length];
+      ctx.fillRect(x + 22, py, w - 44, plankH - 4);
+
+      // Wood grain fine highlights
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.fillRect(x + 22, py + 2, w - 44, 3);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.fillRect(x + 22, py + plankH - 6, w - 44, 2);
+
+      // Plank dividing line
+      ctx.strokeStyle = '#2d1a0f';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(x + 20, py + plankH - 2);
+      ctx.lineTo(x + w - 20, py + plankH - 2);
+      ctx.stroke();
+
+      // Brass nail studs on ends of planks
+      ctx.fillStyle = '#d97706';
+      ctx.beginPath();
+      ctx.arc(x + 36, py + (plankH / 2) - 2, 2.5, 0, Math.PI * 2);
+      ctx.arc(x + w - 36, py + (plankH / 2) - 2, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      pIdx++;
+    }
+
+  } else if (colorGroup === 'light_blue') {
+    // ----------------------------------------------------
+    // 2. LIGHT BLUE: Bohemian Flagstone & Cut Ashlar Stone (Prague, Vienna)
+    // ----------------------------------------------------
+    ctx.fillStyle = '#e0f2fe'; // Cool sky limestone base
+    ctx.fillRect(x, y, w, h);
+
+    // Patio boundary
+    ctx.fillStyle = '#f0f9ff';
+    ctx.beginPath();
+    ctx.roundRect(x + 20, y + 25, w - 40, h - 45, 18);
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#0284c7';
+    ctx.stroke();
+
+    // Large interlocking rectangular ashlar flagstones
+    const stoneColors = ['#e0f2fe', '#f8fafc', '#bae6fd', '#f1f5f9'];
+    const rowH = 44;
+    let rowIndex = 0;
+    for (let ry = y + 35; ry < y + h - 35; ry += rowH) {
+      const offsets = [0, 28, 56, 14][rowIndex % 4];
+      for (let rx = x + 25 + offsets; rx < x + w - 35; rx += 68) {
+        const stoneW = 62;
+        const stoneH = 38;
+        ctx.fillStyle = stoneColors[(rx + ry) % stoneColors.length];
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(rx, ry, stoneW, stoneH, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        // Fine stone texture bevel
+        ctx.strokeStyle = 'rgba(2, 132, 199, 0.2)';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(rx + 3, ry + 3, stoneW - 6, stoneH - 6);
+      }
+      rowIndex++;
+    }
+
+  } else if (colorGroup === 'pink') {
+    // ----------------------------------------------------
+    // 3. PINK: Mediterranean Terracotta Clay Tiles (Madrid, Rome)
+    // ----------------------------------------------------
+    ctx.fillStyle = '#fce7f3'; // Soft rose mortar
+    ctx.fillRect(x, y, w, h);
+
+    // Patio boundary
+    ctx.fillStyle = '#ffedd5'; // Sun-baked terracotta base
+    ctx.beginPath();
+    ctx.roundRect(x + 20, y + 25, w - 40, h - 45, 18);
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#ec4899';
+    ctx.stroke();
+
+    // Warm Spanish & Italian square terracotta tiles
+    const tileColors = ['#fed7aa', '#ffedd5', '#fdba74', '#fbcfe8'];
+    const tileSize = 38;
+    for (let ty = y + 36; ty < y + h - 35; ty += tileSize + 6) {
+      for (let tx = x + 30; tx < x + w - 35; tx += tileSize + 6) {
+        const seed = (tx * 13 + ty * 29) % tileColors.length;
+        ctx.fillStyle = tileColors[seed];
+        ctx.strokeStyle = '#f43f5e';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.roundRect(tx, ty, tileSize, tileSize, 5);
+        ctx.fill();
+        ctx.stroke();
+
+        // Terracotta sun warmth radial gradient
+        const radial = ctx.createRadialGradient(tx + 12, ty + 12, 2, tx + 19, ty + 19, 22);
+        radial.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+        radial.addColorStop(1, 'rgba(236, 72, 153, 0.15)');
+        ctx.fillStyle = radial;
+        ctx.fill();
+      }
+    }
+
+  } else if (colorGroup === 'orange') {
+    // ----------------------------------------------------
+    // 4. ORANGE: Dutch Clinker Brick Pavers (Berlin, Amsterdam)
+    // ----------------------------------------------------
+    ctx.fillStyle = '#ffedd5'; // Sand mortar base
+    ctx.fillRect(x, y, w, h);
+
+    // Patio boundary
+    ctx.fillStyle = '#fff7ed';
+    ctx.beginPath();
+    ctx.roundRect(x + 20, y + 25, w - 40, h - 45, 18);
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#f97316';
+    ctx.stroke();
+
+    // Classic Dutch running-bond red/orange brick paving
+    const brickHues = ['#fb923c', '#ea580c', '#fdba74', '#c2410c', '#f97316'];
+    const bHeight = 24;
+    const bWidth = 50;
+    let bRow = 0;
+    for (let by = y + 34; by < y + h - 35; by += bHeight + 4) {
+      const isStaggered = bRow % 2 === 1;
+      const startX = x + 26 + (isStaggered ? (bWidth / 2) : 0);
+      for (let bx = startX; bx < x + w - 30; bx += bWidth + 5) {
+        const seed = (bx * 7 + by * 23) % brickHues.length;
+        ctx.fillStyle = brickHues[seed];
+        ctx.strokeStyle = '#9a3412';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(bx, by, bWidth, bHeight, 4);
+        ctx.fill();
+        ctx.stroke();
+
+        // Brick top edge bevel highlight
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.fillRect(bx + 2, by + 2, bWidth - 4, 3);
+      }
+      bRow++;
+    }
+
+  } else if (colorGroup === 'red') {
+    // ----------------------------------------------------
+    // 5. RED: Victorian & Parisian Herringbone Brick (London, Paris)
+    // ----------------------------------------------------
+    ctx.fillStyle = '#fee2e2'; // Pale stone base
+    ctx.fillRect(x, y, w, h);
+
+    // Patio boundary
+    ctx.fillStyle = '#fef2f2';
+    ctx.beginPath();
+    ctx.roundRect(x + 20, y + 25, w - 40, h - 45, 18);
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#dc2626';
+    ctx.stroke();
+
+    // Elegant 45-degree herringbone interlocking brick paving
+    const redHues = ['#ef4444', '#dc2626', '#b91c1c', '#f87171', '#991b1b'];
+    const pStep = 32;
+    for (let py = y + 36; py < y + h - 35; py += pStep) {
+      for (let px = x + 30; px < x + w - 35; px += pStep) {
+        const seed = (px * 11 + py * 19) % redHues.length;
+        ctx.fillStyle = redHues[seed];
+        ctx.strokeStyle = '#7f1d1d';
+        ctx.lineWidth = 2;
+
+        // Diagonal brick pair
+        ctx.beginPath();
+        ctx.roundRect(px, py, 26, 12, 3);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.roundRect(px + 14, py + 14, 12, 26, 3);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+
+  } else if (colorGroup === 'yellow') {
+    // ----------------------------------------------------
+    // 6. YELLOW: Tokyo / Seoul Modern Granite Plaza (Tokyo, Seoul)
+    // ----------------------------------------------------
+    ctx.fillStyle = '#fef9c3'; // Golden granite base
+    ctx.fillRect(x, y, w, h);
+
+    // Patio boundary
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.roundRect(x + 20, y + 25, w - 40, h - 45, 18);
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#eab308';
+    ctx.stroke();
+
+    // Polished square Japanese granite slabs with precision expansion joints
+    const gSize = 54;
+    const gHues = ['#fefce8', '#fef08a', '#fef9c3', '#ffffff'];
+    for (let gy = y + 36; gy < y + h - 35; gy += gSize + 6) {
+      for (let gx = x + 30; gx < x + w - 35; gx += gSize + 6) {
+        const seed = (gx + gy) % gHues.length;
+        ctx.fillStyle = gHues[seed];
+        ctx.strokeStyle = '#ca8a04';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.roundRect(gx, gy, gSize, gSize, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        // High gloss polished granite reflection
+        const gloss = ctx.createLinearGradient(gx, gy, gx + gSize, gy + gSize);
+        gloss.addColorStop(0, 'rgba(255, 255, 255, 0.7)');
+        gloss.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = gloss;
+        ctx.fill();
+      }
+    }
+
+  } else if (colorGroup === 'green') {
+    // ----------------------------------------------------
+    // 7. GREEN: Singapore / Abu Dhabi Luxury Garden Marble (Singapore, Abu Dhabi)
+    // ----------------------------------------------------
+    // Lush manicured lawn base with stripes
+    ctx.fillStyle = '#86efac';
+    ctx.fillRect(x, y, w, h);
+
+    ctx.fillStyle = '#4ade80';
+    for (let gy = y + 10; gy < y + h; gy += 32) {
+      ctx.fillRect(x, gy, w, 16);
+    }
+
+    // Polished Italian white marble patio slabs
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.roundRect(x + 20, y + 25, w - 40, h - 45, 18);
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#10b981';
+    ctx.stroke();
+
+    // Luxurious marble paver blocks with emerald/gold mortar
+    for (let my = y + 38; my < y + h - 35; my += 50) {
+      ctx.beginPath();
+      ctx.moveTo(x + 30, my);
+      ctx.lineTo(x + w - 30, my);
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      for (let mx = x + 30; mx < x + w - 30; mx += 100) {
+        ctx.beginPath();
+        ctx.moveTo(mx, my);
+        ctx.lineTo(mx, my + 50);
+        ctx.stroke();
+      }
+    }
+
+  } else if (colorGroup === 'dark_blue') {
+    // ----------------------------------------------------
+    // 8. DARK BLUE: New York / Sydney Modern Bluestone Slate (Sydney, New York)
+    // ----------------------------------------------------
+    ctx.fillStyle = '#e0e7ff'; // Indigo bluestone base
+    ctx.fillRect(x, y, w, h);
+
+    // Patio boundary
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.roundRect(x + 20, y + 25, w - 40, h - 45, 18);
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#4f46e5';
+    ctx.stroke();
+
+    // Modern urban diagonal cross-cut bluestone slate pavers
+    const slateColors = ['#e0e7ff', '#c7d2fe', '#ede9fe', '#f1f5f9'];
+    const sWidth = 64;
+    const sHeight = 36;
+    for (let sy = y + 36; sy < y + h - 35; sy += sHeight + 6) {
+      const isAlt = Math.floor((sy - y) / (sHeight + 6)) % 2 === 1;
+      const startX = x + 28 + (isAlt ? 32 : 0);
+      for (let sx = startX; sx < x + w - 32; sx += sWidth + 6) {
+        const seed = (sx + sy) % slateColors.length;
+        ctx.fillStyle = slateColors[seed];
+        ctx.strokeStyle = '#6366f1';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.roundRect(sx, sy, sWidth, sHeight, 5);
+        ctx.fill();
+        ctx.stroke();
+
+        // Polished slate surface texture
+        ctx.strokeStyle = 'rgba(79, 70, 229, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx + 3, sy + 3, sWidth - 6, sHeight - 6);
+      }
+    }
+
+  } else {
+    // Default manicured paver lawn
+    ctx.fillStyle = '#86efac';
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = '#f1f5f9';
+    ctx.beginPath();
+    ctx.roundRect(x + 20, y + 25, w - 40, h - 45, 18);
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.stroke();
+  }
+
+  // Golden architectural lot brackets at the four corners of construction zone
+  ctx.strokeStyle = 'rgba(217, 119, 6, 0.85)';
+  ctx.lineWidth = 4;
+  // Top-Left bracket
+  ctx.beginPath();
+  ctx.moveTo(x + 40, y + 65); ctx.lineTo(x + 40, y + 45); ctx.lineTo(x + 60, y + 45);
+  ctx.stroke();
+  // Top-Right bracket
+  ctx.beginPath();
+  ctx.moveTo(x + w - 40, y + 65); ctx.lineTo(x + w - 40, y + 45); ctx.lineTo(x + w - 60, y + 45);
+  ctx.stroke();
+  // Bottom-Left bracket
+  ctx.beginPath();
+  ctx.moveTo(x + 40, y + h - 65); ctx.lineTo(x + 40, y + h - 45); ctx.lineTo(x + 60, y + h - 45);
+  ctx.stroke();
+  // Bottom-Right bracket
+  ctx.beginPath();
+  ctx.moveTo(x + w - 40, y + h - 65); ctx.lineTo(x + w - 40, y + h - 45); ctx.lineTo(x + w - 60, y + h - 45);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
 function drawStreetTileContent(ctx, tile, p, prop, properties = {}, players = [], cW = 512, cH = 896) {
   ctx.clearRect(0, 0, cW, cH);
 
@@ -217,53 +588,8 @@ function drawStreetTileContent(ctx, tile, p, prop, properties = {}, players = []
     drawOutwardText(name, 256, 114, '900 ' + fontSize + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a', 450);
 
     // 2. DEDICATED ARCHITECTURAL ESTATE BUILDING LOT (y = 150 to 745)
-    ctx.fillStyle = '#86efac';
-    ctx.fillRect(16, 150, 480, 595);
-
-    // Subtle grass turf stripes
-    ctx.fillStyle = '#4ade80';
-    for (let gy = 160; gy < 740; gy += 32) {
-      ctx.fillRect(16, gy, 480, 16);
-    }
-
-    // Polished Interlocking Paver Foundation Patio where 3D buildings stand flush
-    ctx.fillStyle = '#f1f5f9';
-    ctx.beginPath();
-    ctx.roundRect(36, 175, 440, 550, 20);
-    ctx.fill();
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = '#cbd5e1';
-    ctx.stroke();
-
-    // Subtle herringbone / paver grid lines on patio
-    ctx.strokeStyle = 'rgba(203, 213, 225, 0.7)';
-    ctx.lineWidth = 2;
-    for (let py = 205; py < 710; py += 36) {
-      ctx.beginPath();
-      ctx.moveTo(46, py);
-      ctx.lineTo(466, py);
-      ctx.stroke();
-    }
-
-    // Golden architectural lot brackets at the four corners of construction zone
-    ctx.strokeStyle = 'rgba(217, 119, 6, 0.7)';
-    ctx.lineWidth = 4;
-    // Top-Left bracket
-    ctx.beginPath();
-    ctx.moveTo(56, 215); ctx.lineTo(56, 195); ctx.lineTo(76, 195);
-    ctx.stroke();
-    // Top-Right bracket
-    ctx.beginPath();
-    ctx.moveTo(456, 215); ctx.lineTo(456, 195); ctx.lineTo(436, 195);
-    ctx.stroke();
-    // Bottom-Left bracket
-    ctx.beginPath();
-    ctx.moveTo(56, 685); ctx.lineTo(56, 705); ctx.lineTo(76, 705);
-    ctx.stroke();
-    // Bottom-Right bracket
-    ctx.beginPath();
-    ctx.moveTo(456, 685); ctx.lineTo(456, 705); ctx.lineTo(436, 705);
-    ctx.stroke();
+    // Distinct textured materials per color group: cobblestone vs stone vs bricks vs terracotta vs granite vs marble vs slate!
+    drawDistrictEstateLot(ctx, tile.colorGroup, 16, 150, 480, 595);
 
     // 3. INNER RIM DYNAMIC RENT / PRICE BADGE (y = 756 to 854)
     // Matches Business Tour screenshot: huge white badge with bold price/rent facing center
@@ -544,13 +870,160 @@ function drawStreetTileContent(ctx, tile, p, prop, properties = {}, players = []
     ctx.fillStyle = cfg.bg;
     ctx.fillRect(16, 150, 480, 595);
 
-    // Themed Center Icon Embellishment
-    ctx.font = '110px sans-serif';
-    drawOutwardText(cfg.icon, 256, 440, '110px sans-serif', '#ffffff');
+    // Authentic Chance Wheel or Themed Event Lot Graphic
+    if (tile.type === 'chance' || tile.type === 'mystery') {
+      // ----------------------------------------------------
+      // AUTHENTIC 8-SLICE RAINBOW PIE WHEEL (Wheel of Fortune from reference screenshot)
+      // ----------------------------------------------------
+      ctx.save();
+      ctx.translate(256, 440);
+      ctx.rotate(Math.PI);
 
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-    ctx.strokeRect(36, 165, 440, 565);
+      const wheelR = 175;
+      const wheelColors = [
+        '#ec4899', // Pink
+        '#8b5cf6', // Violet
+        '#3b82f6', // Blue
+        '#06b6d4', // Cyan
+        '#10b981', // Green
+        '#facc15', // Yellow
+        '#f97316', // Orange
+        '#ef4444', // Red
+      ];
+
+      // Outer gold rim ring with dropshadow
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+      ctx.shadowBlur = 18;
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath();
+      ctx.arc(0, 0, wheelR + 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Dark rim edge
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = '#0f172a';
+      ctx.stroke();
+
+      // 8 Slices
+      const sliceAngle = (Math.PI * 2) / 8;
+      for (let s = 0; s < 8; s++) {
+        const start = s * sliceAngle;
+        const end = start + sliceAngle;
+        ctx.fillStyle = wheelColors[s];
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, wheelR, start, end);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+
+      // Center gold hub cap with star
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(0, 0, 42, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#0f172a';
+      ctx.stroke();
+
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath();
+      ctx.arc(0, 0, 32, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Star in center
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '32px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('★', 0, 2);
+
+      // Top indicator pointer arrow pointing to winning slice
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, -wheelR + 14);
+      ctx.lineTo(-14, -wheelR - 22);
+      ctx.lineTo(14, -wheelR - 22);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.restore();
+
+    } else if (tile.type === 'tax') {
+      // ----------------------------------------------------
+      // AUTHENTIC TAX INVOICE WITH RED AUDIT STAMP
+      // ----------------------------------------------------
+      ctx.save();
+      ctx.translate(256, 435);
+      ctx.rotate(Math.PI);
+
+      // Angled white paper invoice document
+      ctx.save();
+      ctx.rotate(-0.06);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+      ctx.fillRect(-126, -164, 252, 332); // drop shadow
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(-130, -170, 260, 340);
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.strokeRect(-130, -170, 260, 340);
+
+      // Document title header bar
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(-120, -155, 240, 28);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 16px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('TAX ASSESSMENT', 0, -135);
+
+      // Horizontal receipt/invoice lines
+      ctx.fillStyle = '#94a3b8';
+      for (let ly = -105; ly < 80; ly += 24) {
+        ctx.fillRect(-110, ly, 220, 6);
+      }
+
+      // Red circular TAX AUDIT rubber stamp
+      ctx.save();
+      ctx.rotate(-0.25);
+      ctx.strokeStyle = '#dc2626';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(20, 50, 48, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(20, 50, 42, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = '#dc2626';
+      ctx.font = '900 20px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('AUDIT', 20, 42);
+      ctx.font = '900 14px -apple-system, sans-serif';
+      ctx.fillText('PAID', 20, 60);
+      ctx.restore();
+
+      ctx.restore();
+      ctx.restore();
+
+    } else {
+      // Themed Center Icon Embellishment for Championship / Armory / Festival
+      ctx.font = '110px sans-serif';
+      drawOutwardText(cfg.icon, 256, 440, '110px sans-serif', '#ffffff');
+
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.strokeRect(36, 165, 440, 565);
+    }
 
     // Inner Rim Badge for Event Tiles (y = 756 to 854)
     const badgeX = 42;
@@ -815,46 +1288,35 @@ export default function Board3D({
       lCtx.fill();
     }
 
-    // Crisp white field boundary lines
-    lCtx.strokeStyle = 'rgba(255, 255, 255, 0.92)';
-    lCtx.lineWidth = 10;
-    lCtx.strokeRect(216, 216, 1616, 1616);
+    // Subtle field perimeter chalk boundary
+    lCtx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    lCtx.lineWidth = 6;
+    lCtx.strokeRect(180, 180, 1688, 1688);
 
-    // Pitch Corner Arcs in crisp white chalk
-    const arcRadius = 130;
-    // Top-Left
-    lCtx.beginPath();
-    lCtx.arc(216, 216, arcRadius, 0, Math.PI / 2);
-    lCtx.stroke();
-    // Top-Right
-    lCtx.beginPath();
-    lCtx.arc(1832, 216, arcRadius, Math.PI / 2, Math.PI);
-    lCtx.stroke();
-    // Bottom-Right
-    lCtx.beginPath();
-    lCtx.arc(1832, 1832, arcRadius, Math.PI, (3 * Math.PI) / 2);
-    lCtx.stroke();
-    // Bottom-Left
-    lCtx.beginPath();
-    lCtx.arc(216, 1832, arcRadius, (3 * Math.PI) / 2, Math.PI * 2);
-    lCtx.stroke();
+    // Glowing Cyan / Neon Inner Rail separating tiles from green field (matching reference image)
+    lCtx.shadowColor = '#00f0ff';
+    lCtx.shadowBlur = 28;
+    lCtx.strokeStyle = '#00f0ff';
+    lCtx.lineWidth = 14;
+    lCtx.strokeRect(48, 48, 1952, 1952);
 
-    // Center Halfway Line
-    lCtx.beginPath();
-    lCtx.moveTo(216, 1024);
-    lCtx.lineTo(1832, 1024);
-    lCtx.stroke();
+    lCtx.strokeStyle = '#ffffff';
+    lCtx.lineWidth = 6;
+    lCtx.strokeRect(52, 52, 1944, 1944);
+    lCtx.shadowBlur = 0;
 
-    // Center Circle (Radius ~290)
-    lCtx.beginPath();
-    lCtx.arc(1024, 1024, 290, 0, Math.PI * 2);
-    lCtx.stroke();
-
-    // Center Kickoff / Penalty Spot
-    lCtx.beginPath();
-    lCtx.arc(1024, 1024, 28, 0, Math.PI * 2);
-    lCtx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-    lCtx.fill();
+    // Floating 300 000 Center Pot / Jackpot Amount directly on the lawn (matching reference image)
+    lCtx.save();
+    lCtx.translate(1024, 760);
+    lCtx.font = '900 110px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    lCtx.textAlign = 'center';
+    lCtx.textBaseline = 'middle';
+    lCtx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+    lCtx.shadowBlur = 20;
+    lCtx.shadowOffsetY = 10;
+    lCtx.fillStyle = '#ffffff';
+    lCtx.fillText('300 000', 0, 0);
+    lCtx.restore();
 
     // Subtle scattered flower / confetti celebration petals (Business Tour festive feel)
     const petalColors = ['#f43f5e', '#fbbf24', '#38bdf8', '#ffffff', '#ec4899'];
