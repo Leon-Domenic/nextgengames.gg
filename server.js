@@ -119,6 +119,9 @@ app.prepare().then(() => {
           onActionCardPlayed: (cardData) => {
             io.to(`game_${roomId}`).emit('action_card_played', cardData);
           },
+          onCardYoink: (yoinkData) => {
+            io.to(`game_${roomId}`).emit('card_yoink_event', yoinkData);
+          },
           onTomatoHit: (data) => {
             io.to(`game_${roomId}`).emit('tomato_impact_event', data);
             // Record stats in DB

@@ -22,6 +22,7 @@ import SettingsModal from '@/components/board-brawl/SettingsModal';
 import EventCardModal from '@/components/board-brawl/EventCardModal';
 import ActionCardDock from '@/components/board-brawl/ActionCardDock';
 import ActionCardPlayOverlay from '@/components/board-brawl/ActionCardPlayOverlay';
+import CardYoinkOverlay from '@/components/board-brawl/CardYoinkOverlay';
 import ActionBannerOverlay from '@/components/board-brawl/ActionBannerOverlay';
 import FestivalSelectModal from '@/components/board-brawl/FestivalSelectModal';
 import WorldTourSelectModal from '@/components/board-brawl/WorldTourSelectModal';
@@ -62,6 +63,7 @@ export default function BoardBrawlArenaPage() {
   const [gameState, setGameState] = useState(null);
   const [splatEvent, setSplatEvent] = useState(null);
   const [actionCardPlayEvent, setActionCardPlayEvent] = useState(null);
+  const [cardYoinkEvent, setCardYoinkEvent] = useState(null);
   const [shakeTrigger, setShakeTrigger] = useState(0);
   const [isVictim, setIsVictim] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -295,6 +297,7 @@ export default function BoardBrawlArenaPage() {
     socket.on('game_state_update', handleStateUpdate);
     socket.on('tomato_impact_event', handleTomatoImpact);
     socket.on('action_card_played', (cardData) => setActionCardPlayEvent(cardData));
+    socket.on('card_yoink_event', (yoinkData) => setCardYoinkEvent(yoinkData));
     socket.on('taunt_sound_event', handleTauntSound);
     socket.on('player_reaction_event', handlePlayerReaction);
     const handlePaymentEvent = (paymentData) => {
@@ -413,6 +416,7 @@ export default function BoardBrawlArenaPage() {
       socket.off('game_state_update', handleStateUpdate);
       socket.off('tomato_impact_event', handleTomatoImpact);
       socket.off('action_card_played');
+      socket.off('card_yoink_event');
       socket.off('taunt_sound_event', handleTauntSound);
       socket.off('player_reaction_event', handlePlayerReaction);
       socket.off('payment_event', handlePaymentEvent);
@@ -947,6 +951,7 @@ export default function BoardBrawlArenaPage() {
 
             {/* Action Card Announcement Banner */}
             <ActionCardPlayOverlay lastActionCardPlayed={actionCardPlayEvent || gameState.lastActionCardPlayed} />
+            <CardYoinkOverlay yoinkData={cardYoinkEvent} currentUserId={myPlayerObj?.id || user?.id} onComplete={() => setCardYoinkEvent(null)} />
 
             {/* In-Game Action Banners for Rent, Deals, and Takeovers */}
             <ActionBannerOverlay

@@ -446,7 +446,7 @@ export default function ActionCardDock({
                 </div>
               )}
 
-              {(selectedCard.id === 'gravity_magnet' || selectedCard.id === 'mega_tomato') && (
+              {(selectedCard.id === 'gravity_magnet' || selectedCard.id === 'mega_tomato' || selectedCard.id === 'card_yoink') && (
                 <div>
                   <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '8px' }}>
                     {t('selectTargetOpponent', {}, 'Select Target Opponent:')}
@@ -471,7 +471,9 @@ export default function ActionCardDock({
                           }}
                         >
                           <span style={{ fontWeight: 800 }}>{opp.name}</span>
-                          <span style={{ fontSize: '12px', color: '#d8b4fe' }}>{opp.cash} CR</span>
+                          <span style={{ fontSize: '12px', color: '#d8b4fe' }}>
+                            {selectedCard.id === 'card_yoink' ? `🃏 ${opp.cards?.length || 0} ${t('cardsInHand', {}, 'Cards')}` : `${opp.cash} CR`}
+                          </span>
                         </button>
                       );
                     })}
