@@ -1789,6 +1789,7 @@ export default function BoardBrawlArenaPage() {
 
             {/* The Steady 45-Degree Diamond 3D Arena */}
             <Board3D
+              activePlayerId={currentPlayer?.id}
               lastPayment={lastPaymentEvent}
               properties={gameState.properties}
               players={gameState.players}
@@ -1967,14 +1968,12 @@ function PlayerCornerCard({
   const playerColor = player.avatarColor || theme.headerBg;
   const isResetting = (timer || 0) >= (turnDuration - 1);
 
-  // Business Tour Turn Hierarchy: Dim & blur all non-active players to clearly highlight whose turn it is
-  const cardOpacity = isBankrupt ? 0.35 : (isCurrent ? 1 : (isHovered ? 0.96 : 0.5));
-  const cardFilter = isBankrupt
-    ? 'grayscale(80%) blur(1px)'
-    : (isCurrent || isHovered ? 'none' : 'blur(1.5px) saturate(0.7)');
+  // Business Tour Turn Hierarchy: Active player card is crisp and highlighted (blur effect shifted to 3D pawns)
+  const cardOpacity = isBankrupt ? 0.45 : (isCurrent ? 1.0 : (isHovered ? 1.0 : 0.92));
+  const cardFilter = isBankrupt ? 'grayscale(80%)' : 'none';
   const cardTransform = isCurrent
     ? 'scale(1.03)'
-    : (isHovered ? 'scale(1.0)' : 'scale(0.97)');
+    : (isHovered ? 'scale(1.01)' : 'scale(1.0)');
 
   const posStyles = {
     'top-left': { top: '16px', left: '16px' },

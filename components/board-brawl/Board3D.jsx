@@ -1056,6 +1056,7 @@ export default function Board3D({
   properties = {},
   players = [],
   activeTileId = 0,
+  activePlayerId = null,
   lastDiceResult = null,
   diceSkin = 'classic_red',
   centerContent = null,
@@ -2095,7 +2096,8 @@ export default function Board3D({
       }
 
       // Idle Hover & Real-time Avatar Animations for Pawns (Heroic scale foot contact y = 0.35)
-      pawnMeshesRef.current.forEach(({ group, isMoving }) => {
+      pawnMeshesRef.current.forEach((entry, playerId) => {
+        const { group, isMoving } = entry;
         if (!isMoving && group) {
           group.position.y = 0.35 + Math.sin(elapsed * 3.5) * 0.12;
         }
@@ -2104,6 +2106,55 @@ export default function Board3D({
         }
         if (group && typeof group.userData?.updateDistress === 'function') {
           group.userData.updateDistress(delta, elapsed);
+        }
+
+        // Lazy-init radiant turn aura ring under pawn
+        if (!entry.turnAura && group) {
+          const auraGeo = new THREE.RingGeometry(0.85, 1.65, 32);
+          auraGeo.rotateX(-Math.PI / 2);
+          const auraMat = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(entry.color || '#00f0ff'),
+            transparent: true,
+            opacity: 0.0,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+          });
+          const auraMesh = new THREE.Mesh(auraGeo, auraMat);
+          auraMesh.position.y = 0.04;
+          group.add(auraMesh);
+          entry.turnAura = auraMesh;
+        }
+
+        const isCurrentTurn = !activePlayerId || playerId === activePlayerId;
+
+        // Radiant turn halo for active player
+        if (entry.turnAura) {
+          entry.turnAura.visible = isCurrentTurn;
+          if (isCurrentTurn) {
+            entry.turnAura.rotation.y = elapsed * 1.8;
+            entry.turnAura.material.opacity = 0.65 + Math.sin(elapsed * 4.5) * 0.25;
+            const s = 1.0 + Math.sin(elapsed * 3.5) * 0.08;
+            entry.turnAura.scale.set(s, s, s);
+          }
+        }
+
+        // 3D Pawn Defocus / Blur Effect:
+        // Active pawn is 100% sharp and solid; inactive pawns get soft out-of-focus translucency
+        if (group) {
+          group.traverse((child) => {
+            if (child.isMesh && child.material && child !== entry.turnAura) {
+              const mats = Array.isArray(child.material) ? child.material : [child.material];
+              mats.forEach((mat) => {
+                if (mat.userData.baseOpacity === undefined) {
+                  mat.userData.baseOpacity = mat.opacity !== undefined ? mat.opacity : 1.0;
+                }
+                const targetOp = isCurrentTurn ? mat.userData.baseOpacity : mat.userData.baseOpacity * 0.38;
+                mat.transparent = true;
+                mat.opacity = THREE.MathUtils.lerp(mat.opacity, targetOp, 0.12);
+                mat.depthWrite = isCurrentTurn;
+              });
+            }
+          });
         }
       });
 
