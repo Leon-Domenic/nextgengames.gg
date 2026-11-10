@@ -1325,13 +1325,25 @@ export default function BoardBrawlArenaPage() {
             {/* Player HUD Capsules (Up to 6 Players Supported) */}
             {(() => {
               const total = gameState.players.length;
-              const positions = total <= 4
-                ? ['top-left', 'top-right', 'bottom-left', 'bottom-right']
-                : ['top-left', 'top-right', 'mid-left', 'mid-right', 'bottom-left', 'bottom-right'];
+              if (total === 0) return null;
+
+              // The local user MUST ALWAYS be positioned at 'bottom-right' for UI clarity!
+              const myIdx = gameState.players.findIndex((p) => p && p.id === myPlayerObj?.id);
+              const anchorIdx = myIdx >= 0 ? myIdx : 0;
+
+              // Clockwise slots starting from anchor (bottom-right):
+              // offset 0 (me) -> 'bottom-right'
+              // offset 1     -> 'bottom-left'
+              // offset 2     -> 'top-left' (or mid-left if 6 players)
+              // offset 3     -> 'top-right' (or top-left if 6 players)
+              const slotOrder = total <= 4
+                ? ['bottom-right', 'bottom-left', 'top-left', 'top-right']
+                : ['bottom-right', 'bottom-left', 'mid-left', 'top-left', 'top-right', 'mid-right'];
 
               return gameState.players.map((player, idx) => {
                 if (!player) return null;
-                const pos = positions[idx] || (idx % 2 === 0 ? 'mid-left' : 'mid-right');
+                const offset = (idx - anchorIdx + total) % total;
+                const pos = slotOrder[offset] || 'top-left';
                 const theme = CORNER_SLOT_THEMES[idx % CORNER_SLOT_THEMES.length];
 
                 return (

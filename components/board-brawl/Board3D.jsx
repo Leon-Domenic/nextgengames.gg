@@ -2150,19 +2150,37 @@ export default function Board3D({
 
       // Grounded High-Roller Banknote Stacks (firmly grounded on floor - no floating)
 
-      // 3D Physics Dice Simulation (Finishes cleanly after ~0.75s and STOPS)
+      // 3D Physics Dice Simulation: Visibly thrown FROM active player across the board to center lawn!
       const sim = diceSimRef.current;
       if (sim.active && diceGroupRef.current) {
-        sim.progress += delta * 1.6;
+        sim.progress += delta * 1.35;
         const p = Math.min(sim.progress, 1.0);
 
-        // Vertical bounce curve
-        const bounce = Math.sin(p * Math.PI) * 11.0 * (1.0 - p * 0.5);
-        diceGroupRef.current.position.y = bounce;
+        const start = sim.startPos || new THREE.Vector3(0, 14, 28);
+        const target = sim.targetPos || new THREE.Vector3(0, 0, 0);
+
+        // Smooth cubic ease-out for horizontal travel across the board
+        const easeT = 1.0 - Math.pow(1.0 - p, 2.5);
+        const curX = THREE.MathUtils.lerp(start.x, target.x, easeT);
+        const curZ = THREE.MathUtils.lerp(start.z, target.z, easeT);
+
+        // Parabolic vertical throw arc + landing impact bounce
+        let curY = 0;
+        if (p < 0.72) {
+          const tArc = p / 0.72;
+          const arc = Math.sin(tArc * Math.PI) * 14.0;
+          curY = THREE.MathUtils.lerp(start.y, 0, tArc) + arc;
+        } else {
+          // Secondary settling bounce on the center lawn
+          const tBounce = (p - 0.72) / 0.28;
+          curY = Math.sin(tBounce * Math.PI) * 2.8 * (1.0 - tBounce);
+        }
+
+        diceGroupRef.current.position.set(curX, Math.max(0, curY), curZ);
 
         if (p >= 1.0) {
           sim.active = false;
-          diceGroupRef.current.position.y = 0;
+          diceGroupRef.current.position.set(target.x, 0, target.z);
           if (sim.targetRotation1 && diceMeshesRef.current[0]) {
             diceMeshesRef.current[0].rotation.copy(sim.targetRotation1);
           }
@@ -2170,11 +2188,11 @@ export default function Board3D({
             diceMeshesRef.current[1].rotation.copy(sim.targetRotation2);
           }
         } else {
-          // Tumble spin rapidly during flight
+          // Tumble spin rapidly during flight across the board
           diceMeshesRef.current.forEach((d) => {
-            d.rotation.x += delta * 22.0;
-            d.rotation.y += delta * 18.0;
-            d.rotation.z += delta * 14.0;
+            d.rotation.x += delta * 24.0;
+            d.rotation.y += delta * 20.0;
+            d.rotation.z += delta * 16.0;
           });
         }
       }
@@ -2805,8 +2823,8 @@ export default function Board3D({
     spawnFlyingCash(startPos, endPos, lastPayment.amount);
   }, [lastPayment, spawnFlyingCash]);
 
-  // Trigger 3D Dice Simulation on NEW Roll ID
-  const triggerDiceRoll = useCallback((val1, val2, skinId = 'classic_red') => {
+  // Trigger 3D Dice Simulation on NEW Roll ID: Throws visibly FROM rolling player to center!
+  const triggerDiceRoll = useCallback((val1, val2, skinId = 'classic_red', rollingPlayer = null) => {
     if (!diceGroupRef.current) return;
     diceGroupRef.current.visible = true;
     sounds.playDiceRoll();
@@ -2845,9 +2863,26 @@ export default function Board3D({
       }
     };
 
+    // Calculate throw origin from the rolling player's position on the board
+    let startX = 0;
+    let startZ = 28;
+    let startY = 12.0;
+
+    if (rollingPlayer) {
+      const pTileId = rollingPlayer.position !== undefined ? rollingPlayer.position : 0;
+      const pPos = getPawnTile3DPos(pTileId, TILES.length);
+      startX = pPos.x * 0.85;
+      startZ = pPos.z * 0.85;
+      startY = 14.0;
+    }
+
+    diceGroupRef.current.position.set(startX, startY, startZ);
+
     diceSimRef.current = {
       active: true,
       progress: 0,
+      startPos: new THREE.Vector3(startX, startY, startZ),
+      targetPos: new THREE.Vector3(0, 0, 0),
       targetRotation1: getRot(val1),
       targetRotation2: isBlinded ? null : getRot(val2),
     };
@@ -2859,7 +2894,7 @@ export default function Board3D({
       const rollingPlayer = players.find(p => p.id === lastDiceResult.playerId);
       const skin = rollingPlayer?.diceSkin || diceSkin || 'classic_red';
       const d2Val = lastDiceResult.d2 !== undefined ? lastDiceResult.d2 : 1;
-      triggerDiceRoll(lastDiceResult.d1 || 1, d2Val, skin);
+      triggerDiceRoll(lastDiceResult.d1 || 1, d2Val, skin, rollingPlayer);
     }
   }, [lastDiceResult, triggerDiceRoll, players, diceSkin]);
 

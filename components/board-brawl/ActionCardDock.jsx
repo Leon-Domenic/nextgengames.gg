@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CARD_RARITY } from '@/lib/board-brawl/cards';
 import { TILES } from '@/lib/board-brawl/types';
 import { sounds } from '@/lib/audio';
@@ -18,6 +18,14 @@ export default function ActionCardDock({
 }) {
   const [selectedCard, setSelectedCard] = useState(null);
   const [targetPayload, setTargetPayload] = useState({});
+  const [isNarrow, setIsNarrow] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsNarrow(typeof window !== 'undefined' && window.innerWidth < 960);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   if (!cards || cards.length === 0) return null;
 
@@ -88,8 +96,8 @@ export default function ActionCardDock({
       <div
         style={{
           position: 'fixed',
-          bottom: '24px',
-          right: '24px',
+          bottom: isNarrow ? '140px' : '16px',
+          right: isNarrow ? '16px' : '284px',
           zIndex: 45,
           display: 'flex',
           flexDirection: 'column',
