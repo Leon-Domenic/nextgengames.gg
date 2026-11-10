@@ -1949,10 +1949,20 @@ function PlayerCornerCard({
 }) {
   const { t } = useTranslation();
   const [showPicker, setShowPicker] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const isBankrupt = player.isBankrupt;
   const activeChar = CHARACTERS.find(c => c.id === player.avatarToken) || CHARACTERS[0];
   const playerColor = player.avatarColor || theme.headerBg;
   const isResetting = (timer || 0) >= (turnDuration - 1);
+
+  // Business Tour Turn Hierarchy: Dim & blur all non-active players to clearly highlight whose turn it is
+  const cardOpacity = isBankrupt ? 0.35 : (isCurrent ? 1 : (isHovered ? 0.96 : 0.5));
+  const cardFilter = isBankrupt
+    ? 'grayscale(80%) blur(1px)'
+    : (isCurrent || isHovered ? 'none' : 'blur(1.5px) saturate(0.7)');
+  const cardTransform = isCurrent
+    ? 'scale(1.03)'
+    : (isHovered ? 'scale(1.0)' : 'scale(0.97)');
 
   const posStyles = {
     'top-left': { top: '16px', left: '16px' },
@@ -1966,6 +1976,8 @@ function PlayerCornerCard({
   return (
     <div
       id={`player-card-${player.id}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       style={{
         position: 'absolute',
         ...posStyles,
@@ -1974,14 +1986,51 @@ function PlayerCornerCard({
         border: isCurrent ? '3px solid #f59e0b' : `2px solid ${playerColor}55`,
         borderRadius: '16px',
         boxShadow: isCurrent
-          ? '0 8px 30px rgba(245, 158, 11, 0.45), 0 0 0 2px #fde047'
-          : `0 8px 24px rgba(0, 0, 0, 0.08), 0 0 12px ${playerColor}22`,
+          ? '0 12px 36px rgba(245, 158, 11, 0.55), 0 0 0 2px #fde047'
+          : '0 4px 16px rgba(0, 0, 0, 0.08)',
         overflow: 'visible',
-        zIndex: 20,
-        opacity: isBankrupt ? 0.45 : 1,
+        zIndex: isCurrent ? 25 : (isHovered ? 24 : 20),
+        opacity: cardOpacity,
+        filter: cardFilter,
+        transform: cardTransform,
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
+      {/* Active Turn Speech Bubble (Matches Business Tour comic prompt) */}
+      {isCurrent && !isBankrupt && (
+        <div style={{
+          position: 'absolute',
+          top: '-38px',
+          left: position.includes('right') ? 'auto' : '16px',
+          right: position.includes('right') ? '16px' : 'auto',
+          background: '#ffffff',
+          color: '#0f172a',
+          padding: '5px 12px',
+          borderRadius: '14px',
+          fontSize: '12px',
+          fontWeight: 900,
+          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15), 0 0 0 2px #f59e0b',
+          whiteSpace: 'nowrap',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          zIndex: 40,
+        }}>
+          <span>🎲</span>
+          <span>{isMe ? (t('yourTurn') || 'Your Turn!') : `${player.name}'s Turn`}</span>
+          <div style={{
+            position: 'absolute',
+            bottom: '-6px',
+            left: position.includes('right') ? 'auto' : '22px',
+            right: position.includes('right') ? '22px' : 'auto',
+            width: 0,
+            height: 0,
+            borderLeft: '6px solid transparent',
+            borderRight: '6px solid transparent',
+            borderTop: '6px solid #f59e0b',
+          }} />
+        </div>
+      )}
       {/* Floating Cash Debit / Credit Badges */}
       {cashBadges && cashBadges.map((badge) => (
         <div
