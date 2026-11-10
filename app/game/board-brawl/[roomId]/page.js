@@ -596,8 +596,8 @@ export default function BoardBrawlArenaPage() {
     socket.emit('game_action', { roomId, action: 'buyout_city', payload: { playerId: activePlayerId, tileId } });
   };
 
-  const handleUpgradeCity = (tileId) => {
-    socket.emit('game_action', { roomId, action: 'upgrade_city', payload: { playerId: activePlayerId, tileId } });
+  const handleUpgradeCity = (tileId, targetLevel) => {
+    socket.emit('game_action', { roomId, action: 'upgrade_city', payload: { playerId: activePlayerId, tileId, targetLevel } });
   };
 
   const handleEndTurn = () => {

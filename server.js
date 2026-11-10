@@ -243,7 +243,7 @@ app.prepare().then(() => {
       } else if (action === 'buyout_city') {
         game.buyoutCity(payload.playerId, payload.tileId);
       } else if (action === 'upgrade_city') {
-        game.upgradeCity(payload.playerId, payload.tileId);
+        game.upgradeCity(payload.playerId, payload.tileId, payload.targetLevel);
       } else if (action === 'set_festival') {
         game.setFestival(payload.playerId, payload.tileId);
       } else if (action === 'select_flight_destination') {

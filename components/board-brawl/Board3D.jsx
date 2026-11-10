@@ -6,7 +6,10 @@ import { TILES, formatCash } from '@/lib/board-brawl/types';
 import { sounds } from '@/lib/audio';
 import { Sparkles } from 'lucide-react';
 import {
+  create3DPlot,
   create3DHouse,
+  create3DDuplex,
+  create3DTownhouse,
   create3DHotel,
   create3DLandmark,
   create3DResortAccent,
@@ -2298,87 +2301,44 @@ export default function Board3D({
         return; // Skip house/hotel logic for resorts
       }
 
-      // 3. Stylized Low-Poly 3D Buildings on Inner Lawn Plot (Business Tour Progression)
-      if (prop.level === 2) {
-        // Level 2: 1 Cottage centered on the lawn plot
-        const house = create3DHouse(ownerColor);
-        const localOffset = new THREE.Vector3(0, 0, 1.8);
-        localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
-        house.position.set(p.x + localOffset.x, 0.35, p.z + localOffset.z);
-        house.rotation.y = p.rotationY;
-
-        house.traverse((obj) => {
-          obj.userData = { tileId, isTile: true };
-        });
-        house.userData = {
-          tileId,
-          isTile: true,
-          // static
-          baseScale: house.scale.x,
-        };
-        house.scale.set(1.0, 1.0, 1.0);
-        group.add(house);
+            // 3. Stylized Low-Poly 3D Buildings on Inner Lawn Plot (Business Tour Progression)
+      let buildingMesh = null;
+      if (prop.level === 1) {
+        // Level 1: Plot (Land acquisition site with surveyor stakes, drafting blueprints, and owner pennant)
+        buildingMesh = create3DPlot(ownerColor);
+      } else if (prop.level === 2) {
+        // Level 2: 1 House (Single gabled cottage)
+        buildingMesh = create3DHouse(ownerColor);
       } else if (prop.level === 3) {
-        // Level 3: 2 Cottages side-by-side neatly on the lawn plot!
-        const offsets = [-1.75, 1.75];
-        offsets.forEach((offsetX) => {
-          const house = create3DHouse(ownerColor);
-          house.scale.set(1.02, 1.02, 1.02);
-          const localOffset = new THREE.Vector3(offsetX, 0, 1.8);
-          localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
-          house.position.set(p.x + localOffset.x, 0.35, p.z + localOffset.z);
-          house.rotation.y = p.rotationY;
-
-          house.traverse((obj) => {
-            obj.userData = { tileId, isTile: true };
-          });
-          house.userData = {
-            tileId,
-            isTile: true,
-            // static
-            baseScale: 1.02,
-          };
-          house.scale.set(1.0, 1.0, 1.0);
-          group.add(house);
-        });
+        // Level 3: 2 Houses (Bespoke modern twin-wing luxury duplex)
+        buildingMesh = create3DDuplex(ownerColor);
       } else if (prop.level === 4) {
-        // Level 4: 1 Hotel / Skyscraper centered on the lawn plot
-        const hotel = create3DHotel(ownerColor);
+        // Level 4: 3 Houses (Bespoke 3-story triple townhouse terrace row)
+        buildingMesh = create3DTownhouse(ownerColor);
+      } else if (prop.level === 5) {
+        // Level 5: Grand High-Rise Luxury Hotel
+        buildingMesh = create3DHotel(ownerColor);
+      } else if (prop.level >= 6) {
+        // Level 6: Golden Sky Monument / Landmark (Immune to Buyouts)
+        buildingMesh = create3DLandmark(ownerColor);
+      }
+
+      if (buildingMesh) {
         const localOffset = new THREE.Vector3(0, 0, 1.8);
         localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
-        hotel.position.set(p.x + localOffset.x, 0.35, p.z + localOffset.z);
-        hotel.rotation.y = p.rotationY;
+        buildingMesh.position.set(p.x + localOffset.x, 0.35, p.z + localOffset.z);
+        buildingMesh.rotation.y = p.rotationY;
 
-        hotel.traverse((obj) => {
+        buildingMesh.traverse((obj) => {
           obj.userData = { tileId, isTile: true };
         });
-        hotel.userData = {
+        buildingMesh.userData = {
           tileId,
           isTile: true,
-          // static
-          baseScale: hotel.scale.x,
+          baseScale: buildingMesh.scale.x,
         };
-        hotel.scale.set(1.0, 1.0, 1.0);
-        group.add(hotel);
-      } else if (prop.level >= 5) {
-        // Level 5: 1 Golden Landmark centered on the lawn plot (Immune to Buyouts)
-        const landmark = create3DLandmark(ownerColor);
-        const localOffset = new THREE.Vector3(0, 0, 1.8);
-        localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
-        landmark.position.set(p.x + localOffset.x, 0.35, p.z + localOffset.z);
-        landmark.rotation.y = p.rotationY;
-
-        landmark.traverse((obj) => {
-          obj.userData = { tileId, isTile: true };
-        });
-        landmark.userData = {
-          tileId,
-          isTile: true,
-          // static
-          baseScale: landmark.scale.x,
-        };
-        landmark.scale.set(1.0, 1.0, 1.0);
-        group.add(landmark);
+        buildingMesh.scale.set(1.0, 1.0, 1.0);
+        group.add(buildingMesh);
       }
     });
   }, [properties, players, sceneReady]);
