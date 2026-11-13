@@ -901,7 +901,7 @@ export default function BoardBrawlArenaPage() {
         width: '100vw',
         height: '100vh',
         zIndex: 90,
-        background: 'linear-gradient(180deg, #60a5fa 0%, #93c5fd 30%, #bae6fd 65%, #e0f2fe 100%)',
+        background: 'linear-gradient(135deg, #c5d0dc 0%, #dbe4ee 25%, #e4ecf4 50%, #d2dce8 75%, #b9c7d7 100%)',
         overflow: 'hidden',
         userSelect: 'none',
         fontFamily: 'system-ui, -apple-system, sans-serif',

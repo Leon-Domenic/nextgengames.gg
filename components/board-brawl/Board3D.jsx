@@ -22,6 +22,18 @@ import {
   create3DChampionshipMonument,
   create3DWorldTourMonument,
   create3DBanknoteStack,
+  create3DSpaceCreditStack,
+  create3DCenterCreditPyramid,
+  create3DCityLandmark,
+  create3DBigBen,
+  create3DBurjAlArab,
+  create3DBrandenburgGate,
+  create3DRialtoBridge,
+  create3DParthenon,
+  create3DTokyoTower,
+  create3DResortVilla,
+  create3DVillaHouse,
+  buildWitchAvatar,
 } from '@/lib/board-brawl/pawnModels3D';
 import { drawVectorFlag } from '@/lib/board-brawl/flags';
 
@@ -118,29 +130,28 @@ export function getTile3DPos(id, totalTiles = 32) {
   }
 }
 
-// Compute accurate 3D position for player pawns along the outer street zone
-// Compute accurate 3D position for player pawns inside the off-board PRISON FIELD
+// Compute accurate 3D position for player pawns stranded on the LOST ISLAND corner
 export function getPrisonField3DPos(playerIndex = 0, totalPlayers = 4) {
-  const PRISON_CENTER = new THREE.Vector3(-58, 0.95, 14);
+  const p = getTile3DPos(8, 32);
   const padOffsets = [
-    [-1.0, -0.6],
-    [1.0, -0.6],
-    [-1.0, 0.6],
-    [1.0, 0.6],
+    [-1.2, -0.8],
+    [1.2, -0.8],
+    [-1.2, 0.8],
+    [1.2, 0.8],
   ];
   const [px, pz] = padOffsets[playerIndex % padOffsets.length];
   const cos = Math.cos(Math.PI / 4);
   const sin = Math.sin(Math.PI / 4);
   const rx = px * cos - pz * sin;
   const rz = px * sin + pz * cos;
-  return new THREE.Vector3(PRISON_CENTER.x + rx, PRISON_CENTER.y, PRISON_CENTER.z + rz);
+  return new THREE.Vector3(p.x + rx, 0.35, p.z + rz);
 }
 
 export function getPawnTile3DPos(id, totalTiles = 32, subOffset = null) {
   const p = getTile3DPos(id, totalTiles);
   const pos = new THREE.Vector3(p.x, 0.35, p.z);
   if (!p.isCorner) {
-    const streetOffset = new THREE.Vector3(0, 0, -4.0);
+    const streetOffset = new THREE.Vector3(0, 0, 1.8);
     streetOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
     pos.add(streetOffset);
   }
@@ -530,19 +541,23 @@ function drawDistrictEstateLot(ctx, colorGroup, x, y, w, h) {
 function drawStreetTileContent(ctx, tile, p, prop, properties = {}, players = [], cW = 512, cH = 896) {
   ctx.clearRect(0, 0, cW, cH);
 
-  // Base background: Crisp clean bright white slab with dark border
-  ctx.fillStyle = '#ffffff';
+  // Base background: Rich dark walnut wood base with clean stone surface
+  ctx.fillStyle = '#24140e';
   ctx.fillRect(0, 0, cW, cH);
 
+  // Clean ivory / ceramic stone surface
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(8, 8, cW - 16, cH - 16);
+
   // High contrast outer dark border
-  ctx.lineWidth = 14;
-  ctx.strokeStyle = '#0f172a';
-  ctx.strokeRect(7, 7, cW - 14, cH - 14);
+  ctx.lineWidth = 10;
+  ctx.strokeStyle = '#1e1008';
+  ctx.strokeRect(6, 6, cW - 12, cH - 12);
 
   // Inner boundary
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 3;
   ctx.strokeStyle = '#cbd5e1';
-  ctx.strokeRect(16, 16, cW - 32, cH - 32);
+  ctx.strokeRect(14, 14, cW - 28, cH - 28);
 
   // Helper function to draw outward text rotated 180 deg
   const drawOutwardText = (text, cx, cy, font, fillStyle, maxW = null) => {
@@ -1167,19 +1182,18 @@ export default function Board3D({
         cam.lookAt(0, 0, 0);
       } else {
         // ========================================================
-        // 2. 3D ANGLED DIAMOND VIEW (REFRAMED SO SOUTH TIP IS NEVER CUT OFF)
+        // 2. 3D ANGLED DIAMOND VIEW (1:1 BUSINESS TOUR TABLETOP ISOMETRIC)
         // ========================================================
-        // Pitch: 41° gives a dramatic 3D perspective of 3D houses & monuments.
-        // Target: Shifted south to (0, 0, 13.5) so the near South corner (Corner 0 / Start)
-        // is elevated above the bottom Roll Button and Action Card dock.
-        // Distance: 172 units guarantees the entire diamond (North, South, East, West)
-        // is 100% inside the viewport on all resolutions.
-        const pitchDeg = 41;
+        // Pitch: 43° matches Business Tour tabletop isometric view.
+        // Target: Centered at (0, 0, 1.2) perfectly framing the 45° diamond edge-to-edge.
+        // Distance: 140 units guarantees the entire diamond (North, South, East, West)
+        // is 100% inside the viewport with balanced margins.
+        const pitchDeg = 44;
         const pitchRad = (pitchDeg * Math.PI) / 180;
-        const targetZ = 11.5;
-        let dist = 136;
+        const targetZ = 2.5;
+        let dist = 146;
         if (aspect < 1.55) {
-          dist = 136 * (1.55 / Math.max(aspect, 0.65));
+          dist = 146 * (1.55 / Math.max(aspect, 0.65));
         }
 
         const posY = dist * Math.sin(pitchRad);
@@ -1202,52 +1216,95 @@ export default function Board3D({
       alpha: true,
       powerPreference: 'high-performance',
     });
-    renderer.setClearColor(0x000000, 0); // 100% transparent canvas so sky gradient shines through
+    renderer.setClearColor(0x000000, 0); // Transparent canvas so sleek studio gradient shines through
     renderer.setSize(width, height);
     renderer.setPixelRatio(initialQuality === 'low' ? 1 : Math.min(window.devicePixelRatio || 1, initialQuality === 'medium' ? 1.5 : 2));
     renderer.shadowMap.enabled = initialQuality !== 'low';
     renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Smooth soft contact shadows
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = 1.08;
     rendererRef.current = renderer;
 
     mountRef.current.innerHTML = '';
     mountRef.current.appendChild(renderer.domElement);
 
-    // 4. Lighting Rig (Rich Warm Cinematic Tabletop Sunlight & Sky Fill)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.78);
+    // 4. Lighting Rig (High-End Architectural Studio Showroom Lighting)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.82);
     scene.add(ambientLight);
 
-    const mainSun = new THREE.DirectionalLight(0xfff7ed, 1.45);
-    mainSun.position.set(65, 140, 75);
+    const mainSun = new THREE.DirectionalLight(0xfffaf0, 1.38);
+    mainSun.position.set(55, 130, 65);
     mainSun.castShadow = true;
     mainSun.shadow.mapSize.width = 2048;
     mainSun.shadow.mapSize.height = 2048;
     mainSun.shadow.camera.near = 20;
     mainSun.shadow.camera.far = 320;
-    mainSun.shadow.camera.left = -70;
-    mainSun.shadow.camera.right = 70;
-    mainSun.shadow.camera.top = 70;
-    mainSun.shadow.camera.bottom = -70;
-    mainSun.shadow.bias = -0.0005;
+    mainSun.shadow.camera.left = -75;
+    mainSun.shadow.camera.right = 75;
+    mainSun.shadow.camera.top = 75;
+    mainSun.shadow.camera.bottom = -75;
+    mainSun.shadow.bias = -0.0004;
     mainSun.shadow.normalBias = 0.02;
     scene.add(mainSun);
 
-    const blueSkyFill = new THREE.DirectionalLight(0xbae6fd, 0.62);
-    blueSkyFill.position.set(-75, 95, -75);
-    scene.add(blueSkyFill);
+    const softStudioFill = new THREE.DirectionalLight(0xdbeafe, 0.55);
+    softStudioFill.position.set(-65, 85, -65);
+    scene.add(softStudioFill);
 
-    const hemiLight = new THREE.HemisphereLight(0xfffbeb, 0x14532d, 0.38);
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x94a3b8, 0.45);
     scene.add(hemiLight);
 
-    // 5. Contact Shadow Ground Plane
-    const groundGeom = new THREE.PlaneGeometry(260, 260);
-    const groundMat = new THREE.ShadowMaterial({ opacity: 0.35 });
+    // 5. Contact Shadow Ground Plane & Architectural Studio Floor
+    const studioFloorCanvas = document.createElement('canvas');
+    studioFloorCanvas.width = 1024;
+    studioFloorCanvas.height = 1024;
+    const sfCtx = studioFloorCanvas.getContext('2d');
+    const floorGrad = sfCtx.createRadialGradient(512, 512, 80, 512, 512, 512);
+    floorGrad.addColorStop(0, '#e8edf4');
+    floorGrad.addColorStop(0.5, '#dbe3ed');
+    floorGrad.addColorStop(1, '#c8d4e2');
+    sfCtx.fillStyle = floorGrad;
+    sfCtx.fillRect(0, 0, 1024, 1024);
+
+    // Subtle isometric architectural floor grid lines
+    sfCtx.strokeStyle = 'rgba(148, 163, 184, 0.22)';
+    sfCtx.lineWidth = 1.5;
+    for (let g = 0; g <= 1024; g += 64) {
+      sfCtx.beginPath();
+      sfCtx.moveTo(g, 0); sfCtx.lineTo(g, 1024);
+      sfCtx.stroke();
+      sfCtx.beginPath();
+      sfCtx.moveTo(0, g); sfCtx.lineTo(1024, g);
+      sfCtx.stroke();
+    }
+
+    const studioFloorTexture = new THREE.CanvasTexture(studioFloorCanvas);
+    studioFloorTexture.wrapS = THREE.RepeatWrapping;
+    studioFloorTexture.wrapT = THREE.RepeatWrapping;
+    studioFloorTexture.repeat.set(4, 4);
+
+    const groundGeom = new THREE.PlaneGeometry(360, 360);
+    const groundMat = new THREE.MeshStandardMaterial({
+      map: studioFloorTexture,
+      roughness: 0.65,
+      metalness: 0.05,
+    });
     const ground = new THREE.Mesh(groundGeom, groundMat);
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -2.2;
+    ground.position.y = -2.25;
     ground.receiveShadow = true;
     scene.add(ground);
+
+    // Grounded dark slate pedestal disk directly beneath the board
+    const pedestalMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      roughness: 0.5,
+      metalness: 0.15,
+    });
+    const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(56, 58, 0.35, 32), pedestalMat);
+    pedestal.position.y = -2.1;
+    pedestal.receiveShadow = true;
+    scene.add(pedestal);
 
     // 6. Center Striped Lawn Pitch & Encircling Asphalt Road (Business Tour Stadium Field)
     const lawnCanvas = document.createElement('canvas');
@@ -1309,7 +1366,25 @@ export default function Board3D({
     lCtx.strokeRect(52, 52, 1944, 1944);
     lCtx.shadowBlur = 0;
 
-    // Floating 300 000 Center Pot / Jackpot Amount directly on the lawn (matching reference image)
+    // Digital Match Stopwatch Pill: "08:38" (matching reference image)
+    lCtx.save();
+    lCtx.translate(1024, 320);
+    lCtx.fillStyle = '#0f172a';
+    lCtx.beginPath();
+    lCtx.roundRect(-150, -42, 300, 84, 42);
+    lCtx.fill();
+    lCtx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+    lCtx.lineWidth = 4;
+    lCtx.stroke();
+
+    lCtx.fillStyle = '#ffffff';
+    lCtx.font = '900 46px monospace';
+    lCtx.textAlign = 'center';
+    lCtx.textBaseline = 'middle';
+    lCtx.fillText('08:38', 0, 2);
+    lCtx.restore();
+
+    // Floating 300 000 CR Center Pot / Jackpot Amount directly on the lawn (matching reference image)
     lCtx.save();
     lCtx.translate(1024, 760);
     lCtx.font = '900 110px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
@@ -1319,7 +1394,7 @@ export default function Board3D({
     lCtx.shadowBlur = 20;
     lCtx.shadowOffsetY = 10;
     lCtx.fillStyle = '#ffffff';
-    lCtx.fillText('300 000', 0, 0);
+    lCtx.fillText('300 000 CR', 0, 0);
     lCtx.restore();
 
     // Subtle scattered flower / confetti celebration petals (Business Tour festive feel)
@@ -1356,33 +1431,107 @@ export default function Board3D({
       metalness: 0.1,
     });
 
+    // 6c. Thick Polished Mahogany Wood Board Tray (1:1 Business Tour Luxury Wooden Frame)
+    const mahoganyMat = new THREE.MeshStandardMaterial({
+      color: 0x24140e, // Rich dark walnut/mahogany wood
+      roughness: 0.38,
+      metalness: 0.08,
+    });
+    // Base tray: width 86.0 gives 60.8 radius on apexes (surrounding the tiles 56.0 with 4.8 units margin)
+    const mahoganyBorder = new THREE.Mesh(
+      new THREE.BoxGeometry(86.0, 2.6, 86.0),
+      mahoganyMat
+    );
+    mahoganyBorder.rotation.y = Math.PI / 4;
+    mahoganyBorder.position.y = -1.3;
+    mahoganyBorder.receiveShadow = true;
+    mahoganyBorder.castShadow = true;
+    scene.add(mahoganyBorder);
+
+    // Beveled inner dark lip
+    const innerLipMat = new THREE.MeshStandardMaterial({
+      color: 0x140a06, // Deep espresso shadow lip
+      roughness: 0.45,
+      metalness: 0.1,
+    });
+    const innerLip = new THREE.Mesh(
+      new THREE.BoxGeometry(84.5, 0.4, 84.5),
+      innerLipMat
+    );
+    innerLip.rotation.y = Math.PI / 4;
+    innerLip.position.y = -0.05;
+    innerLip.receiveShadow = true;
+    scene.add(innerLip);
+
+    // 6d. 3D Glowing Electric Cyan Inner Neon Rail (Business Tour Glow Ribbon)
+    const neonRailGroup = new THREE.Group();
+    neonRailGroup.name = 'NeonInnerRail';
+    const neonMat = new THREE.MeshStandardMaterial({
+      color: 0x00f0ff,
+      emissive: 0x00f0ff,
+      emissiveIntensity: 2.5,
+      roughness: 0.15,
+      metalness: 0.1,
+    });
+    const rInner = 37.4;
+    const neonCorners = [
+      new THREE.Vector3(0, 0.42, rInner),       // South
+      new THREE.Vector3(-rInner, 0.42, 0),      // West
+      new THREE.Vector3(0, 0.42, -rInner),      // North
+      new THREE.Vector3(rInner, 0.42, 0),       // East
+    ];
+    for (let ni = 0; ni < 4; ni++) {
+      const pA = neonCorners[ni];
+      const pB = neonCorners[(ni + 1) % 4];
+      const dist = pA.distanceTo(pB);
+      const mid = new THREE.Vector3().addVectors(pA, pB).multiplyScalar(0.5);
+      const dir = new THREE.Vector3().subVectors(pB, pA).normalize();
+
+      const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, dist, 12), neonMat);
+      tube.position.copy(mid);
+      tube.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      neonRailGroup.add(tube);
+
+      const node = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 12), neonMat);
+      node.position.copy(pA);
+      neonRailGroup.add(node);
+    }
+    scene.add(neonRailGroup);
+
     // 7. Middle Board Center Pitch (Business Tour Stadium Field)
     // Sized to 53.0 x 53.0 to perfectly abut the inner perimeter of the tiles.
-    // The board under the tiles on the outer edges is removed so the tiles themselves form the clean outer edge.
     const tableGroup = new THREE.Group();
-    const tableGeom = new THREE.BoxGeometry(53.0, 0.6, 53.0);
+    const tableGeom = new THREE.BoxGeometry(53.0, 0.7, 53.0);
     const tableMaterials = [
       woodSideMat, // +X
       woodSideMat, // -X
-      lawnMat,     // +Y (TOP IS LAWN PITCH)
+      woodSideMat, // +Y
       woodSideMat, // -Y
       woodSideMat, // +Z
       woodSideMat, // -Z
     ];
     const tableMesh = new THREE.Mesh(tableGeom, tableMaterials);
     tableMesh.rotation.y = Math.PI / 4; // 45-degree diamond
-    tableMesh.position.y = -0.3;
+    tableMesh.position.y = 0.0; // Flush with tiles at y = 0.35
     tableMesh.receiveShadow = true;
     tableGroup.add(tableMesh);
 
     // Center Striped Lawn Pitch with Inner Perimeter Road (Business Tour Green Field)
+    lawnMat.side = THREE.DoubleSide;
     const lawnGeom = new THREE.PlaneGeometry(53.0, 53.0);
+    lawnGeom.rotateZ(Math.PI / 4); // Rotates diamond so apexes are on X and Y axes
     const lawnMesh = new THREE.Mesh(lawnGeom, lawnMat);
-    lawnMesh.rotation.x = -Math.PI / 2;
-    lawnMesh.rotation.z = Math.PI / 4;
-    lawnMesh.position.y = 0.08;
+    lawnMesh.rotation.x = -Math.PI / 2; // Flat on floor with normal facing +Y (up)
+    lawnMesh.position.set(0, 0.36, 0); // Sits at y = 0.36, right on top of tableMesh flush with tiles
     lawnMesh.receiveShadow = true;
     tableGroup.add(lawnMesh);
+
+    // 3D Space Credit Pyramid Stack in Center of Stadium Pitch
+    const centerCredits = create3DCenterCreditPyramid();
+    centerCredits.position.set(0, 0.38, 0);
+    centerCredits.rotation.y = Math.PI / 4;
+    centerCredits.scale.set(1.4, 1.4, 1.4);
+    tableGroup.add(centerCredits);
 
     scene.add(tableGroup);
 
@@ -1480,102 +1629,123 @@ export default function Board3D({
           ctx.stroke();
 
           ctx.fillStyle = '#047857';
-          ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText('COLLECT 200K', 0, 180);
+          ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.fillText('COLLECT 200K CR', 0, 180);
 
         } else if (cornerType === 'jail' || cornerType === 'go_to_jail' || p.side === 1) {
-          // CORNER 1: POLICE PRECINCT & EXTRADITION GATEWAY
-          // Deep Cyber-Police Tarmac with Radar Grid
-          ctx.fillStyle = '#070c18';
+          // CORNER 1: LOST ISLAND (Ancient Jungle Ruin & Overgrown Temple)
+          // Tropical ancient stone paving
+          ctx.fillStyle = '#1c281e';
           ctx.fillRect(-240, -240, 480, 480);
 
-          // Radar grid lines
-          ctx.strokeStyle = 'rgba(30, 58, 138, 0.35)';
-          ctx.lineWidth = 2;
-          for (let r = 40; r <= 200; r += 40) {
+          // Ancient mossy stone flagstones pattern
+          ctx.strokeStyle = '#2d4233';
+          ctx.lineWidth = 3;
+          for (let sx = -220; sx <= 220; sx += 70) {
             ctx.beginPath();
-            ctx.arc(0, 0, r, 0, Math.PI * 2);
+            ctx.moveTo(sx, -230); ctx.lineTo(sx, 230);
             ctx.stroke();
           }
-          ctx.beginPath();
-          ctx.moveTo(-240, 0); ctx.lineTo(240, 0);
-          ctx.moveTo(0, -240); ctx.lineTo(0, 240);
-          ctx.stroke();
+          for (let sy = -220; sy <= 220; sy += 70) {
+            ctx.beginPath();
+            ctx.moveTo(-230, sy); ctx.lineTo(230, sy);
+            ctx.stroke();
+          }
 
-          // Outer Warning Hazard Rim
-          ctx.strokeStyle = '#ef4444';
-          ctx.lineWidth = 6;
-          ctx.strokeRect(-230, -230, 460, 460);
-
-          // Top Header: POLICE PRECINCT Badge
-          ctx.fillStyle = '#1e3a8a';
+          // Top Header: LOST ISLAND
+          ctx.fillStyle = '#15803d';
           ctx.beginPath();
           ctx.roundRect(-175, -220, 350, 72, 16);
           ctx.fill();
           ctx.lineWidth = 3;
-          ctx.strokeStyle = '#38bdf8';
+          ctx.strokeStyle = '#4ade80';
           ctx.stroke();
 
           ctx.fillStyle = '#ffffff';
           ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('🚓 POLICE PRECINCT', 0, -172);
+          ctx.fillText('🏝️ LOST ISLAND', 0, -172);
 
-          // Center Police Star Shield Badge
-          ctx.fillStyle = '#1e293b';
+          // Center Ancient Aztec / Mayan Temple Ruin Emblem
           ctx.beginPath();
-          ctx.roundRect(-90, -85, 180, 170, 24);
+          ctx.arc(0, -10, 72, 0, Math.PI * 2);
+          ctx.fillStyle = '#14532d';
           ctx.fill();
-          ctx.lineWidth = 4;
-          ctx.strokeStyle = '#eab308';
+          ctx.lineWidth = 5;
+          ctx.strokeStyle = '#22c55e';
           ctx.stroke();
 
-          // Gold Star in Badge
-          ctx.fillStyle = '#facc15';
-          ctx.font = '72px -apple-system, sans-serif';
-          ctx.fillText('★', 0, -15);
+          ctx.font = '76px sans-serif';
+          ctx.fillText('🗿', 0, 16);
 
-          // Dual Flashing Police Lights (Blue & Red)
-          ctx.fillStyle = '#2563eb';
-          ctx.shadowColor = '#3b82f6';
-          ctx.shadowBlur = 18;
-          ctx.beginPath();
-          ctx.roundRect(-60, 24, 50, 22, 6);
-          ctx.fill();
-
-          ctx.fillStyle = '#ef4444';
-          ctx.shadowColor = '#f87171';
-          ctx.shadowBlur = 18;
-          ctx.beginPath();
-          ctx.roundRect(10, 24, 50, 22, 6);
-          ctx.fill();
-          ctx.shadowBlur = 0;
-
-          // Subtitle text: EXTRADITION GATE
-          ctx.fillStyle = '#94a3b8';
-          ctx.font = '800 20px -apple-system, sans-serif';
-          ctx.fillText('EXTRADITION GATE', 0, 72);
-
-          // Arrow pointing off-board to Prison Field
-          ctx.fillStyle = '#ef4444';
-          ctx.font = '900 24px -apple-system, sans-serif';
-          ctx.fillText('➔ OFF-BOARD PRISON', 0, 102);
-
-          // Bottom Warning Pill
-          ctx.fillStyle = '#fef2f2';
-          ctx.strokeStyle = '#dc2626';
+          // Bottom Island Stranded Pill
+          ctx.fillStyle = '#f0fdf4';
+          ctx.strokeStyle = '#15803d';
           ctx.lineWidth = 4;
           ctx.beginPath();
           ctx.roundRect(-165, 135, 330, 68, 20);
           ctx.fill();
           ctx.stroke();
 
-          ctx.fillStyle = '#991b1b';
+          ctx.fillStyle = '#166534';
           ctx.font = '900 26px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText('ARREST ➔ PRISON', 0, 178);
+          ctx.fillText('STRANDED (3 TURNS)', 0, 178);
 
-        } else if (cornerType === 'world_tour' || p.side === 2) {
-          // CORNER 2: AIRPORT RUNWAY ("3d plane for the airport, you know the drill")
+        } else if (cornerType === 'championship' || cornerType === 'festival' || p.side === 2) {
+          // CORNER 2: WORLD CHAMPIONSHIPS (North)
+          ctx.fillStyle = '#2e1065';
+          ctx.fillRect(-240, -240, 480, 480);
+
+          // Colosseum Arena Arc Lines
+          ctx.strokeStyle = 'rgba(192, 132, 252, 0.25)';
+          ctx.lineWidth = 3;
+          for (let r = 50; r <= 220; r += 45) {
+            ctx.beginPath();
+            ctx.arc(0, 0, r, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          // Top Header: WORLD CHAMPIONSHIPS
+          ctx.fillStyle = '#7c3aed';
+          ctx.beginPath();
+          ctx.roundRect(-185, -220, 370, 74, 18);
+          ctx.fill();
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = '#c084fc';
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '900 30px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('WORLD CHAMPIONSHIPS', 0, -168);
+
+          // Center Gold Trophy Emblem
+          ctx.beginPath();
+          ctx.arc(0, -10, 72, 0, Math.PI * 2);
+          ctx.fillStyle = '#4c1d95';
+          ctx.fill();
+          ctx.lineWidth = 6;
+          ctx.strokeStyle = '#facc15';
+          ctx.stroke();
+
+          ctx.font = '78px sans-serif';
+          ctx.fillText('🏆', 0, 16);
+
+          // 2X Rent Host pill
+          ctx.fillStyle = '#f8fafc';
+          ctx.strokeStyle = '#7c3aed';
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.roundRect(-160, 135, 320, 68, 20);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#6d28d9';
+          ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.fillText('2X RENT HOST', 0, 178);
+
+        } else {
+          // CORNER 3: WORLD TOUR / AIRPORT (East)
           // Dark Runway Tarmac Base
           ctx.fillStyle = '#0f172a';
           ctx.fillRect(-240, -240, 480, 480);
@@ -1626,9 +1796,9 @@ export default function Board3D({
           ctx.fill();
 
           ctx.fillStyle = '#ffffff';
-          ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('✈️ AIRPORT', 0, -168);
+          ctx.fillText('✈️ WORLD TOUR', 0, -168);
 
           // Bottom Flight Ticket Pill
           ctx.fillStyle = '#f8fafc';
@@ -1640,45 +1810,8 @@ export default function Board3D({
           ctx.stroke();
 
           ctx.fillStyle = '#0369a1';
-          ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText('TICKET: 50K', 0, 178);
-
-        } else {
-          // CORNER 3: CHAMPIONSHIPS / FESTIVAL (East)
-          ctx.fillStyle = '#7c3aed';
-          ctx.beginPath();
-          ctx.roundRect(-175, -220, 350, 74, 18);
-          ctx.fill();
-
-          ctx.fillStyle = '#ffffff';
-          ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText('CHAMPIONSHIPS', 0, -168);
-
-          // Center Gold Trophy Emblem
-          ctx.beginPath();
-          ctx.arc(0, -10, 72, 0, Math.PI * 2);
-          ctx.fillStyle = '#f5f3ff';
-          ctx.fill();
-          ctx.lineWidth = 6;
-          ctx.strokeStyle = '#7c3aed';
-          ctx.stroke();
-
-          ctx.font = '78px sans-serif';
-          ctx.fillText('🏆', 0, 16);
-
-          // 2X Rent Host pill
-          ctx.fillStyle = '#f8fafc';
-          ctx.strokeStyle = '#0f172a';
-          ctx.lineWidth = 5;
-          ctx.beginPath();
-          ctx.roundRect(-160, 135, 320, 68, 20);
-          ctx.fill();
-          ctx.stroke();
-
-          ctx.fillStyle = '#6d28d9';
-          ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText('2X RENT HOST', 0, 178);
+          ctx.font = '900 30px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.fillText('TICKET: 50K CR', 0, 178);
         }
 
         ctx.restore();
@@ -1743,34 +1876,38 @@ export default function Board3D({
     const startMonument = create3DStartMonument();
     startMonument.position.set(pStart.x, 0.35, pStart.z + 1.2);
     startMonument.rotation.y = 0;
+    startMonument.scale.set(1.25, 1.25, 1.25);
     monumentsGroup.add(startMonument);
     cornerMonuments.push(startMonument);
 
-    // Corner 1: West (Off-board PRISON FIELD)
-    // The user requested: "actually can we make the prison a non tile field, add it seperatly from the board so people get sent off the board in a prison field"
-    const prisonField = create3DPrisonMonument();
-    prisonField.position.set(-58, 0.1, 14); // Positioned off the board!
-    prisonField.rotation.y = Math.PI / 4;   // Angled nicely towards main camera
-    monumentsGroup.add(prisonField);
-    cornerMonuments.push(prisonField);
-    prisonMonumentRef.current = prisonField;
-    scene.userData.prisonMonument = prisonField;
+    // Corner 1: West (LOST ISLAND - Ancient Jungle Ruin & Treasure Chest)
+    const pIsland = getTile3DPos(8, TILES.length);
+    const islandMonument = create3DIslandMonument();
+    islandMonument.position.set(pIsland.x, 0.35, pIsland.z);
+    islandMonument.rotation.y = Math.PI / 4;
+    islandMonument.scale.set(1.25, 1.25, 1.25);
+    monumentsGroup.add(islandMonument);
+    cornerMonuments.push(islandMonument);
+    prisonMonumentRef.current = islandMonument;
+    scene.userData.prisonMonument = islandMonument;
 
-    // Corner 2: North (WORLD TOUR / AIRPORT)
-    const pTour = getTile3DPos(16, TILES.length);
-    const tourMonument = create3DWorldTourMonument();
-    tourMonument.position.set(pTour.x, 0.35, pTour.z - 1.2);
-    tourMonument.rotation.y = 0;
-    monumentsGroup.add(tourMonument);
-    cornerMonuments.push(tourMonument);
-
-    // Corner 3: East (WORLD CHAMPIONSHIP / ARMORY)
-    const pChamp = getTile3DPos(24, TILES.length);
+    // Corner 2: North (WORLD CHAMPIONSHIPS - Full Colosseum Arena Bowl)
+    const pChamp = getTile3DPos(16, TILES.length);
     const champMonument = create3DChampionshipMonument();
-    champMonument.position.set(pChamp.x + 1.2, 0.35, pChamp.z);
-    champMonument.rotation.y = -Math.PI / 4;
+    champMonument.position.set(pChamp.x, 0.35, pChamp.z - 0.8);
+    champMonument.rotation.y = 0;
+    champMonument.scale.set(1.25, 1.25, 1.25);
     monumentsGroup.add(champMonument);
     cornerMonuments.push(champMonument);
+
+    // Corner 3: East (WORLD TOUR - International Airport Runway & Airliner Jet)
+    const pTour = getTile3DPos(24, TILES.length);
+    const tourMonument = create3DWorldTourMonument();
+    tourMonument.position.set(pTour.x + 0.8, 0.35, pTour.z);
+    tourMonument.rotation.y = -Math.PI / 4;
+    tourMonument.scale.set(1.25, 1.25, 1.25);
+    monumentsGroup.add(tourMonument);
+    cornerMonuments.push(tourMonument);
 
     monumentsRef.current = cornerMonuments;
     scene.add(monumentsGroup);
@@ -1817,6 +1954,36 @@ export default function Board3D({
 
     banknoteStacksRef.current = banknoteStacks;
     scene.add(banknoteStacksGroup);
+
+    // 8e. Tabletop Showcase Figurine Pedestal (Matches Business Tour Witch Showcase on Studio Floor)
+    const showcaseGroup = new THREE.Group();
+    showcaseGroup.name = 'ShowcaseFigurine';
+    showcaseGroup.position.set(24, -2.18, 48); // Near South-East table quadrant
+
+    // Circular luxury pedestal
+    const pedMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4, metalness: 0.3 });
+    const pedGoldMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.25, metalness: 0.85 });
+    const pedBase = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.4, 0.35, 24), pedMat);
+    pedBase.position.y = 0.175;
+    pedBase.castShadow = true;
+    showcaseGroup.add(pedBase);
+
+    const pedGoldRing = new THREE.Mesh(new THREE.CylinderGeometry(2.22, 2.22, 0.08, 24), pedGoldMat);
+    pedGoldRing.position.y = 0.35;
+    showcaseGroup.add(pedGoldRing);
+
+    // Witch Figurine standing proudly on showcase plinth
+    const witchPawn = new THREE.Group();
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.2, metalness: 0.85 });
+    const chromeMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.1, metalness: 0.95 });
+    const playerMat = new THREE.MeshStandardMaterial({ color: 0xa855f7, roughness: 0.4 });
+    buildWitchAvatar(0xa855f7, goldMat, chromeMat, playerMat, witchPawn);
+    witchPawn.position.set(0, 0.38, 0);
+    witchPawn.scale.set(1.4, 1.4, 1.4);
+    witchPawn.rotation.y = -Math.PI / 4;
+    showcaseGroup.add(witchPawn);
+
+    scene.add(showcaseGroup);
 
     // 9. 3D Dice Group (Physical Ruby Red Dice Rolling on the Grass)
     const diceGroup = new THREE.Group();
@@ -2311,71 +2478,50 @@ export default function Board3D({
       });
     }
 
-    Object.entries(properties).forEach(([tileIdStr, prop]) => {
-      const tileId = parseInt(tileIdStr, 10);
-      if (!prop || !prop.ownerId) return;
-
+    TILES.forEach((tile) => {
+      if (tile.type !== 'city' && tile.type !== 'resort') return;
+      const tileId = tile.id;
+      const prop = properties?.[tileId];
       const p = getTile3DPos(tileId, TILES.length);
-      const owner = players.find((u) => u.id === prop.ownerId);
-      const ownerColor = owner?.avatarColor || '#00f0ff';
 
-      // 1. Subtle Flat Glowing Owner Crest & Border Ring on the Street Tile
-      // Sits flat on the card surface at y = 0.35, keeping 100% of flag, city name & price pill clean
-      const crest = createOwnerCrest(ownerColor, p.width, p.length);
-      crest.position.set(p.x, 0.35, p.z);
-      crest.rotation.y = p.rotationY;
-      crest.traverse((obj) => {
-        obj.userData = { tileId, isTile: true };
-      });
-      group.add(crest);
+      let buildingMesh = null;
 
-      // 2. 3D Miniature Tropical Beach Resort Accent on Inner Lawn Plot for Resorts
-      const tile = TILES.find((t) => t.id === tileId) || TILES[tileId];
-      if (tile?.type === 'resort') {
-        const resort = create3DResortAccent(ownerColor);
-        const localOffset = new THREE.Vector3(0, 0, 1.8);
-        localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
-        resort.position.set(p.x + localOffset.x, 0.35, p.z + localOffset.z);
-        resort.rotation.y = p.rotationY;
+      if (prop && prop.ownerId) {
+        const owner = players.find((u) => u.id === prop.ownerId);
+        const ownerColor = owner?.avatarColor || '#00f0ff';
 
-        resort.traverse((obj) => {
+        // 1. Subtle Flat Glowing Owner Crest & Border Ring on the Street Tile
+        const crest = createOwnerCrest(ownerColor, p.width, p.length);
+        crest.position.set(p.x, 0.35, p.z);
+        crest.rotation.y = p.rotationY;
+        crest.traverse((obj) => {
           obj.userData = { tileId, isTile: true };
         });
-        resort.userData = {
-          tileId,
-          isTile: true,
-          // static
-          baseScale: resort.scale.x,
-        };
-        resort.scale.set(1.0, 1.0, 1.0);
-        group.add(resort);
-        return; // Skip house/hotel logic for resorts
-      }
+        group.add(crest);
 
-            // 3. Stylized Low-Poly 3D Buildings on Inner Lawn Plot (Business Tour Progression)
-      let buildingMesh = null;
-      if (prop.level === 1) {
-        // Level 1: Plot (Land acquisition site with surveyor stakes, drafting blueprints, and owner pennant)
-        buildingMesh = create3DPlot(ownerColor);
-      } else if (prop.level === 2) {
-        // Level 2: 1 House (Single gabled cottage)
-        buildingMesh = create3DHouse(ownerColor);
-      } else if (prop.level === 3) {
-        // Level 3: 2 Houses (Bespoke modern twin-wing luxury duplex)
-        buildingMesh = create3DDuplex(ownerColor);
-      } else if (prop.level === 4) {
-        // Level 4: 3 Houses (Bespoke 3-story triple townhouse terrace row)
-        buildingMesh = create3DTownhouse(ownerColor);
-      } else if (prop.level === 5) {
-        // Level 5: Grand High-Rise Luxury Hotel
-        buildingMesh = create3DHotel(ownerColor);
-      } else if (prop.level >= 6) {
-        // Level 6: Golden Sky Monument / Landmark (Immune to Buyouts)
-        buildingMesh = create3DLandmark(ownerColor);
+        // 2. 3D Miniature Tropical Beach Resort Accent or Upgraded House Progression
+        if (tile?.type === 'resort') {
+          buildingMesh = create3DResortAccent(ownerColor);
+        } else if (prop.level === 1) {
+          buildingMesh = create3DPlot(ownerColor);
+        } else if (prop.level === 2) {
+          buildingMesh = create3DHouse(ownerColor);
+        } else if (prop.level === 3) {
+          buildingMesh = create3DDuplex(ownerColor);
+        } else if (prop.level === 4) {
+          buildingMesh = create3DTownhouse(ownerColor);
+        } else if (prop.level === 5) {
+          buildingMesh = create3DHotel(ownerColor);
+        } else if (prop.level >= 6) {
+          buildingMesh = create3DLandmark(ownerColor);
+        }
+      } else {
+        // Unowned city/resort: Display iconic 3D world landmark miniature (1:1 Business Tour recreation)
+        buildingMesh = create3DCityLandmark(tileId, tile.name, tile.color || '#3b82f6');
       }
 
       if (buildingMesh) {
-        const localOffset = new THREE.Vector3(0, 0, 1.8);
+        const localOffset = new THREE.Vector3(0, 0, -2.4);
         localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
         buildingMesh.position.set(p.x + localOffset.x, 0.35, p.z + localOffset.z);
         buildingMesh.rotation.y = p.rotationY;
@@ -2388,7 +2534,7 @@ export default function Board3D({
           isTile: true,
           baseScale: buildingMesh.scale.x,
         };
-        buildingMesh.scale.set(1.0, 1.0, 1.0);
+        buildingMesh.scale.set(1.3, 1.3, 1.3);
         group.add(buildingMesh);
       }
     });

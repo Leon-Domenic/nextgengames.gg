@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Board Brawl — 3D Architecture & Asset Showcase</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #b0b8c4;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      user-select: none;
+    }
+    #canvas-container {
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+    }
+    #canvas-container:active {
+      cursor: grabbing;
+    }
+    .top-bar {
+      position: absolute;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(12px);
+      padding: 8px 18px;
+      border-radius: 9999px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+      z-index: 10;
+    }
+    .title-tag {
+      font-size: 13px;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-right: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .preset-btn {
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 9999px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: rgba(255, 255, 255, 0.08);
+      color: #94a3b8;
+    }
+    .preset-btn:hover {
+      background: rgba(255, 255, 255, 0.18);
+      color: #ffffff;
+    }
+    .preset-btn.active {
+      background: #6366f1;
+      color: #ffffff;
+    }
+    .bottom-bar {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      color: #cbd5e1;
+      font-size: 12px;
+      padding: 8px 22px;
+      border-radius: 9999px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      z-index: 10;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+  </style>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/three/three.module.min.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <!-- Top Floating Camera Controls -->
+  <div class="top-bar">
+    <span class="title-tag"><span>🎲</span> 3D Board Showcase</span>
+    <button class="preset-btn active" onclick="setPreset('iso')">Isometric View</button>
+    <button class="preset-btn" onclick="setPreset('top')">Top-Down</button>
+    <button class="preset-btn" onclick="setPreset('witch')">Witch Pawn</button>
+    <button class="preset-btn" onclick="setPreset('stadium')">Stadium Arena</button>
+    <button class="preset-btn" onclick="setPreset('island')">Lost Island</button>
+    <button class="preset-btn" onclick="setPreset('resort')">Burj Al Arab</button>
+  </div>
+
+  <!-- Bottom Instructions -->
+  <div class="bottom-bar">
+    <span>🖱️ <b>Click & Drag</b> to Rotate</span>
+    <span>•</span>
+    <span>🔍 <b>Scroll</b> to Zoom</span>
+    <span>•</span>
+    <span style="color: #4ade80;">✓ Isolated 3D Prototype Catalog</span>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import {
+      create3DBoardEnvironment,
+      create3DCornerMonument,
+      create3DResortBuilding,
+      createCountryHouseModel,
+      create3DPawnToken,
+    } from '/three/boardAndBuildings3D.js';
+
+    const container = document.getElementById('canvas-container');
+
+    // Scene & Camera
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xb0b8c4);
+
+    const camera = new THREE.PerspectiveCamera(36, window.innerWidth / window.innerHeight, 0.1, 1000);
+    
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    container.appendChild(renderer.domElement);
+
+    // Studio Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xfff7ed, 1.3);
+    dirLight.position.set(40, 90, 50);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    dirLight.shadow.bias = -0.0005;
+    scene.add(dirLight);
+
+    const rimLight = new THREE.DirectionalLight(0x93c5fd, 0.6);
+    rimLight.position.set(-50, 40, -50);
+    scene.add(rimLight);
+
+    // Studio Table Floor
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(350, 350),
+      new THREE.MeshStandardMaterial({ color: 0xc4cbd5, roughness: 0.8 })
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -3.8;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    // 1. Board Environment (Frame, Lawn, NO cash pile, NO 300k)
+    const boardGroup = create3DBoardEnvironment({ radius: 46, hideCash: true, hideTimer: false });
+    scene.add(boardGroup);
+
+    // Neon Guide Track
+    const trackPoints = [
+      new THREE.Vector3(0, 0.35, 43.5),
+      new THREE.Vector3(-43.5, 0.35, 0),
+      new THREE.Vector3(0, 0.35, -43.5),
+      new THREE.Vector3(43.5, 0.35, 0),
+      new THREE.Vector3(0, 0.35, 43.5),
+    ];
+    const trackLine = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(trackPoints),
+      new THREE.LineBasicMaterial({ color: 0x38bdf8, linewidth: 3 })
+    );
+    scene.add(trackLine);
+
+    // 2. The 4 Corner Border Monuments (KEPT INTACT)
+    // Corner 0: START Metropole Skyline
+    const startM = create3DCornerMonument('start');
+    startM.position.set(0, 0, 45);
+    scene.add(startM);
+
+    // Corner 1: Lost Island Jungle Ruins
+    const islandM = create3DCornerMonument('lost_island');
+    islandM.position.set(-45, 0, 0);
+    islandM.rotation.y = Math.PI / 4;
+    scene.add(islandM);
+
+    // Corner 2: World Championships Stadium Arena Bowl
+    const stadiumM = create3DCornerMonument('world_championship');
+    stadiumM.position.set(0, 0, -45);
+    scene.add(stadiumM);
+
+    // Corner 3: World Tour Airport Runway & Jetliners
+    const airportM = create3DCornerMonument('world_tour');
+    airportM.position.set(45, 0, 0);
+    airportM.rotation.y = -Math.PI / 4;
+    scene.add(airportM);
+
+    // 3. Clean Street Tiles (ALL HOUSES/HOTELS REMOVED FROM ALL PROPERTY TILES)
+    // 4 Sides with 7 Street Tiles each (28 tiles total)
+    const streetGroup = new THREE.Group();
+    const sideRotations = [
+      (3 * Math.PI) / 4,
+      Math.PI / 4,
+      -Math.PI / 4,
+      (-3 * Math.PI) / 4,
+    ];
+    const apexes = [
+      new THREE.Vector2(0, 46),
+      new THREE.Vector2(-46, 0),
+      new THREE.Vector2(0, -46),
+      new THREE.Vector2(46, 0),
+    ];
+    const trackDepth = 10.5;
+    const sideLength = 46 * Math.SQRT2;
+    const streetSpan = sideLength - 2 * trackDepth;
+    const streetWidth = streetSpan / 7;
+
+    const sidePrices = [
+      ['100K', 'TAX', '760K', 'CHANCE', '25K', '28K', '390K'],
+      ['140K', '300K', '160K', 'CHANCE', '510K', '100K', '180K'],
+      ['676K', '25K', '660K', 'BLUE', 'CHANCE', '256K', '405K'],
+      ['200K', '170K', '130K', 'CHANCE', '760K', 'TAX', '100K'],
+    ];
+    const sideColors = [
+      ['#8d6e63', '#64748b', '#8d6e63', '#a855f7', '#ec4899', '#ec4899', '#06b6d4'],
+      ['#ec4899', '#ec4899', '#ec4899', '#a855f7', '#06b6d4', '#f97316', '#f97316'],
+      ['#ef4444', '#ef4444', '#06b6d4', '#3b82f6', '#a855f7', '#f97316', '#f97316'],
+      ['#06b6d4', '#3b82f6', '#3b82f6', '#a855f7', '#6366f1', '#64748b', '#6366f1'],
+    ];
+
+    for (let s = 0; s < 4; s++) {
+      const pStart = apexes[s];
+      const pEnd = apexes[(s + 1) % 4];
+      const u_edge = new THREE.Vector2().subVectors(pEnd, pStart).normalize();
+      const mid = new THREE.Vector2().addVectors(pStart, pEnd).multiplyScalar(0.5);
+      let u_in = new THREE.Vector2(-u_edge.y, u_edge.x);
+      if (u_in.dot(mid) > 0) u_in.negate();
+
+      for (let i = 0; i < 7; i++) {
+        const distOnEdge = trackDepth + (i + 0.5) * streetWidth;
+        const p_outer = pStart.clone().add(u_edge.clone().multiplyScalar(distOnEdge));
+        const p_center = p_outer.clone().add(u_in.clone().multiplyScalar(trackDepth / 2));
+
+        // Create canvas texture for the clean unbuilt tile
+        const tCanvas = document.createElement('canvas');
+        tCanvas.width = 256;
+        tCanvas.height = 512;
+        const ctx = tCanvas.getContext('2d');
+
+        // Warm light wood / ivory stone base
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(0, 0, 256, 512);
+
+        // Dark outer border
+        ctx.strokeStyle = '#1e1008';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(4, 4, 248, 504);
+
+        // Color header / lot accent (outward)
+        ctx.fillStyle = sideColors[s][i];
+        ctx.fillRect(8, 8, 240, 48);
+
+        // Empty clean construction lot (NO houses)
+        ctx.fillStyle = '#f1f5f9';
+        ctx.fillRect(16, 70, 224, 310);
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(16, 70, 224, 310);
+
+        // Price badge pill (inward, facing lawn)
+        const price = sidePrices[s][i];
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.roundRect(24, 400, 208, 84, 16);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 36px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(price, 128, 442);
+
+        const tileTex = new THREE.CanvasTexture(tCanvas);
+        const tileMat = new THREE.MeshStandardMaterial({
+          map: tileTex,
+          roughness: 0.4,
+          metalness: 0.05,
+        });
+
+        const tileMesh = new THREE.Mesh(new THREE.BoxGeometry(streetWidth * 0.95, 0.25, trackDepth), tileMat);
+        tileMesh.position.set(p_center.x, 0.25, p_center.y);
+        tileMesh.rotation.y = sideRotations[s];
+        tileMesh.receiveShadow = true;
+        streetGroup.add(tileMesh);
+      }
+    }
+    scene.add(streetGroup);
+
+    // Orbit Camera Math
+    let isDragging = false;
+    let prevX = 0, prevY = 0;
+    let spherical = { radius: 115, theta: 0, phi: Math.PI / 3.4 };
+
+    function updateCamera() {
+      camera.position.x = spherical.radius * Math.sin(spherical.phi) * Math.sin(spherical.theta);
+      camera.position.y = spherical.radius * Math.cos(spherical.phi);
+      camera.position.z = spherical.radius * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+      camera.lookAt(0, 0, 0);
+    }
+    updateCamera();
+
+    container.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      prevX = e.clientX;
+      prevY = e.clientY;
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      spherical.theta -= (e.clientX - prevX) * 0.008;
+      spherical.phi = Math.max(0.15, Math.min(Math.PI / 2.1, spherical.phi - (e.clientY - prevY) * 0.008));
+      prevX = e.clientX;
+      prevY = e.clientY;
+      updateCamera();
+    });
+    window.addEventListener('mouseup', () => { isDragging = false; });
+    container.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      spherical.radius = Math.max(35, Math.min(180, spherical.radius + e.deltaY * 0.08));
+      updateCamera();
+    }, { passive: false });
+
+    window.setPreset = (preset) => {
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      const activeBtn = Array.from(document.querySelectorAll('.preset-btn')).find(b => b.textContent.toLowerCase().includes(preset.slice(0, 3)));
+      if (activeBtn) activeBtn.classList.add('active');
+
+      if (preset === 'iso') spherical = { radius: 115, theta: 0, phi: Math.PI / 3.4 };
+      else if (preset === 'top') spherical = { radius: 110, theta: 0, phi: 0.18 };
+      else if (preset === 'witch') spherical = { radius: 26, theta: 0, phi: Math.PI / 3.0 };
+      else if (preset === 'stadium') spherical = { radius: 45, theta: Math.PI, phi: Math.PI / 3.0 };
+      else if (preset === 'island') spherical = { radius: 45, theta: -Math.PI / 2, phi: Math.PI / 3.0 };
+      else if (preset === 'resort') spherical = { radius: 48, theta: Math.PI / 3, phi: Math.PI / 3.2 };
+      updateCamera();
+    };
+
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
