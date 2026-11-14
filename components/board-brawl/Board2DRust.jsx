@@ -542,14 +542,21 @@ export default function Board2DRust({
     setHoveredTileId(-1);
   };
 
+  const lastTapTimeRef = useRef(0);
+
   const handleClick = (e) => {
+    if (Date.now() - lastTapTimeRef.current < 350 && e.type === 'click') {
+      return;
+    }
     const r = rendererRef.current;
     const c = canvasRef.current;
     if (!r || !c) return;
     const rect = c.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
-    const nx = (e.clientX - rect.left) / rect.width;
-    const ny = (e.clientY - rect.top) / rect.height;
+    const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+    const clientY = e.clientY ?? (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+    const nx = (clientX - rect.left) / rect.width;
+    const ny = (clientY - rect.top) / rect.height;
     const hit = r.on_click(nx, ny);
     if (hit < 0) return;
 
@@ -568,6 +575,13 @@ export default function Board2DRust({
       return;
     }
     callbacksRef.current.onInspectTile?.(hit);
+  };
+
+  const handlePointerUp = (e) => {
+    if (e.pointerType === 'touch') {
+      lastTapTimeRef.current = Date.now();
+      handleClick(e);
+    }
   };
 
   const tileCoordById =
@@ -592,11 +606,13 @@ export default function Board2DRust({
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         onClick={handleClick}
+        onPointerUp={handlePointerUp}
         style={{
           width: '100%',
           height: '100%',
           display: 'block',
-          cursor: hoveredTileId >= 0 ? 'pointer' : 'default',
+          touchAction: 'manipulation',
+          cursor: (targetingMode?.active || hoveredTileId >= 0) ? 'pointer' : 'default',
         }}
       />
 

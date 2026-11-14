@@ -138,6 +138,7 @@ export default function TurnAnnouncementBanner({
             ? '0 0 45px rgba(56, 189, 248, 0.7), 0 16px 40px rgba(0, 0, 0, 0.7)'
             : `0 0 35px ${banner.color}66, 0 16px 40px rgba(0, 0, 0, 0.7)`,
           backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
           color: '#ffffff',
         }}
       >
