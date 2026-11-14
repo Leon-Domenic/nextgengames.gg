@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { sounds } from '@/lib/audio';
+import { useTranslation } from '@/lib/board-brawl/i18n';
 import { Sparkles, Plane, Trophy, Dice6, ArrowRight } from 'lucide-react';
 
 export default function TurnAnnouncementBanner({
@@ -9,44 +10,56 @@ export default function TurnAnnouncementBanner({
   isMyTurn,
   turnState = 'roll',
   turnIndex = 0,
+  doublesCount = 0,
 }) {
+  const { t } = useTranslation();
   const [banner, setBanner] = useState(null);
   const lastKeyRef = useRef(null);
 
   useEffect(() => {
     if (!activePlayer) return;
 
-    // Unique turn key: player id + turn state + turn counter
-    const currentKey = `${activePlayer.id}_${turnIndex}_${turnState}`;
+    // Do NOT show turn announcement popups during active board targeting or modal decision states
+    // so players have 100% unobstructed view and full clickable access to board tiles
+    if (
+      turnState === 'flight_select' ||
+      turnState === 'festival_select' ||
+      turnState === 'championship_select' ||
+      turnState === 'temple_choice'
+    ) {
+      setBanner(null);
+      return;
+    }
+
+    // Unique turn key: player id + turn state + turn counter + doubles step
+    const currentKey = `${activePlayer.id}_${turnIndex}_${turnState}_${doublesCount}`;
     if (lastKeyRef.current === currentKey) return;
     lastKeyRef.current = currentKey;
 
-    const isFlight = turnState === 'flight_select';
-    const isChampionship = turnState === 'festival_select';
-    const isStartLaunchpad = turnState === 'start_tile_select';
+    const isDoublesBonus = turnState === 'roll' && doublesCount > 0;
 
     const bannerData = {
       id: currentKey,
       player: activePlayer,
       isMyTurn,
-      isFlight,
-      isChampionship,
-      isStartLaunchpad,
-      title: isFlight
-        ? (isMyTurn ? '✈️ YOUR FLIGHT DEPARTURE!' : `✈️ ${activePlayer.name.toUpperCase()}'S FLIGHT`)
-        : isChampionship
-        ? (isMyTurn ? '🏆 WORLD CHAMPIONSHIP SELECTION!' : `🏆 ${activePlayer.name.toUpperCase()}'S CHAMPIONSHIP`)
-        : isStartLaunchpad
-        ? (isMyTurn ? '🚀 START LAUNCHPAD ACTION!' : `🚀 ${activePlayer.name.toUpperCase()}'S START PRIVILEGE`)
-        : (isMyTurn ? '⭐ YOUR TURN!' : `${activePlayer.name.toUpperCase()}'S TURN`),
-      subtitle: isFlight
-        ? (isMyTurn ? 'Choose any highlighted destination on the board to fly!' : 'Selecting a flight destination...')
-        : isChampionship
-        ? (isMyTurn ? 'Select any owned city to host the Championship for 2X Rent!' : 'Selecting a city to host the Championship...')
-        : isStartLaunchpad
-        ? (isMyTurn ? 'Choose: One More Roll, Remote City Upgrade (+1), or Shield!' : 'Choosing Launchpad action...')
-        : (isMyTurn ? 'Roll the 3D dice or play an action card!' : 'Preparing 3D dice roll...'),
-      color: isStartLaunchpad ? '#10b981' : isMyTurn ? '#38bdf8' : (activePlayer.avatarColor || '#f59e0b'),
+      isFlight: false,
+      isChampionship: false,
+      isTempleChoice: false,
+      title: isDoublesBonus
+        ? (isMyTurn
+            ? `✨ ${t('doublesRollAgain', {}, 'DOUBLES! ROLL AGAIN!')}`
+            : `✨ ${t('playerRolledDoubles', { player: activePlayer.name.toUpperCase() }, `${activePlayer.name.toUpperCase()} ROLLED DOUBLES!`)}`)
+        : (isMyTurn
+            ? `⭐ ${t('yourTurnUpper', {}, 'YOUR TURN!')}`
+            : t('playerTurnUpper', { player: activePlayer.name.toUpperCase() }, `${activePlayer.name.toUpperCase()}'S TURN`)),
+      subtitle: isDoublesBonus
+        ? (isMyTurn
+            ? t('hitRollDoublesBonus', {}, 'Hit Roll Dice for your bonus doubles throw!')
+            : t('getsBonusThrow', { player: activePlayer.name }, `${activePlayer.name} gets a bonus throw!`))
+        : (isMyTurn
+            ? t('rollOrPlayCardHint', {}, 'Roll the 3D dice or play an action card!')
+            : t('preparingDiceRoll', {}, 'Preparing 3D dice roll...')),
+      color: isMyTurn ? '#38bdf8' : (activePlayer.avatarColor || '#f59e0b'),
     };
 
     setBanner(bannerData);
@@ -144,7 +157,7 @@ export default function TurnAnnouncementBanner({
             flexShrink: 0,
           }}
         >
-          {banner.isFlight ? '✈️' : banner.isChampionship ? '🏆' : (banner.player?.avatarToken ? '🎩' : '🤖')}
+          {banner.isFlight ? '✈️' : banner.isChampionship ? '🏆' : banner.isTempleChoice ? '🏛️' : (banner.player?.avatarToken ? '🎩' : '🤖')}
         </div>
 
         {/* Text Content */}
@@ -175,7 +188,7 @@ export default function TurnAnnouncementBanner({
                   letterSpacing: '1px',
                 }}
               >
-                LIVE
+                {t('liveBadge', {}, 'LIVE')}
               </span>
             )}
           </div>

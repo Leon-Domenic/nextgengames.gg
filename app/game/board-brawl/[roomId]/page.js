@@ -1002,27 +1002,28 @@ export default function BoardBrawlArenaPage() {
           <div
             style={{
               position: 'fixed',
-              top: '78px',
+              top: '56px',
               left: '50%',
               transform: 'translateX(-50%)',
               zIndex: 75,
               display: 'flex',
               alignItems: 'center',
-              gap: '16px',
-              padding: '12px 24px',
-              borderRadius: '20px',
+              gap: '14px',
+              padding: '8px 20px',
+              borderRadius: '16px',
               background: 'rgba(15, 23, 42, 0.94)',
               backdropFilter: 'blur(16px)',
               border: '2px solid #38bdf8',
-              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.7), 0 0 28px rgba(56, 189, 248, 0.4)',
-              animation: 'fadeIn 0.25s ease-out',
+              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.6), 0 0 24px rgba(56, 189, 248, 0.35)',
+              animation: 'fadeIn 0.2s ease-out',
               color: '#ffffff',
+              pointerEvents: 'none',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '28px' }}>✈️</span>
+              <span style={{ fontSize: '22px' }}>✈️</span>
               <div>
-                <div style={{ fontSize: '14px', fontWeight: 900, color: '#38bdf8', letterSpacing: '0.04em' }}>
+                <div style={{ fontSize: '13px', fontWeight: 900, color: '#38bdf8', letterSpacing: '0.04em' }}>
                   WORLD TOUR: Click any highlighted destination directly on the board to fly! (Ticket: 50,000 CR)
                 </div>
                 <div style={{ fontSize: '11px', color: '#94a3b8' }}>
@@ -1033,8 +1034,9 @@ export default function BoardBrawlArenaPage() {
             <button
               onClick={handleSkipFlight}
               style={{
-                padding: '9px 18px',
-                borderRadius: '12px',
+                pointerEvents: 'auto',
+                padding: '7px 16px',
+                borderRadius: '10px',
                 background: 'rgba(255, 255, 255, 0.12)',
                 border: '1px solid rgba(255, 255, 255, 0.25)',
                 color: '#f8fafc',
@@ -1057,27 +1059,28 @@ export default function BoardBrawlArenaPage() {
           <div
             style={{
               position: 'fixed',
-              top: '78px',
+              top: '56px',
               left: '50%',
               transform: 'translateX(-50%)',
               zIndex: 75,
               display: 'flex',
               alignItems: 'center',
-              gap: '16px',
-              padding: '12px 24px',
-              borderRadius: '20px',
+              gap: '14px',
+              padding: '8px 20px',
+              borderRadius: '16px',
               background: 'rgba(30, 10, 15, 0.95)',
               backdropFilter: 'blur(16px)',
               border: '2px solid #ef4444',
-              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.7), 0 0 28px rgba(239, 68, 68, 0.45)',
-              animation: 'fadeIn 0.25s ease-out',
+              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.6), 0 0 24px rgba(239, 68, 68, 0.4)',
+              animation: 'fadeIn 0.2s ease-out',
               color: '#ffffff',
+              pointerEvents: 'none',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '28px' }}>💣</span>
+              <span style={{ fontSize: '22px' }}>💣</span>
               <div>
-                <div style={{ fontSize: '14px', fontWeight: 900, color: '#f87171', letterSpacing: '0.04em' }}>
+                <div style={{ fontSize: '13px', fontWeight: 900, color: '#f87171', letterSpacing: '0.04em' }}>
                   DEMOLITION STRIKE: Click any opponent property directly on the board to demolish!
                 </div>
                 <div style={{ fontSize: '11px', color: '#fca5a5' }}>
@@ -1088,8 +1091,9 @@ export default function BoardBrawlArenaPage() {
             <button
               onClick={() => setActiveCardTargeting(null)}
               style={{
-                padding: '9px 18px',
-                borderRadius: '12px',
+                pointerEvents: 'auto',
+                padding: '7px 16px',
+                borderRadius: '10px',
                 background: 'rgba(239, 68, 68, 0.25)',
                 border: '1px solid rgba(239, 68, 68, 0.45)',
                 color: '#fee2e2',
@@ -1112,27 +1116,28 @@ export default function BoardBrawlArenaPage() {
           <div
             style={{
               position: 'fixed',
-              top: '78px',
+              top: '56px',
               left: '50%',
               transform: 'translateX(-50%)',
               zIndex: 75,
               display: 'flex',
               alignItems: 'center',
-              gap: '16px',
-              padding: '12px 24px',
-              borderRadius: '20px',
+              gap: '14px',
+              padding: '8px 20px',
+              borderRadius: '16px',
               background: 'rgba(30, 25, 10, 0.95)',
               backdropFilter: 'blur(16px)',
               border: '2px solid #fbbf24',
-              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.7), 0 0 28px rgba(251, 191, 36, 0.45)',
-              animation: 'fadeIn 0.25s ease-out',
+              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.6), 0 0 24px rgba(251, 191, 36, 0.4)',
+              animation: 'fadeIn 0.2s ease-out',
               color: '#ffffff',
+              pointerEvents: 'none',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '28px' }}>🎪</span>
+              <span style={{ fontSize: '22px' }}>🎪</span>
               <div>
-                <div style={{ fontSize: '14px', fontWeight: 900, color: '#fbbf24', letterSpacing: '0.04em' }}>
+                <div style={{ fontSize: '13px', fontWeight: 900, color: '#fbbf24', letterSpacing: '0.04em' }}>
                   WORLD FAIR FESTIVAL: Click one of your cities on the board to host (2x Rent)!
                 </div>
                 <div style={{ fontSize: '11px', color: '#fef08a' }}>
@@ -1143,8 +1148,9 @@ export default function BoardBrawlArenaPage() {
             <button
               onClick={() => handleEndTurn(myPlayerObj?.id)}
               style={{
-                padding: '9px 18px',
-                borderRadius: '12px',
+                pointerEvents: 'auto',
+                padding: '7px 16px',
+                borderRadius: '10px',
                 background: 'rgba(251, 191, 36, 0.22)',
                 border: '1px solid rgba(251, 191, 36, 0.45)',
                 color: '#fef08a',
