@@ -84,15 +84,19 @@ function serializePlayersPayload(playersList) {
     (Array.isArray(playersList) ? playersList : [])
       .filter(Boolean)
       .map((p) => {
-        const islandT = Number(p.islandTurns ?? p.island_turns ?? 0);
+        const islandT = Math.max(0, Math.floor(Number(p.islandTurns ?? p.island_turns ?? 0) || 0));
         return {
-          ...p,
+          id: String(p.id ?? ''),
+          name: String(p.name ?? 'Player'),
+          avatarColor: String(p.avatarColor ?? p.avatar_color ?? '#38bdf8'),
+          avatarToken: String(p.avatarToken ?? p.avatar_token ?? 'hat'),
+          position: Math.max(0, Math.floor(Number(p.position ?? 0) || 0)),
+          isBankrupt: Boolean(p.isBankrupt ?? p.is_bankrupt),
           islandTurns: islandT,
-          island_turns: islandT,
-          isArrested: islandT > 0,
-          cash: p.cash ?? 0,
-          isBankrupt: Boolean(p.isBankrupt),
-          avatarColor: p.avatarColor || '#38bdf8',
+          isArrested: Boolean(p.isArrested ?? p.is_arrested ?? (islandT > 0)),
+          team: Number(p.team ?? 0) || 0,
+          rentSurgeTurns: Math.max(0, Math.floor(Number(p.rentSurgeTurns ?? p.rent_surge_turns ?? 0) || 0)),
+          cash: Math.floor(Number(p.cash ?? 0) || 0),
         };
       }),
   );
