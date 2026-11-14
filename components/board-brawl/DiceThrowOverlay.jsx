@@ -144,9 +144,9 @@ export default function DiceThrowOverlay({
     const isSingleDie = isTempleRoll || lastDiceResult.d2 === 0;
 
     const revX1 = rollStyle === 'spiral_bullet' ? 360 : rollStyle === 'moon_bounce' ? 360 : 720;
-    const revY1 = rollStyle === 'spiral_bullet' ? 1440 : rollStyle === 'moon_bounce' ? 540 : 1080;
+    const revY1 = rollStyle === 'spiral_bullet' ? 1440 : rollStyle === 'moon_bounce' ? 720 : 1080;
     const revX2 = rollStyle === 'spiral_bullet' ? 360 : rollStyle === 'moon_bounce' ? 360 : 1080;
-    const revY2 = rollStyle === 'spiral_bullet' ? 1440 : rollStyle === 'moon_bounce' ? 540 : 720;
+    const revY2 = rollStyle === 'spiral_bullet' ? 1440 : rollStyle === 'moon_bounce' ? 720 : 720;
     const spinZRate = rollStyle === 'spiral_bullet' ? 580 : 280;
 
     const diceSpecs = isSingleDie
@@ -154,7 +154,7 @@ export default function DiceThrowOverlay({
           value: lastDiceResult.d1 || 1,
           offsetX: 0,
           offsetY: 0,
-          restYaw: -14,
+          restYaw: -8,
           revX: revX1,
           revY: revY1,
           spinZSign: 1,
@@ -165,7 +165,7 @@ export default function DiceThrowOverlay({
             value: lastDiceResult.d1 || 1,
             offsetX: -34,
             offsetY: -3,
-            restYaw: -18,
+            restYaw: -8,
             revX: revX1,
             revY: revY1,
             spinZSign: 1,
@@ -175,7 +175,7 @@ export default function DiceThrowOverlay({
             value: lastDiceResult.d2 || 1,
             offsetX: 34,
             offsetY: 6,
-            restYaw: 16,
+            restYaw: 8,
             revX: revX2,
             revY: revY2,
             spinZSign: -1,
@@ -253,7 +253,7 @@ export default function DiceThrowOverlay({
             ry: easeRot * endRy,
             rz: (1 - easeRot) * spinZRate * spec.spinZSign,
             restYaw: spec.restYaw * (0.4 + 0.6 * easePos),
-            tablePitch: 24 + 24 * easePos,
+            tablePitch: 10 + 8 * easePos,
           };
         }
 
@@ -292,7 +292,7 @@ export default function DiceThrowOverlay({
             ry: endRy - wobble * 16 * spec.spinZSign,
             rz: wobble * 14 * spec.spinZSign,
             restYaw: spec.restYaw,
-            tablePitch: 48,
+            tablePitch: 18,
           };
         }
 
@@ -305,7 +305,7 @@ export default function DiceThrowOverlay({
           ry: endRy,
           rz: 0,
           restYaw: spec.restYaw,
-          tablePitch: 48,
+          tablePitch: 18,
         };
       });
 

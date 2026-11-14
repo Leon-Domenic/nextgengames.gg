@@ -115,10 +115,10 @@ export default function ShopDicePreview3D({
       flightMs = 700;
       settleMs = 500;
       revX1 = 360;
-      revY1 = 540;
+      revY1 = 720;
       revZ1 = 180;
       revX2 = 360;
-      revY2 = 540;
+      revY2 = 720;
       revZ2 = -180;
     }
 
