@@ -737,7 +737,7 @@ export default function BoardBrawlArenaPage() {
         type: 'festival',
         label: 'World Championship Host City',
         icon: '🏆',
-        color: 0xf59e0b,
+        color: 0xa855f7,
         eligibleTileIds: myCities,
         onSelectTarget: (tileId) => handleSetFestival(tileId),
       };

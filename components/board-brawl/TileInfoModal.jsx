@@ -103,7 +103,7 @@ export default function TileInfoModal({
     tile.type === 'start' ? '#10b981' :
     tile.type === 'jail' ? '#f59e0b' :
     tile.type === 'world_tour' ? '#06b6d4' :
-    tile.type === 'resort' ? '#06b6d4' :
+    tile.type === 'resort' ? '#f59e0b' :
     tile.type === 'festival' ? '#8b5cf6' :
     tile.type === 'armory' ? '#ef4444' :
     tile.type === 'tax' ? '#64748b' : '#ec4899'

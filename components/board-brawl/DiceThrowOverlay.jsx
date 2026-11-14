@@ -154,7 +154,7 @@ export default function DiceThrowOverlay({
           value: lastDiceResult.d1 || 1,
           offsetX: 0,
           offsetY: 0,
-          restYaw: -8,
+          restYaw: -14,
           revX: revX1,
           revY: revY1,
           spinZSign: 1,
@@ -165,7 +165,7 @@ export default function DiceThrowOverlay({
             value: lastDiceResult.d1 || 1,
             offsetX: -34,
             offsetY: -3,
-            restYaw: -8,
+            restYaw: -16,
             revX: revX1,
             revY: revY1,
             spinZSign: 1,
@@ -175,7 +175,7 @@ export default function DiceThrowOverlay({
             value: lastDiceResult.d2 || 1,
             offsetX: 34,
             offsetY: 6,
-            restYaw: 8,
+            restYaw: 14,
             revX: revX2,
             revY: revY2,
             spinZSign: -1,
@@ -253,7 +253,7 @@ export default function DiceThrowOverlay({
             ry: easeRot * endRy,
             rz: (1 - easeRot) * spinZRate * spec.spinZSign,
             restYaw: spec.restYaw * (0.4 + 0.6 * easePos),
-            tablePitch: 10 + 8 * easePos,
+            tablePitch: 22 + 30 * easePos,
           };
         }
 
@@ -292,7 +292,7 @@ export default function DiceThrowOverlay({
             ry: endRy - wobble * 16 * spec.spinZSign,
             rz: wobble * 14 * spec.spinZSign,
             restYaw: spec.restYaw,
-            tablePitch: 18,
+            tablePitch: 52,
           };
         }
 
@@ -305,7 +305,7 @@ export default function DiceThrowOverlay({
           ry: endRy,
           rz: 0,
           restYaw: spec.restYaw,
-          tablePitch: 18,
+          tablePitch: 52,
         };
       });
 
