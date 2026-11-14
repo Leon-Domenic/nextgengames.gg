@@ -49,7 +49,7 @@ export default function ActionCardPlayOverlay({ lastActionCardPlayed }) {
         top: '84px',
         left: '50%',
         transform: 'translateX(-50%)',
-        zIndex: 80,
+        zIndex: 47,
         pointerEvents: 'none',
         animation: 'slideDown 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
         maxWidth: '92vw',

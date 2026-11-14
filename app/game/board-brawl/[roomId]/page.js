@@ -1975,14 +1975,16 @@ function PlayerCornerCard({
     ? 'scale(1.03)'
     : (isHovered ? 'scale(1.01)' : 'scale(1.0)');
 
+  const isTopCard = position.startsWith('top') || position.startsWith('mid');
+
   const posStyles = {
-    'top-left': { top: '16px', left: '16px' },
-    'top-right': { top: '16px', right: '16px' },
+    'top-left': { top: '24px', left: '16px' },
+    'top-right': { top: '24px', right: '16px' },
     'mid-left': { top: '50%', left: '16px', transform: 'translateY(-50%)' },
     'mid-right': { top: '50%', right: '16px', transform: 'translateY(-50%)' },
     'bottom-left': { bottom: '16px', left: '16px' },
     'bottom-right': { bottom: '16px', right: '16px' },
-  }[position] || { top: '16px', left: '16px' };
+  }[position] || { top: '24px', left: '16px' };
 
   return (
     <div
@@ -2000,18 +2002,34 @@ function PlayerCornerCard({
           ? '0 12px 36px rgba(245, 158, 11, 0.55), 0 0 0 2px #fde047'
           : '0 4px 16px rgba(0, 0, 0, 0.08)',
         overflow: 'visible',
-        zIndex: isCurrent ? 25 : (isHovered ? 24 : 20),
+        zIndex: showPicker ? 90 : (isCurrent ? 60 : (isHovered ? 55 : 50)),
         opacity: cardOpacity,
         filter: cardFilter,
         transform: cardTransform,
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
-      {/* Active Turn Speech Bubble (Matches Business Tour comic prompt) */}
+      {/* Dynamic Keyframes for Cash Float Badges */}
+      <style>{`
+        @keyframes cashBadgeFloatUp {
+          0% { transform: translateY(0px) scale(0.85); opacity: 0; }
+          20% { transform: translateY(-6px) scale(1.08); opacity: 1; }
+          75% { transform: translateY(-20px) scale(1); opacity: 0.95; }
+          100% { transform: translateY(-32px) scale(0.92); opacity: 0; }
+        }
+        @keyframes cashBadgeFloatDown {
+          0% { transform: translateY(0px) scale(0.85); opacity: 0; }
+          20% { transform: translateY(6px) scale(1.08); opacity: 1; }
+          75% { transform: translateY(20px) scale(1); opacity: 0.95; }
+          100% { transform: translateY(32px) scale(0.92); opacity: 0; }
+        }
+      `}</style>
+
+      {/* Active Turn Speech Bubble (Rendered under cards for top cards to prevent clipping) */}
       {isCurrent && !isBankrupt && (
         <div style={{
           position: 'absolute',
-          top: '-38px',
+          top: isTopCard ? 'calc(100% + 8px)' : '-38px',
           left: position.includes('right') ? 'auto' : '16px',
           right: position.includes('right') ? '16px' : 'auto',
           background: '#ffffff',
@@ -2025,30 +2043,37 @@ function PlayerCornerCard({
           display: 'flex',
           alignItems: 'center',
           gap: '6px',
-          zIndex: 40,
+          zIndex: 48,
         }}>
           <span>🎲</span>
           <span>{isMe ? (t('yourTurn') || 'Your Turn!') : `${player.name}'s Turn`}</span>
           <div style={{
             position: 'absolute',
-            bottom: '-6px',
+            ...(isTopCard ? {
+              top: '-6px',
+              borderBottom: '6px solid #f59e0b',
+              borderTop: 'none',
+            } : {
+              bottom: '-6px',
+              borderTop: '6px solid #f59e0b',
+              borderBottom: 'none',
+            }),
             left: position.includes('right') ? 'auto' : '22px',
             right: position.includes('right') ? '22px' : 'auto',
             width: 0,
             height: 0,
             borderLeft: '6px solid transparent',
             borderRight: '6px solid transparent',
-            borderTop: '6px solid #f59e0b',
           }} />
         </div>
       )}
-      {/* Floating Cash Debit / Credit Badges */}
+      {/* Floating Cash Debit / Credit Badges (Rendered under cards for top cards to prevent clipping) */}
       {cashBadges && cashBadges.map((badge) => (
         <div
           key={badge.id}
           style={{
             position: 'absolute',
-            top: '-28px',
+            top: isTopCard ? 'calc(100% + 8px)' : '-28px',
             right: '12px',
             padding: '4px 12px',
             borderRadius: '999px',
@@ -2062,8 +2087,10 @@ function PlayerCornerCard({
             boxShadow: badge.type === 'debit'
               ? '0 4px 14px rgba(239, 68, 68, 0.7), 0 0 10px rgba(239, 68, 68, 0.4)'
               : '0 4px 14px rgba(16, 185, 129, 0.7), 0 0 10px rgba(16, 185, 129, 0.4)',
-            animation: 'cashBadgeFloat 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',
-            zIndex: 100,
+            animation: isTopCard
+              ? 'cashBadgeFloatDown 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards'
+              : 'cashBadgeFloatUp 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',
+            zIndex: 48,
             pointerEvents: 'none',
             whiteSpace: 'nowrap',
           }}
@@ -2171,17 +2198,8 @@ function PlayerCornerCard({
               )}
             </div>
 
-            {/* Reaction Bubble Displayed Next to Avatar */}
+            {/* Reaction Bubble Displayed Prominently Next to Avatar */}
             <EmojiReactionBubble reaction={activeReaction} position={position} />
-
-            {/* Reaction Picker Popover */}
-            <EmojiReactionPicker
-              isOpen={showPicker}
-              onClose={() => setShowPicker(false)}
-              onSelectEmoji={onSendReaction}
-              position={position}
-              playerName={player.name}
-            />
           </div>
 
           <div>
@@ -2282,9 +2300,37 @@ function PlayerCornerCard({
           </div>
         </div>
 
-        {/* Right action buttons: Trade & Tomato Sabotage */}
+        {/* Right action buttons: Trade, Tomato Sabotage & Emoji Reactions */}
         {!isMe && !isBankrupt && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {/* 😊 React / Emote Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowPicker(prev => !prev);
+              }}
+              title={`React to ${player.name} with emoji`}
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                background: showPicker ? '#f59e0b' : 'rgba(245, 158, 11, 0.18)',
+                border: '1.5px solid #f59e0b',
+                color: showPicker ? '#ffffff' : '#d97706',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '15px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(245, 158, 11, 0.3)',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.15)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              😊
+            </button>
+
             {/* 🤝 Trade Button */}
             <button
               onClick={() => {
@@ -2362,7 +2408,52 @@ function PlayerCornerCard({
             )}
           </div>
         )}
+
+        {/* Local Player Action Buttons: React/Emote shortcut */}
+        {isMe && !isBankrupt && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowPicker(prev => !prev);
+              }}
+              title="Express reaction with emoji"
+              style={{
+                padding: '4px 10px',
+                borderRadius: '20px',
+                background: showPicker ? '#f59e0b' : 'rgba(245, 158, 11, 0.15)',
+                border: '1.5px solid #f59e0b',
+                color: showPicker ? '#ffffff' : '#b45309',
+                fontSize: '11px',
+                fontWeight: 900,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                boxShadow: '0 2px 8px rgba(245, 158, 11, 0.2)',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              <span>😊</span>
+              <span>EMOTE</span>
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Reaction Picker Popover anchored cleanly to the card */}
+      <EmojiReactionPicker
+        isOpen={showPicker}
+        onClose={() => setShowPicker(false)}
+        onSelectEmoji={(emoji) => {
+          onSendReaction?.(emoji);
+          setShowPicker(false);
+        }}
+        position={position}
+        playerName={player.name}
+      />
 
       {/* Turn Countdown Progress Line */}
       {isCurrent && (

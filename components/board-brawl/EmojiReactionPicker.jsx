@@ -39,14 +39,14 @@ export default function EmojiReactionPicker({
 
   // Placement relative to avatar box depending on corner
   const placementStyle = {
-    'top-left': { top: '50px', left: '0px' },
-    'top-right': { top: '50px', right: '0px' },
-    'mid-left': { top: '50px', left: '0px' },
-    'mid-right': { top: '50px', right: '0px' },
-    'bottom-left': { bottom: '50px', left: '0px' },
-    'bottom-right': { bottom: '50px', right: '0px' },
+    'top-left': { top: 'calc(100% + 8px)', left: '0px' },
+    'top-right': { top: 'calc(100% + 8px)', right: '0px' },
+    'mid-left': { top: 'calc(100% + 8px)', left: '0px' },
+    'mid-right': { top: 'calc(100% + 8px)', right: '0px' },
+    'bottom-left': { bottom: 'calc(100% + 8px)', left: '0px' },
+    'bottom-right': { bottom: 'calc(100% + 8px)', right: '0px' },
     'pedestal': { top: '108px', left: '50%', transform: 'translateX(-50%)' },
-  }[position] || { top: '50px', left: '0px' };
+  }[position] || { top: 'calc(100% + 8px)', left: '0px' };
 
   return (
     <div
@@ -55,7 +55,7 @@ export default function EmojiReactionPicker({
       style={{
         position: 'absolute',
         ...placementStyle,
-        zIndex: 1000,
+        zIndex: 9999,
         background: 'rgba(15, 23, 42, 0.94)',
         backdropFilter: 'blur(16px)',
         border: '2px solid #38bdf8',

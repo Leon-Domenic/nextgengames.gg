@@ -14,7 +14,8 @@ export default function CountryFlag({
   const query = (country || code || '').toLowerCase().trim();
   let c = 'un';
 
-  if (query.includes('poland') || query.includes('polska') || query === 'pl' || query === '🇵🇱') c = 'pl';
+  if (query.includes('egypt') || query === 'eg' || query === '🇪🇬') c = 'eg';
+  else if (query.includes('poland') || query.includes('polska') || query === 'pl' || query === '🇵🇱') c = 'pl';
   else if (query.includes('czech') || query === 'cz' || query === '🇨🇿') c = 'cz';
   else if (query.includes('cyprus') || query === 'cy' || query === '🇨🇾') c = 'cy';
   else if (query.includes('austria') || query === 'at' || query === '🇦🇹') c = 'at';
@@ -55,6 +56,14 @@ export default function CountryFlag({
         preserveAspectRatio="none"
         style={{ display: 'block', overflow: 'hidden' }}
       >
+        {c === 'eg' && (
+          <>
+            <rect width="32" height="6.66" fill="#ce1126" />
+            <rect y="6.66" width="32" height="6.66" fill="#ffffff" />
+            <rect y="13.33" width="32" height="6.66" fill="#000000" />
+            <ellipse cx="16" cy="10" rx="2.5" ry="1.8" fill="#c09a35" />
+          </>
+        )}
         {c === 'pl' && (
           <>
             <rect width="32" height="10" fill="#ffffff" />

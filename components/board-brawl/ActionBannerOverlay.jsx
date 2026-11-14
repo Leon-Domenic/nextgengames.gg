@@ -315,7 +315,7 @@ export default function ActionBannerOverlay({
         top: '82px',
         left: '50%',
         transform: 'translateX(-50%)',
-        zIndex: 85,
+        zIndex: 48,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',

@@ -1,19 +1,41 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { TILES, RESORT_TILES, formatCash, formatFullCash } from '@/lib/board-brawl/types';
+import { TILES, formatCash, getDistrictName, getMonopolyTitle } from '@/lib/board-brawl/types';
 import { sounds } from '@/lib/audio';
 import SmoothTimerBar from '@/components/board-brawl/SmoothTimerBar';
 import { useTranslation } from '@/lib/board-brawl/i18n';
 import CountryFlag from '@/components/board-brawl/CountryFlag';
 import { Zap, ArrowRight, ShieldCheck, Sparkles, Lock, CheckCircle2 } from 'lucide-react';
 
+const LANDMARK_ICONS = {
+  Egypt: '🏛️',
+  Greece: '🏛️',
+  Poland: '🏰',
+  Czechia: '🏰',
+  Austria: '🎻',
+  Hungary: '🏰',
+  Spain: '💃',
+  Italy: '🏟️',
+  Germany: '🏰',
+  Netherlands: '🌷',
+  Belgium: '🍫',
+  UK: '🕰️',
+  Ireland: '🍀',
+  France: '🗼',
+  Japan: '⛩️',
+  Singapore: '🦁',
+  UAE: '🏜️',
+  Monaco: '🛥️',
+  Bali: '🏝️',
+  Hawaii: '🌺',
+};
+
 export default function ActionModal({
   currentTileId,
   properties = {},
   player,
   players = [],
-  teamMode = 'ffa',
   onBuy,
   onBuyout,
   onUpgrade,
@@ -51,15 +73,9 @@ export default function ActionModal({
 
   const prop = properties[currentTileId] || {};
   const isOwner = prop.ownerId === player?.id;
-  const ownerPlayer = prop.ownerId ? players.find(p => p.id === prop.ownerId) : null;
-  const isTeammate = teamMode !== 'ffa' && Boolean(ownerPlayer && player && ownerPlayer.id !== player.id && (ownerPlayer.team ?? 0) === (player.team ?? 0));
-  const canUpgrade = isOwner || isTeammate;
-  const isRival = Boolean(prop.ownerId && prop.ownerId !== player?.id && !isTeammate);
-  const rivalOwner = isRival ? ownerPlayer : null;
+  const isRival = prop.ownerId && prop.ownerId !== player?.id;
+  const rivalOwner = isRival ? players.find(p => p.id === prop.ownerId) : null;
   const currentLvl = prop.level || 0;
-  const hasFestival = !!prop.festival;
-  const hasChampionship = !!prop.worldChampionship;
-  const rentMultiplier = (hasFestival ? 2 : 1) * (hasChampionship ? 2 : 1);
 
   // Orbit check: laps >= 1 means completed at least 1 full orbit around the board
   const playerLaps = player?.laps ?? player?.orbits ?? 0;
@@ -81,8 +97,9 @@ export default function ActionModal({
       }
       return 1; // Plot
     }
-    if (canUpgrade) {
+    if (isOwner) {
       if (currentLvl === 4) return 5; // Hotel unlocked!
+      if (currentLvl === 5) return 6; // Landmark unlocked!
       if (currentLvl === 3) return hasCompletedFirstOrbit ? 4 : 3;
       if (currentLvl < 3) return Math.min(3, currentLvl + 1);
     }
@@ -94,11 +111,8 @@ export default function ActionModal({
   const handleAction = (callback) => {
     if (isBusy) return;
     setIsBusy(true);
-    try {
-      callback?.();
-    } finally {
-      setTimeout(() => setIsBusy(false), 1200);
-    }
+    callback();
+    setTimeout(() => setIsBusy(false), 1200);
   };
 
   if (!tile || !isActionable) return null;
@@ -108,7 +122,7 @@ export default function ActionModal({
     ? tile.price
     : (tile.price + (Math.max(0, currentLvl - 1)) * (tile.housePrice || 0));
   const buyoutCost = totalVal * 2;
-  const canBuyout = isRival && !prop.shielded && player?.cash >= buyoutCost;
+  const canBuyout = isRival && !prop.isLandmark && player?.cash >= buyoutCost;
 
   // Tier cost calculation
   const getTierCost = (targetLvl) => {
@@ -128,22 +142,29 @@ export default function ActionModal({
 
     // Tier 4: 3 Houses -> Requires completing 1st orbit
     if (tierLvl === 4 && !hasCompletedFirstOrbit) {
-      return { isLocked: true, reason: t('orbit2Req', {}, 'Orbit 2 Req.') };
+      return { isLocked: true, reason: 'Orbit 2 Req.' };
     }
 
     // Tier 5: Hotel -> ONLY available after 3 houses have been built!
     if (tierLvl === 5) {
       if (!prop.ownerId) {
-        return { isLocked: true, reason: t('need3Houses', {}, 'Need 3 Houses') };
+        return { isLocked: true, reason: 'Need 3 Houses' };
       }
       if (currentLvl < 4) {
-        return { isLocked: true, reason: t('need3Houses', {}, 'Need 3 Houses') };
+        return { isLocked: true, reason: 'Need 3 Houses' };
+      }
+    }
+
+    // Tier 6: Landmark -> ONLY available after Hotel
+    if (tierLvl === 6) {
+      if (!prop.ownerId || currentLvl < 5) {
+        return { isLocked: true, reason: 'Need Hotel' };
       }
     }
 
     // On upgrades: tiers below or equal to current level are already built
-    if (canUpgrade && tierLvl <= currentLvl) {
-      return { isLocked: false, isAlreadyBuilt: true, reason: t('built', {}, 'Built') };
+    if (isOwner && tierLvl <= currentLvl) {
+      return { isLocked: false, isAlreadyBuilt: true, reason: 'Built' };
     }
 
     return { isLocked: false, reason: '' };
@@ -156,7 +177,7 @@ export default function ActionModal({
   const remBuyout = playerCash - buyoutCost;
 
   // Rent calculations
-  const RESORT_IDS = RESORT_TILES;
+  const RESORT_IDS = [6, 12, 20, 28];
   const rivalResortsCount = isRival
     ? RESORT_IDS.filter(id => properties[id]?.ownerId === rivalOwner?.id).length
     : 0;
@@ -164,66 +185,76 @@ export default function ActionModal({
     ? RESORT_IDS.filter(id => properties[id]?.ownerId === player?.id).length
     : (!prop.ownerId ? RESORT_IDS.filter(id => properties[id]?.ownerId === player?.id).length + 1 : 0);
 
-  const baseCurrentRent = isResort
+  const currentRent = isResort
     ? (tile.baseRent * (isRival ? Math.pow(2, Math.max(0, rivalResortsCount - 1)) : 1))
-    : (tile.rent
-        ? (tile.rent[Math.min(4, Math.max(0, currentLvl - 1))] || tile.rent[0])
-        : 0);
-  const currentRent = baseCurrentRent * rentMultiplier;
+    : (tile.rent ? (tile.rent[Math.min(4, Math.max(0, currentLvl - 1))] || tile.rent[0]) : 0);
 
   const getRentForTier = (tierLvl) => {
     if (isResort) {
-      return tile.baseRent * Math.pow(2, Math.max(0, playerResortsCount - 1)) * rentMultiplier;
+      return tile.baseRent * Math.pow(2, Math.max(0, playerResortsCount - 1));
     }
-    const baseTierRent = tile.rent?.[Math.min(4, Math.max(0, tierLvl - 1))] || tile.rent?.[0] || 0;
-    return baseTierRent * rentMultiplier;
+    if (tierLvl >= 6) {
+      return Math.round((tile.rent?.[4] || 0) * 1.5);
+    }
+    return tile.rent?.[tierLvl - 1] || tile.rent?.[0] || 0;
   };
 
   const nextRent = getRentForTier(selectedTier);
+  const landmarkEmoji = isResort ? '🏖️' : (LANDMARK_ICONS[tile.country] || tile.flag || '🏛️');
   const ribbonColor = tile.color || (isResort ? '#06b6d4' : '#2563eb');
 
-  // Building tiers configuration (Plot, 1 House, 2 Houses, 3 Houses, Hotel)
+  // Building tiers configuration (Plot, 1 House, 2 Houses, 3 Houses, Hotel / Landmark)
+  const showLandmarkSlot = currentLvl >= 4;
   const TIERS = [
     {
       level: 1,
-      name: t('tierPlot', {}, 'PLOT'),
-      subtitle: t('tierSubLand', {}, 'Land'),
+      name: 'PLOT',
+      subtitle: 'Land',
       icon: '🌱',
       accentColor: '#3b82f6',
       bgGradient: 'linear-gradient(180deg, #eff6ff, #dbeafe)',
     },
     {
       level: 2,
-      name: t('tier1House', {}, '1 HOUSE'),
-      subtitle: t('tierSubCottage', {}, 'Cottage'),
+      name: '1 HOUSE',
+      subtitle: 'Cottage',
       icon: '🏡',
       accentColor: '#10b981',
       bgGradient: 'linear-gradient(180deg, #ecfdf5, #d1fae5)',
     },
     {
       level: 3,
-      name: t('tier2Houses', {}, '2 HOUSES'),
-      subtitle: t('tierSubDuplex', {}, 'Duplex'),
+      name: '2 HOUSES',
+      subtitle: 'Duplex',
       icon: '🏘️',
       accentColor: '#059669',
       bgGradient: 'linear-gradient(180deg, #f0fdf4, #bbf7d0)',
     },
     {
       level: 4,
-      name: t('tier3Houses', {}, '3 HOUSES'),
-      subtitle: t('tierSubTerrace', {}, 'Terrace'),
+      name: '3 HOUSES',
+      subtitle: 'Terrace',
       icon: '🏙️',
       accentColor: '#f97316',
       bgGradient: 'linear-gradient(180deg, #fff7ed, #fed7aa)',
     },
-    {
-      level: 5,
-      name: t('tierHotel', {}, 'HOTEL'),
-      subtitle: t('tierSubResort', {}, 'Resort'),
-      icon: '🏨',
-      accentColor: '#ea580c',
-      bgGradient: 'linear-gradient(180deg, #fff1f2, #fecdd3)',
-    },
+    showLandmarkSlot && currentLvl === 5
+      ? {
+          level: 6,
+          name: 'LANDMARK',
+          subtitle: 'Immune',
+          icon: '👑',
+          accentColor: '#ca8a04',
+          bgGradient: 'linear-gradient(180deg, #fefce8, #fde047)',
+        }
+      : {
+          level: 5,
+          name: 'HOTEL',
+          subtitle: 'Resort',
+          icon: '🏨',
+          accentColor: '#ea580c',
+          bgGradient: 'linear-gradient(180deg, #fff1f2, #fecdd3)',
+        },
   ];
 
   const selectedTierObj = TIERS.find(t => t.level === selectedTier) || TIERS[0];
@@ -313,7 +344,7 @@ export default function ActionModal({
             justifyContent: 'center',
             gap: '8px',
           }}>
-            <span>{tile.country} • {tile.colorGroup} {t('district', {}, 'District')}</span>
+            <span>{tile.country} • {getDistrictName(tile.colorGroup)} District</span>
             {turnTimer !== undefined && (
               <span style={{
                 background: (turnTimer || 0) <= 3 ? '#ef4444' : 'rgba(255,255,255,0.22)',
@@ -327,62 +358,6 @@ export default function ActionModal({
               </span>
             )}
           </div>
-
-          {(hasFestival || hasChampionship) && (
-            <div style={{
-              marginTop: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              flexWrap: 'wrap',
-            }}>
-              {hasFestival && (
-                <span style={{
-                  background: 'rgba(234, 88, 12, 0.9)',
-                  border: '1px solid rgba(255, 255, 255, 0.45)',
-                  color: '#ffffff',
-                  padding: '2px 8px',
-                  borderRadius: '999px',
-                  fontSize: '10px',
-                  fontWeight: 900,
-                  letterSpacing: '0.5px',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-                }}>
-                  🎪 {t('festival2x', {}, '2X FESTIVAL')}
-                </span>
-              )}
-              {hasChampionship && (
-                <span style={{
-                  background: 'rgba(202, 138, 4, 0.92)',
-                  border: '1px solid rgba(254, 240, 138, 0.7)',
-                  color: '#ffffff',
-                  padding: '2px 8px',
-                  borderRadius: '999px',
-                  fontSize: '10px',
-                  fontWeight: 900,
-                  letterSpacing: '0.5px',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-                }}>
-                  🏆 {t('championship2x', {}, '2X CHAMPIONSHIP')}
-                </span>
-              )}
-              {hasFestival && hasChampionship && (
-                <span style={{
-                  background: 'rgba(15, 23, 42, 0.85)',
-                  border: '1px solid #fde047',
-                  color: '#fde047',
-                  padding: '2px 8px',
-                  borderRadius: '999px',
-                  fontSize: '10px',
-                  fontWeight: 900,
-                  letterSpacing: '0.5px',
-                }}>
-                  ⚡ {t('rent4x', {}, '4X RENT')}
-                </span>
-              )}
-            </div>
-          )}
 
           {/* Star Badge */}
           <div style={{
@@ -423,7 +398,7 @@ export default function ActionModal({
               fontSize: '36px',
             }}>
               <span style={{ transform: 'rotateX(-20deg)', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.25))' }}>
-                {isResort ? '🏖️' : (tile.flag || '🏨')}
+                {landmarkEmoji}
               </span>
             </div>
           </div>
@@ -431,34 +406,34 @@ export default function ActionModal({
           {isResort ? (
             /* Resort Card */
             <div style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(240,249,255,0.95) 100%)',
-              border: `2px solid ${ribbonColor}`,
+              background: 'linear-gradient(135deg, #ecfeff 0%, #cffafe 100%)',
+              border: '2px solid #06b6d4',
               borderRadius: '16px',
               padding: '14px',
               marginBottom: '16px',
-              boxShadow: `0 8px 20px -5px ${ribbonColor}40`,
+              boxShadow: '0 8px 20px -5px rgba(6, 182, 212, 0.25)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '24px' }}>🏖️</span>
                   <div>
-                    <div style={{ fontSize: '11px', fontWeight: 900, color: ribbonColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      {t('resortsMonopolySystem', {}, '4 RESORTS MONOPOLY SYSTEM')}
+                    <div style={{ fontSize: '11px', fontWeight: 900, color: '#0e7490', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      4 RESORTS MONOPOLY SYSTEM
                     </div>
-                    <div style={{ fontSize: '13px', fontWeight: 800, color: '#334155' }}>
-                      {t('lineCoastalResort', { line: Math.floor(tile.id / 8) }, `Line ${Math.floor(tile.id / 8)} Coastal Resort`)}
+                    <div style={{ fontSize: '13px', fontWeight: 800, color: '#155e75' }}>
+                      Line {Math.floor(tile.id / 8)} Coastal Resort
                     </div>
                   </div>
                 </div>
                 <div style={{
-                  background: ribbonColor,
+                  background: '#06b6d4',
                   color: '#ffffff',
                   padding: '4px 10px',
                   borderRadius: '12px',
                   fontSize: '11px',
                   fontWeight: 900,
                 }}>
-                  {t('baseRent', {}, 'BASE RENT')} {formatCash(tile.baseRent)} CR
+                  BASE RENT {formatCash(tile.baseRent)} CR
                 </div>
               </div>
 
@@ -475,19 +450,19 @@ export default function ActionModal({
               }}>
                 {!prop.ownerId && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 700, color: '#0e7490' }}>💳 {t('remainingBalance', {}, 'Remaining Balance')}:</span>
+                    <span style={{ fontWeight: 700, color: '#0e7490' }}>💳 Remaining Balance:</span>
                     <span style={{ fontWeight: 900, color: remBalance >= 0 ? '#15803d' : '#b91c1c' }}>
-                      {formatFullCash(Math.max(0, remBalance))} CR
+                      {formatCash(Math.max(0, remBalance))} CR
                     </span>
                   </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 700, color: '#0e7490' }}>📈 {t('rentMultiplierLabel', {}, 'Rent Multiplier')}:</span>
-                  <span style={{ fontWeight: 900, color: '#0891b2' }}>{t('resortRentScale', {}, '2x per Resort Owned (1x, 2x, 4x, 8x)')}</span>
+                  <span style={{ fontWeight: 700, color: '#0e7490' }}>📈 Rent Multiplier:</span>
+                  <span style={{ fontWeight: 900, color: '#0891b2' }}>2x per Resort Owned (1x, 2x, 4x, 8x)</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 700, color: '#0e7490' }}>🏆 {t('winConditionLabel', {}, 'Win Condition')}:</span>
-                  <span style={{ fontWeight: 900, color: '#047857' }}>{t('resortInstantWinHint', {}, 'Own all 4 Resorts for INSTANT WIN!')}</span>
+                  <span style={{ fontWeight: 700, color: '#0e7490' }}>🏆 Win Condition:</span>
+                  <span style={{ fontWeight: 900, color: '#047857' }}>Own all 4 Resorts for INSTANT WIN!</span>
                 </div>
               </div>
             </div>
@@ -503,10 +478,10 @@ export default function ActionModal({
                 {TIERS.map((tier) => {
                   const lockInfo = getTierLockStatus(tier.level);
                   const isSelected = selectedTier === tier.level;
-                  const isBuilt = canUpgrade && tier.level <= currentLvl;
+                  const isBuilt = isOwner && tier.level <= currentLvl;
                   const cost = getTierCost(tier.level);
                   const rem = playerCash - cost;
-                  const isClickable = !lockInfo.isLocked && (!canUpgrade || tier.level > currentLvl);
+                  const isClickable = !lockInfo.isLocked && (!isOwner || tier.level > currentLvl);
 
                   return (
                     <div
@@ -572,7 +547,7 @@ export default function ActionModal({
                           gap: '2px',
                         }}>
                           <CheckCircle2 size={9} />
-                          <span>{t('builtUpper', {}, 'BUILT')}</span>
+                          <span>BUILT</span>
                         </div>
                       ) : (
                         <div style={{
@@ -600,7 +575,7 @@ export default function ActionModal({
                         fontWeight: 900,
                         color: isSelected ? '#0f172a' : '#334155',
                       }}>
-                        {isBuilt ? t('activeUpper', {}, 'ACTIVE') : `${Math.round(cost / 1000)}k CR`}
+                        {isBuilt ? 'ACTIVE' : `${Math.round(cost / 1000)}k CR`}
                       </div>
 
                       {/* Bottom Balance / Rent Preview */}
@@ -615,7 +590,7 @@ export default function ActionModal({
                           marginTop: '2px',
                           whiteSpace: 'nowrap',
                         }}>
-                          {rem >= 0 ? `${t('leftShort', {}, 'Left')}: ${Math.round(rem / 1000)}k` : t('shortCash', {}, 'Short!')}
+                          {rem >= 0 ? `Left: ${Math.round(rem / 1000)}k` : 'Short!'}
                         </div>
                       )}
 
@@ -626,13 +601,34 @@ export default function ActionModal({
                           color: '#64748b',
                           marginTop: '2px',
                         }}>
-                          {t('locked', {}, 'Locked')}
+                          Locked
                         </div>
                       )}
                     </div>
                   );
                 })}
               </div>
+
+              {/* Landmark Protection Notice */}
+              {selectedTier === 6 && (
+                <div style={{
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  color: '#b45309',
+                  background: '#fef3c7',
+                  padding: '6px 12px',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  marginBottom: '12px',
+                  border: '1px solid #fde68a',
+                }}>
+                  <ShieldCheck size={15} color="#ca8a04" />
+                  <span>Landmark Sky Monument: Immune to Hostile Buyouts!</span>
+                </div>
+              )}
 
               {/* Dynamic Financial Yield Banner */}
               <div style={{
@@ -643,8 +639,6 @@ export default function ActionModal({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: '8px',
-                flexWrap: 'wrap',
                 marginBottom: '16px',
                 boxShadow: 'inset 0 1px 2px #ffffff',
               }}>
@@ -654,53 +648,13 @@ export default function ActionModal({
                     <div style={{ fontSize: '10px', fontWeight: 800, color: '#92400e', textTransform: 'uppercase' }}>
                       {t('rentYield')} ({selectedTierObj.name})
                     </div>
-                    <div style={{ fontSize: '16px', fontWeight: 900, color: '#78350f', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span>{formatCash(nextRent)} CR</span>
-                      {rentMultiplier > 1 && (
-                        <span style={{
-                          fontSize: '10px',
-                          fontWeight: 900,
-                          background: rentMultiplier === 4 ? '#7c2d12' : '#c2410c',
-                          color: '#fef08a',
-                          padding: '1px 6px',
-                          borderRadius: '999px',
-                        }}>
-                          {rentMultiplier}X
-                        </span>
-                      )}
+                    <div style={{ fontSize: '16px', fontWeight: 900, color: '#78350f' }}>
+                      {formatCash(nextRent)} CR
                     </div>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                  {hasFestival && (
-                    <div style={{
-                      background: '#fff7ed',
-                      border: '1px solid #fb923c',
-                      padding: '4px 9px',
-                      borderRadius: '20px',
-                      fontSize: '10px',
-                      fontWeight: 900,
-                      color: '#c2410c',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                    }}>
-                      🎪 {t('festival2x', {}, '2X FESTIVAL')}
-                    </div>
-                  )}
-                  {hasChampionship && (
-                    <div style={{
-                      background: '#fefce8',
-                      border: '1px solid #eab308',
-                      padding: '4px 9px',
-                      borderRadius: '20px',
-                      fontSize: '10px',
-                      fontWeight: 900,
-                      color: '#a16207',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                    }}>
-                      🏆 {t('championship2x', {}, '2X CHAMPIONSHIP')}
-                    </div>
-                  )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{
                     background: '#ffffff',
                     padding: '4px 10px',
@@ -710,7 +664,7 @@ export default function ActionModal({
                     color: '#b45309',
                     boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
                   }}>
-                    {t('fullDistrict2x', {}, 'FULL DISTRICT: 2X')}
+                    {getDistrictName(tile.colorGroup).toUpperCase()} MONOPOLY: 2X
                   </div>
                   <div style={{
                     background: '#ffffff',
@@ -721,7 +675,7 @@ export default function ActionModal({
                     color: '#059669',
                     boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
                   }}>
-                    {t('orbitUpper', {}, 'ORBIT')} {playerLaps + 1}
+                    ORBIT {playerLaps + 1}
                   </div>
                 </div>
               </div>
@@ -733,16 +687,16 @@ export default function ActionModal({
             {/* Case 1: Unowned -> Big Juicy Green Button */}
             {!prop.ownerId && (
               <button
-                onClick={() => handleAction(() => {
+                onClick={() => {
                   sounds.playBuild();
                   onBuy(tile.id, isResort ? 1 : selectedTier);
-                })}
-                disabled={isBusy || !canAfford || selectedLockStatus.isLocked}
+                }}
+                disabled={!canAfford || selectedLockStatus.isLocked}
                 style={{
                   width: '100%',
                   padding: '13px 20px',
                   background: canAfford && !selectedLockStatus.isLocked
-                    ? (isResort ? `linear-gradient(180deg, ${ribbonColor} 0%, ${ribbonColor}dd 100%)` : 'linear-gradient(180deg, #22c55e 0%, #16a34a 100%)')
+                    ? (isResort ? 'linear-gradient(180deg, #06b6d4 0%, #0891b2 100%)' : 'linear-gradient(180deg, #22c55e 0%, #16a34a 100%)')
                     : '#cbd5e1',
                   border: 'none',
                   borderRadius: '18px',
@@ -764,30 +718,28 @@ export default function ActionModal({
               >
                 <span>
                   {isResort
-                    ? t('acquireResort', {}, 'Acquire Resort')
-                    : t('buyAndBuildTier', { tier: selectedTierObj.name }, `Buy & Build ${selectedTierObj.name}`)} • {formatCash(costToBuild)} CR
+                    ? 'Acquire Resort'
+                    : `Buy & Build ${selectedTierObj.name}`} • {formatCash(costToBuild)} CR
                 </span>
                 <span style={{ fontSize: '11px', fontWeight: 800, color: remBalance >= 0 ? '#dcfce7' : '#fee2e2' }}>
-                  {t('remainingBalance', {}, 'Remaining Balance')}: {formatFullCash(Math.max(0, remBalance))} CR
+                  Remaining Balance: {Math.max(0, remBalance).toLocaleString()} CR
                 </span>
               </button>
             )}
 
-            {/* Case 2: Owned by Player or Teammate -> Upgrade Button */}
-            {canUpgrade && isCity && currentLvl < 5 && (
+            {/* Case 2: Owned by Player -> Upgrade Button */}
+            {isOwner && isCity && !prop.isLandmark && (
               <button
-                onClick={() => handleAction(() => {
+                onClick={() => {
                   sounds.playBuild();
                   onUpgrade(tile.id, selectedTier);
-                })}
-                disabled={isBusy || !canAfford || selectedLockStatus.isLocked || selectedTier <= currentLvl}
+                }}
+                disabled={!canAfford || selectedLockStatus.isLocked || selectedTier <= currentLvl}
                 style={{
                   width: '100%',
                   padding: '13px 20px',
                   background: canAfford && !selectedLockStatus.isLocked && selectedTier > currentLvl
-                    ? (isTeammate
-                        ? 'linear-gradient(180deg, #0ea5e9 0%, #0284c7 100%)'
-                        : 'linear-gradient(180deg, #3b82f6 0%, #2563eb 100%)')
+                    ? 'linear-gradient(180deg, #3b82f6 0%, #2563eb 100%)'
                     : '#cbd5e1',
                   border: 'none',
                   borderRadius: '18px',
@@ -806,13 +758,10 @@ export default function ActionModal({
                 }}
               >
                 <span>
-                  {isTeammate ? '🤝 ' : ''}
-                  {isTeammate
-                    ? t('upgradeTeammateToTier', { name: ownerPlayer?.name, tier: selectedTierObj.name }, `Upgrade Teammate ${ownerPlayer?.name}'s City to ${selectedTierObj.name}`)
-                    : t('upgradeToTier', { tier: selectedTierObj.name }, `Upgrade to ${selectedTierObj.name}`)} ({formatCash(costToBuild)} CR)
+                  Upgrade to {selectedTierObj.name} ({formatCash(costToBuild)} CR)
                 </span>
                 <span style={{ fontSize: '11px', fontWeight: 800, color: remBalance >= 0 ? '#dbeafe' : '#fee2e2' }}>
-                  {t('remainingBalance', {}, 'Remaining Balance')}: {formatFullCash(Math.max(0, remBalance))} CR
+                  Remaining Balance: {Math.max(0, remBalance).toLocaleString()} CR
                 </span>
               </button>
             )}
@@ -828,7 +777,7 @@ export default function ActionModal({
                 textAlign: 'center',
                 border: '1px solid #a5f3fc',
               }}>
-                🏖️ {t('ownResortNotice', { rent: formatCash(currentRent), count: playerResortsCount }, `You own this resort! Current Rent: ${formatCash(currentRent)} CR (${playerResortsCount} of 4 Resorts owned)`)}
+                🏖️ You own this resort! Current Rent: {formatCash(currentRent)} CR ({playerResortsCount} of 4 Resorts owned)
               </div>
             )}
 
@@ -847,45 +796,46 @@ export default function ActionModal({
                   {t('ownedBy', { owner: rivalOwner?.name || 'Rival', rent: currentRent.toLocaleString() })}
                 </div>
 
-                <button
-                  onClick={() => handleAction(() => {
-                    sounds.playBuyout();
-                    onBuyout(tile.id);
-                  })}
-                  disabled={isBusy || !canBuyout}
-                  style={{
-                    width: '100%',
-                    padding: '12px 20px',
-                    background: canBuyout ? 'linear-gradient(180deg, #ec4899 0%, #d946ef 100%)' : '#cbd5e1',
-                    border: 'none',
-                    borderRadius: '18px',
-                    color: '#ffffff',
-                    fontWeight: 900,
-                    fontSize: '15px',
-                    cursor: canBuyout ? 'pointer' : 'not-allowed',
-                    boxShadow: canBuyout ? '0 10px 20px -5px rgba(217, 70, 239, 0.4)' : 'none',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '2px',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Zap size={18} />
-                    <span>{t('hostileBuyout', {}, 'Hostile Buyout')} ({formatCash(buyoutCost)} CR)</span>
-                  </div>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: remBuyout >= 0 ? '#fdf2f8' : '#fee2e2' }}>
-                    {t('remainingBalance', {}, 'Remaining Balance')}: {formatFullCash(Math.max(0, remBuyout))} CR
-                  </span>
-                </button>
+                {!prop.isLandmark && (
+                  <button
+                    onClick={() => {
+                      sounds.playBuyout();
+                      onBuyout(tile.id);
+                    }}
+                    disabled={!canBuyout}
+                    style={{
+                      width: '100%',
+                      padding: '12px 20px',
+                      background: canBuyout ? 'linear-gradient(180deg, #ec4899 0%, #d946ef 100%)' : '#cbd5e1',
+                      border: 'none',
+                      borderRadius: '18px',
+                      color: '#ffffff',
+                      fontWeight: 900,
+                      fontSize: '15px',
+                      cursor: canBuyout ? 'pointer' : 'not-allowed',
+                      boxShadow: canBuyout ? '0 10px 20px -5px rgba(217, 70, 239, 0.4)' : 'none',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '2px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Zap size={18} />
+                      <span>{t('buyoutProperty')} ({formatCash(buyoutCost)} CR)</span>
+                    </div>
+                    <span style={{ fontSize: '11px', fontWeight: 800, color: remBuyout >= 0 ? '#fdf2f8' : '#fee2e2' }}>
+                      Remaining Balance: {Math.max(0, remBuyout).toLocaleString()} CR
+                    </span>
+                  </button>
+                )}
               </>
             )}
 
             {/* End Turn / Pass Action Button */}
             <button
-              onClick={() => handleAction(() => onEndTurn?.())}
-              disabled={isBusy}
+              onClick={() => onEndTurn?.()}
               style={{
                 width: '100%',
                 padding: '10px 16px',

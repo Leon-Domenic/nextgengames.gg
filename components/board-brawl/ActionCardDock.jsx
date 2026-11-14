@@ -21,7 +21,7 @@ export default function ActionCardDock({
   const [isNarrow, setIsNarrow] = useState(false);
 
   useEffect(() => {
-    const handleResize = () => setIsNarrow(typeof window !== 'undefined' && window.innerWidth < 960);
+    const handleResize = () => setIsNarrow(typeof window !== 'undefined' && window.innerWidth < 1024);
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -96,9 +96,9 @@ export default function ActionCardDock({
       <div
         style={{
           position: 'fixed',
-          bottom: isNarrow ? '140px' : '16px',
-          right: isNarrow ? '16px' : '284px',
-          zIndex: 45,
+          bottom: isNarrow ? '180px' : '16px',
+          right: isNarrow ? '16px' : '296px',
+          zIndex: 46,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'flex-end',

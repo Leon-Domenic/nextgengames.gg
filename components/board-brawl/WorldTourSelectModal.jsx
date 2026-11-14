@@ -13,6 +13,7 @@ export default function WorldTourSelectModal({
   onSelectDestination,
   onSkip,
   onSkipFlight,
+  onMinimize,
   turnTimer = 25,
 }) {
   const [filter, setFilter] = useState('all'); // 'all' | 'neutral' | 'owned'
@@ -82,6 +83,42 @@ export default function WorldTourSelectModal({
           textAlign: 'center',
         }}
       >
+        {/* Optional Minimize / View 3D Board Button */}
+        {onMinimize && (
+          <button
+            onClick={() => onMinimize()}
+            style={{
+              position: 'absolute',
+              top: '18px',
+              right: '18px',
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: '10px',
+              color: '#94a3b8',
+              padding: '6px 12px',
+              fontSize: '11px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = '#fff';
+              e.currentTarget.style.borderColor = '#38bdf8';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = '#94a3b8';
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            }}
+            title="Minimize to click destination directly on 3D board"
+          >
+            <span>View 3D Board</span>
+            <X size={14} />
+          </button>
+        )}
+
         {/* Top Header Pill */}
         <div
           style={{

@@ -36,6 +36,7 @@ import {
   buildWitchAvatar,
 } from '@/lib/board-brawl/pawnModels3D';
 import { drawVectorFlag } from '@/lib/board-brawl/flags';
+import { getBoardBackground, DEFAULT_BOARD_BACKGROUND_ID } from '@/lib/board-brawl/boardBackgrounds';
 
 // Authentic Monopoly 45-Degree Diamond Perimeter Math
 // 4 Sides with Square Corner Fields and Outward-Facing Cards
@@ -151,7 +152,7 @@ export function getPawnTile3DPos(id, totalTiles = 32, subOffset = null) {
   const p = getTile3DPos(id, totalTiles);
   const pos = new THREE.Vector3(p.x, 0.35, p.z);
   if (!p.isCorner) {
-    const streetOffset = new THREE.Vector3(0, 0, 1.8);
+    const streetOffset = new THREE.Vector3(0, 0, -4.0);
     streetOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
     pos.add(streetOffset);
   }
@@ -178,51 +179,73 @@ function drawDistrictEstateLot(ctx, colorGroup, x, y, w, h) {
   // Outer estate lot background clip / fill
   if (colorGroup === 'brown') {
     // ----------------------------------------------------
-    // 1. BROWN: Polished Rich Timber Plank Decking (Matches South street in reference screenshot!)
+    // 1. EGYPT (BROWN): Ancient Sun-Baked Desert Sandstone & Golden Pyramid Limestone
     // ----------------------------------------------------
-    ctx.fillStyle = '#2d1a0f'; // Deep timber foundation
+    ctx.fillStyle = '#451a03'; // Deep ancient sandstone foundation
     ctx.fillRect(x, y, w, h);
 
-    // Patio boundary
-    ctx.fillStyle = '#4a2e18'; // Rich mahogany wood base
+    // Warm desert terracotta limestone terrace
+    ctx.fillStyle = '#78350f';
     ctx.beginPath();
     ctx.roundRect(x + 18, y + 22, w - 36, h - 40, 16);
     ctx.fill();
     ctx.lineWidth = 4;
-    ctx.strokeStyle = '#6d4c41';
+    ctx.strokeStyle = '#d97706'; // Golden rim
     ctx.stroke();
 
-    // Procedural Polished Wooden Planks with Grain Lines & Brass Nails
-    const plankH = 46;
-    const woodColors = ['#5d4037', '#4e342e', '#6d4c41', '#3e2723'];
-    let pIdx = 0;
-    for (let py = y + 28; py < y + h - 25; py += plankH) {
-      ctx.fillStyle = woodColors[pIdx % woodColors.length];
-      ctx.fillRect(x + 22, py, w - 44, plankH - 4);
+    // Stepped Egyptian Sandstone Pavers & Golden Inlays
+    const blockH = 46;
+    const stoneTones = ['#92400e', '#78350f', '#b45309', '#854d0e'];
+    let bIdx = 0;
+    for (let py = y + 28; py < y + h - 25; py += blockH) {
+      ctx.fillStyle = stoneTones[bIdx % stoneTones.length];
+      ctx.fillRect(x + 22, py, w - 44, blockH - 4);
 
-      // Wood grain fine highlights
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+      // Fine golden desert sand highlight line
+      ctx.fillStyle = 'rgba(254, 240, 138, 0.18)';
       ctx.fillRect(x + 22, py + 2, w - 44, 3);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-      ctx.fillRect(x + 22, py + plankH - 6, w - 44, 2);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+      ctx.fillRect(x + 22, py + blockH - 6, w - 44, 2);
 
-      // Plank dividing line
-      ctx.strokeStyle = '#2d1a0f';
+      // Mortar dividing line
+      ctx.strokeStyle = '#451a03';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(x + 20, py + plankH - 2);
-      ctx.lineTo(x + w - 20, py + plankH - 2);
+      ctx.moveTo(x + 20, py + blockH - 2);
+      ctx.lineTo(x + w - 20, py + blockH - 2);
       ctx.stroke();
 
-      // Brass nail studs on ends of planks
-      ctx.fillStyle = '#d97706';
+      // Golden pyramidian corner studs on block ends
+      ctx.fillStyle = '#f59e0b';
       ctx.beginPath();
-      ctx.arc(x + 36, py + (plankH / 2) - 2, 2.5, 0, Math.PI * 2);
-      ctx.arc(x + w - 36, py + (plankH / 2) - 2, 2.5, 0, Math.PI * 2);
+      ctx.arc(x + 36, py + (blockH / 2) - 2, 3.5, 0, Math.PI * 2);
+      ctx.arc(x + w - 36, py + (blockH / 2) - 2, 3.5, 0, Math.PI * 2);
       ctx.fill();
 
-      pIdx++;
+      bIdx++;
     }
+
+    // Central Golden Egyptian Pyramid Inlay Motif
+    ctx.save();
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2.5;
+    ctx.fillStyle = 'rgba(245, 158, 11, 0.14)';
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 26);
+    ctx.lineTo(cx + 30, cy + 22);
+    ctx.lineTo(cx - 30, cy + 22);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Inner pyramid face divider
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 26);
+    ctx.lineTo(cx, cy + 22);
+    ctx.strokeStyle = '#fbbf24';
+    ctx.stroke();
+    ctx.restore();
 
   } else if (colorGroup === 'light_blue') {
     // ----------------------------------------------------
@@ -856,7 +879,7 @@ function drawStreetTileContent(ctx, tile, p, prop, properties = {}, players = []
     const taxSub = tile.amount ? ('PAY ' + formatCash(tile.amount, true)) : 'PAY TAX';
     const eventConfig = {
       chance: { color: '#ec4899', icon: '❓', title: 'CHANCE', sub: 'LUCKY DRAW', subColor: '#be185d', bg: '#312e81' },
-      championship: { color: '#f59e0b', icon: '🏆', title: 'CHAMPIONSHIP', sub: '2X RENT HOST', subColor: '#b45309', bg: '#451a03' },
+      championship: { color: '#7c3aed', icon: '🏆', title: 'CHAMPIONSHIP', sub: '2X RENT HOST', subColor: '#c084fc', bg: '#2e1065' },
       armory: { color: '#ef4444', icon: '🍅', title: 'ARMORY', sub: '+2 TOMATOES', subColor: '#b91c1c', bg: '#1e293b' },
       tax: { color: '#475569', icon: '💸', title: tile.name.toUpperCase(), sub: taxSub, subColor: '#b91c1c', bg: '#0f172a' },
       festival: { color: '#7c3aed', icon: '🎪', title: 'WORLD FAIR', sub: '2X RENT HOST', subColor: '#6d28d9', bg: '#2e1065' },
@@ -1067,6 +1090,330 @@ function drawStreetTileContent(ctx, tile, p, prop, properties = {}, players = []
   }
 }
 
+// ---------------------------------------------------------------------------
+// BOARD BACKGROUND THEME TEXTURE RENDERERS (Stadium Turf, Cyber, Vegas, etc.)
+// ---------------------------------------------------------------------------
+
+export function renderPitchTexture(lCtx, bgTheme, communityJackpot = 300000) {
+  const p = bgTheme?.palette || {};
+  lCtx.imageSmoothingEnabled = true;
+  lCtx.imageSmoothingQuality = 'high';
+
+  // Base background fill
+  lCtx.fillStyle = p.pitchBase || '#16a34a';
+  lCtx.fillRect(0, 0, 2048, 2048);
+
+  // Perimeter Stone Curb
+  lCtx.strokeStyle = p.pitchBorder || '#334155';
+  lCtx.lineWidth = 24;
+  lCtx.strokeRect(12, 12, 2048 - 24, 2048 - 24);
+
+  lCtx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+  lCtx.lineWidth = 10;
+  lCtx.strokeRect(36, 36, 2048 - 72, 2048 - 72);
+
+  // Center Field Graphics (clipped)
+  lCtx.save();
+  lCtx.beginPath();
+  lCtx.rect(40, 40, 2048 - 80, 2048 - 80);
+  lCtx.clip();
+
+  const pType = p.patternType || 'stripes';
+
+  if (pType === 'stripes') {
+    // Classic stadium turf stripes
+    const stripeWidth = 56;
+    for (let x = -2048; x < 4096; x += stripeWidth) {
+      const isEven = Math.floor(x / stripeWidth) % 2 === 0;
+      lCtx.fillStyle = isEven ? (p.pitchAccent || '#22c55e') : (p.pitchBase || '#16a34a');
+      lCtx.beginPath();
+      lCtx.moveTo(x, 0);
+      lCtx.lineTo(x + stripeWidth, 0);
+      lCtx.lineTo(x + stripeWidth + 2048, 2048);
+      lCtx.lineTo(x + 2048, 2048);
+      lCtx.closePath();
+      lCtx.fill();
+    }
+    // Chalk boundary
+    lCtx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    lCtx.lineWidth = 6;
+    lCtx.strokeRect(180, 180, 1688, 1688);
+
+  } else if (pType === 'hex_matrix') {
+    // Cyber Neon Tokyo 2099 Grid & Hex Reticle
+    lCtx.fillStyle = '#060814';
+    lCtx.fillRect(0, 0, 2048, 2048);
+
+    // Glowing cyan cyber grid lines
+    lCtx.strokeStyle = 'rgba(0, 240, 255, 0.16)';
+    lCtx.lineWidth = 2;
+    for (let g = 0; g <= 2048; g += 96) {
+      lCtx.beginPath(); lCtx.moveTo(g, 0); lCtx.lineTo(g, 2048); lCtx.stroke();
+      lCtx.beginPath(); lCtx.moveTo(0, g); lCtx.lineTo(2048, g); lCtx.stroke();
+    }
+
+    // Concentric cyber reticle rings
+    lCtx.strokeStyle = '#00f0ff';
+    lCtx.lineWidth = 6;
+    lCtx.beginPath();
+    lCtx.arc(1024, 1024, 480, 0, Math.PI * 2);
+    lCtx.stroke();
+
+    lCtx.strokeStyle = '#ec4899';
+    lCtx.lineWidth = 5;
+    lCtx.setLineDash([24, 16]);
+    lCtx.beginPath();
+    lCtx.arc(1024, 1024, 340, 0, Math.PI * 2);
+    lCtx.stroke();
+    lCtx.setLineDash([]);
+
+    // Corner HUD brackets
+    const bracketSize = 140;
+    const bracketPad = 120;
+    lCtx.strokeStyle = '#00f0ff';
+    lCtx.lineWidth = 8;
+    // Top-Left
+    lCtx.beginPath();
+    lCtx.moveTo(bracketPad + bracketSize, bracketPad);
+    lCtx.lineTo(bracketPad, bracketPad);
+    lCtx.lineTo(bracketPad, bracketPad + bracketSize);
+    lCtx.stroke();
+    // Top-Right
+    lCtx.beginPath();
+    lCtx.moveTo(2048 - bracketPad - bracketSize, bracketPad);
+    lCtx.lineTo(2048 - bracketPad, bracketPad);
+    lCtx.lineTo(2048 - bracketPad, bracketPad + bracketSize);
+    lCtx.stroke();
+    // Bottom-Left
+    lCtx.beginPath();
+    lCtx.moveTo(bracketPad, 2048 - bracketPad - bracketSize);
+    lCtx.lineTo(bracketPad, 2048 - bracketPad);
+    lCtx.lineTo(bracketPad + bracketSize, 2048 - bracketPad);
+    lCtx.stroke();
+    // Bottom-Right
+    lCtx.beginPath();
+    lCtx.moveTo(2048 - bracketPad, 2048 - bracketPad - bracketSize);
+    lCtx.lineTo(2048 - bracketPad, 2048 - bracketPad);
+    lCtx.lineTo(2048 - bracketPad - bracketSize, 2048 - bracketPad);
+    lCtx.stroke();
+
+  } else if (pType === 'damask_diamonds') {
+    // High Roller 24K Casino Velvet Baize
+    const grad = lCtx.createRadialGradient(1024, 1024, 100, 1024, 1024, 1400);
+    grad.addColorStop(0, '#881337');
+    grad.addColorStop(1, '#4c0519');
+    lCtx.fillStyle = grad;
+    lCtx.fillRect(0, 0, 2048, 2048);
+
+    // Repeating gold diamond damask grid
+    lCtx.strokeStyle = 'rgba(251, 191, 36, 0.28)';
+    lCtx.lineWidth = 3;
+    const step = 128;
+    for (let x = -2048; x < 4096; x += step) {
+      lCtx.beginPath();
+      lCtx.moveTo(x, 0); lCtx.lineTo(x + 2048, 2048); lCtx.stroke();
+      lCtx.beginPath();
+      lCtx.moveTo(x, 2048); lCtx.lineTo(x + 2048, 0); lCtx.stroke();
+    }
+
+    // Double-gold pinstripe perimeter frame
+    lCtx.strokeStyle = '#f59e0b';
+    lCtx.lineWidth = 8;
+    lCtx.strokeRect(160, 160, 1728, 1728);
+    lCtx.strokeStyle = 'rgba(251, 191, 36, 0.45)';
+    lCtx.lineWidth = 4;
+    lCtx.strokeRect(185, 185, 1678, 1678);
+
+    // Ornate center medallion
+    lCtx.strokeStyle = '#fbbf24';
+    lCtx.lineWidth = 7;
+    lCtx.beginPath();
+    lCtx.arc(1024, 1024, 450, 0, Math.PI * 2);
+    lCtx.stroke();
+
+  } else if (pType === 'magma_cracks') {
+    // Volcanic Magma Core Caldera
+    lCtx.fillStyle = '#18181b';
+    lCtx.fillRect(0, 0, 2048, 2048);
+
+    const fissures = [
+      [[250, 300], [600, 650], [1024, 1024], [1450, 1250], [1800, 1700]],
+      [[1750, 350], [1350, 750], [1024, 1024], [700, 1350], [350, 1750]],
+      [[1024, 150], [980, 600], [1024, 1024], [1060, 1500], [1024, 1900]],
+      [[150, 1024], [600, 1060], [1024, 1024], [1450, 980], [1900, 1024]],
+    ];
+
+    lCtx.lineCap = 'round';
+    lCtx.lineJoin = 'round';
+    fissures.forEach(branch => {
+      lCtx.strokeStyle = 'rgba(234, 88, 12, 0.45)';
+      lCtx.lineWidth = 70;
+      lCtx.beginPath();
+      branch.forEach(([x, y], idx) => (idx === 0 ? lCtx.moveTo(x, y) : lCtx.lineTo(x, y)));
+      lCtx.stroke();
+
+      lCtx.strokeStyle = '#f97316';
+      lCtx.lineWidth = 26;
+      lCtx.beginPath();
+      branch.forEach(([x, y], idx) => (idx === 0 ? lCtx.moveTo(x, y) : lCtx.lineTo(x, y)));
+      lCtx.stroke();
+
+      lCtx.strokeStyle = '#fef08a';
+      lCtx.lineWidth = 8;
+      lCtx.beginPath();
+      branch.forEach(([x, y], idx) => (idx === 0 ? lCtx.moveTo(x, y) : lCtx.lineTo(x, y)));
+      lCtx.stroke();
+    });
+
+    lCtx.strokeStyle = 'rgba(249, 115, 22, 0.4)';
+    lCtx.lineWidth = 6;
+    lCtx.strokeRect(180, 180, 1688, 1688);
+
+  } else if (pType === 'nebula_stars') {
+    // Cosmic Nebula & Deep Space Starlight Void
+    lCtx.fillStyle = '#03030d';
+    lCtx.fillRect(0, 0, 2048, 2048);
+
+    const neb1 = lCtx.createRadialGradient(650, 650, 50, 650, 650, 750);
+    neb1.addColorStop(0, 'rgba(168, 85, 247, 0.42)');
+    neb1.addColorStop(1, 'rgba(168, 85, 247, 0)');
+    lCtx.fillStyle = neb1;
+    lCtx.fillRect(0, 0, 2048, 2048);
+
+    const neb2 = lCtx.createRadialGradient(1400, 1400, 50, 1400, 1400, 850);
+    neb2.addColorStop(0, 'rgba(6, 182, 212, 0.32)');
+    neb2.addColorStop(1, 'rgba(6, 182, 212, 0)');
+    lCtx.fillStyle = neb2;
+    lCtx.fillRect(0, 0, 2048, 2048);
+
+    // Planetary rings
+    lCtx.strokeStyle = 'rgba(192, 132, 252, 0.45)';
+    lCtx.lineWidth = 7;
+    lCtx.beginPath();
+    lCtx.ellipse(1024, 1024, 520, 260, Math.PI / 4, 0, Math.PI * 2);
+    lCtx.stroke();
+
+    lCtx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+    lCtx.lineWidth = 4;
+    lCtx.beginPath();
+    lCtx.ellipse(1024, 1024, 620, 310, Math.PI / 4, 0, Math.PI * 2);
+    lCtx.stroke();
+
+    lCtx.strokeStyle = 'rgba(168, 85, 247, 0.35)';
+    lCtx.lineWidth = 6;
+    lCtx.strokeRect(180, 180, 1688, 1688);
+
+  } else if (pType === 'ice_frost') {
+    // Glacial Aurora & Arctic Ice Rink
+    const iceGrad = lCtx.createLinearGradient(0, 0, 2048, 2048);
+    iceGrad.addColorStop(0, '#0284c7');
+    iceGrad.addColorStop(0.5, '#0ea5e9');
+    iceGrad.addColorStop(1, '#0369a1');
+    lCtx.fillStyle = iceGrad;
+    lCtx.fillRect(0, 0, 2048, 2048);
+
+    // Aurora wave
+    const auroraGrad = lCtx.createRadialGradient(1024, 450, 50, 1024, 450, 800);
+    auroraGrad.addColorStop(0, 'rgba(52, 211, 153, 0.55)');
+    auroraGrad.addColorStop(1, 'rgba(52, 211, 153, 0)');
+    lCtx.fillStyle = auroraGrad;
+    lCtx.fillRect(0, 0, 2048, 2048);
+
+    lCtx.strokeStyle = 'rgba(255, 255, 255, 0.32)';
+    lCtx.lineWidth = 6;
+    for (let r = 240; r <= 680; r += 140) {
+      lCtx.beginPath();
+      lCtx.arc(1024, 1024, r, 0, Math.PI * 2);
+      lCtx.stroke();
+    }
+
+    lCtx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
+    lCtx.lineWidth = 6;
+    lCtx.strokeRect(180, 180, 1688, 1688);
+  }
+
+  // Glowing Neon Inner Rail
+  const railHex = '#' + (p.neonRailColor ? p.neonRailColor.toString(16).padStart(6, '0') : '00f0ff');
+  lCtx.shadowColor = railHex;
+  lCtx.shadowBlur = 28;
+  lCtx.strokeStyle = railHex;
+  lCtx.lineWidth = 14;
+  lCtx.strokeRect(48, 48, 1952, 1952);
+
+  lCtx.strokeStyle = '#ffffff';
+  lCtx.lineWidth = 6;
+  lCtx.strokeRect(52, 52, 1944, 1944);
+  lCtx.shadowBlur = 0;
+
+  // Digital Match Stopwatch Pill: "08:38"
+  lCtx.save();
+  lCtx.translate(1024, 320);
+  lCtx.fillStyle = p.stopwatchBg || '#0f172a';
+  lCtx.beginPath();
+  lCtx.roundRect(-150, -42, 300, 84, 42);
+  lCtx.fill();
+  lCtx.strokeStyle = p.stopwatchBorder || 'rgba(255, 255, 255, 0.25)';
+  lCtx.lineWidth = 4;
+  lCtx.stroke();
+
+  lCtx.fillStyle = p.stopwatchText || '#ffffff';
+  lCtx.font = '900 46px monospace';
+  lCtx.textAlign = 'center';
+  lCtx.textBaseline = 'middle';
+  lCtx.fillText('08:38', 0, 2);
+  lCtx.restore();
+
+  // Floating Center Pot / Jackpot Amount
+  lCtx.save();
+  lCtx.translate(1024, 760);
+  lCtx.font = '900 110px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  lCtx.textAlign = 'center';
+  lCtx.textBaseline = 'middle';
+  lCtx.shadowColor = p.jackpotShadow || 'rgba(0, 0, 0, 0.6)';
+  lCtx.shadowBlur = 20;
+  lCtx.shadowOffsetY = 10;
+  lCtx.fillStyle = p.jackpotColor || '#ffffff';
+  const displayJackpot = (communityJackpot || 300000).toLocaleString().replace(/,/g, ' ') + ' CR';
+  lCtx.fillText(displayJackpot, 0, 0);
+  lCtx.restore();
+
+  // Scattered particles/petals/embers
+  const petalColors = p.particleColors || ['#f43f5e', '#fbbf24', '#38bdf8', '#ffffff', '#ec4899'];
+  for (let i = 0; i < 65; i++) {
+    const px = 250 + Math.random() * 1548;
+    const py = 250 + Math.random() * 1548;
+    if (Math.hypot(px - 1024, py - 1024) < 240) continue;
+    lCtx.fillStyle = petalColors[i % petalColors.length];
+    lCtx.beginPath();
+    lCtx.arc(px, py, 5 + Math.random() * 4, 0, Math.PI * 2);
+    lCtx.fill();
+  }
+
+  lCtx.restore();
+}
+
+export function renderStudioFloorTexture(sfCtx, bgTheme) {
+  const p = bgTheme?.palette || {};
+  const floorGrad = sfCtx.createRadialGradient(512, 512, 80, 512, 512, 512);
+  floorGrad.addColorStop(0, p.floorGradStart || '#e8edf4');
+  floorGrad.addColorStop(0.5, p.floorGradMid || '#dbe3ed');
+  floorGrad.addColorStop(1, p.floorGradEnd || '#c8d4e2');
+  sfCtx.fillStyle = floorGrad;
+  sfCtx.fillRect(0, 0, 1024, 1024);
+
+  // Subtle isometric floor grid lines
+  sfCtx.strokeStyle = p.floorGridColor || 'rgba(148, 163, 184, 0.22)';
+  sfCtx.lineWidth = 1.5;
+  for (let g = 0; g <= 1024; g += 64) {
+    sfCtx.beginPath();
+    sfCtx.moveTo(g, 0); sfCtx.lineTo(g, 1024);
+    sfCtx.stroke();
+    sfCtx.beginPath();
+    sfCtx.moveTo(0, g); sfCtx.lineTo(1024, g);
+    sfCtx.stroke();
+  }
+}
+
 export default function Board3D({
   properties = {},
   players = [],
@@ -1074,6 +1421,7 @@ export default function Board3D({
   activePlayerId = null,
   lastDiceResult = null,
   diceSkin = 'classic_red',
+  boardBackground = DEFAULT_BOARD_BACKGROUND_ID,
   centerContent = null,
   communityJackpot = 100000,
   lastPayment = null,
@@ -1088,6 +1436,7 @@ export default function Board3D({
   onInspectTile,
   onPawnMovementStart,
   onPawnMovementComplete,
+  onSalaryRain,
   targetingMode = null,
 }) {
   const mountRef = useRef(null);
@@ -1110,10 +1459,27 @@ export default function Board3D({
   const banknoteStacksRef = useRef([]);
   const cashGroupRef = useRef(null);
   const cashTransfersRef = useRef([]);
+  const cashRainRef = useRef([]);
   const lastPaymentIdRef = useRef(null);
   const lastRollIdRef = useRef(null);
 
+  // Board Background Refs for Dynamic Live Theming
+  const boardBackgroundRef = useRef(boardBackground);
+  boardBackgroundRef.current = boardBackground;
+  const lawnCanvasRef = useRef(null);
+  const lawnTextureRef = useRef(null);
+  const studioFloorCanvasRef = useRef(null);
+  const studioFloorTextureRef = useRef(null);
+  const mahoganyMatRef = useRef(null);
+  const innerLipMatRef = useRef(null);
+  const neonMatRef = useRef(null);
+  const pedestalMatRef = useRef(null);
+  const ambientLightRef = useRef(null);
+  const mainSunRef = useRef(null);
+  const softStudioFillRef = useRef(null);
+
   const targetingModeRef = useRef(targetingMode);
+  targetingModeRef.current = targetingMode;
   const lastHoveredTargetTileRef = useRef(null);
   const targetingGroupRef = useRef(null);
 
@@ -1228,11 +1594,13 @@ export default function Board3D({
     mountRef.current.innerHTML = '';
     mountRef.current.appendChild(renderer.domElement);
 
-    // 4. Lighting Rig (High-End Architectural Studio Showroom Lighting)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.82);
+    // 4. Lighting Rig (Adaptive Architectural Studio Showroom Lighting)
+    const bgTheme = getBoardBackground(boardBackgroundRef.current);
+    const ambientLight = new THREE.AmbientLight(bgTheme.palette.ambientLightColor || 0xffffff, bgTheme.palette.ambientIntensity ?? 0.82);
     scene.add(ambientLight);
+    ambientLightRef.current = ambientLight;
 
-    const mainSun = new THREE.DirectionalLight(0xfffaf0, 1.38);
+    const mainSun = new THREE.DirectionalLight(bgTheme.palette.sunLightColor || 0xfffaf0, bgTheme.palette.sunIntensity ?? 1.38);
     mainSun.position.set(55, 130, 65);
     mainSun.castShadow = true;
     mainSun.shadow.mapSize.width = 2048;
@@ -1246,10 +1614,12 @@ export default function Board3D({
     mainSun.shadow.bias = -0.0004;
     mainSun.shadow.normalBias = 0.02;
     scene.add(mainSun);
+    mainSunRef.current = mainSun;
 
-    const softStudioFill = new THREE.DirectionalLight(0xdbeafe, 0.55);
+    const softStudioFill = new THREE.DirectionalLight(bgTheme.palette.fillLightColor || 0xdbeafe, bgTheme.palette.fillIntensity ?? 0.55);
     softStudioFill.position.set(-65, 85, -65);
     scene.add(softStudioFill);
+    softStudioFillRef.current = softStudioFill;
 
     const hemiLight = new THREE.HemisphereLight(0xffffff, 0x94a3b8, 0.45);
     scene.add(hemiLight);
@@ -1258,30 +1628,14 @@ export default function Board3D({
     const studioFloorCanvas = document.createElement('canvas');
     studioFloorCanvas.width = 1024;
     studioFloorCanvas.height = 1024;
-    const sfCtx = studioFloorCanvas.getContext('2d');
-    const floorGrad = sfCtx.createRadialGradient(512, 512, 80, 512, 512, 512);
-    floorGrad.addColorStop(0, '#e8edf4');
-    floorGrad.addColorStop(0.5, '#dbe3ed');
-    floorGrad.addColorStop(1, '#c8d4e2');
-    sfCtx.fillStyle = floorGrad;
-    sfCtx.fillRect(0, 0, 1024, 1024);
-
-    // Subtle isometric architectural floor grid lines
-    sfCtx.strokeStyle = 'rgba(148, 163, 184, 0.22)';
-    sfCtx.lineWidth = 1.5;
-    for (let g = 0; g <= 1024; g += 64) {
-      sfCtx.beginPath();
-      sfCtx.moveTo(g, 0); sfCtx.lineTo(g, 1024);
-      sfCtx.stroke();
-      sfCtx.beginPath();
-      sfCtx.moveTo(0, g); sfCtx.lineTo(1024, g);
-      sfCtx.stroke();
-    }
+    renderStudioFloorTexture(studioFloorCanvas.getContext('2d'), bgTheme);
+    studioFloorCanvasRef.current = studioFloorCanvas;
 
     const studioFloorTexture = new THREE.CanvasTexture(studioFloorCanvas);
     studioFloorTexture.wrapS = THREE.RepeatWrapping;
     studioFloorTexture.wrapT = THREE.RepeatWrapping;
     studioFloorTexture.repeat.set(4, 4);
+    studioFloorTextureRef.current = studioFloorTexture;
 
     const groundGeom = new THREE.PlaneGeometry(360, 360);
     const groundMat = new THREE.MeshStandardMaterial({
@@ -1289,6 +1643,7 @@ export default function Board3D({
       roughness: 0.65,
       metalness: 0.05,
     });
+    groundMatRef.current = groundMat;
     const ground = new THREE.Mesh(groundGeom, groundMat);
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -2.25;
@@ -1297,10 +1652,11 @@ export default function Board3D({
 
     // Grounded dark slate pedestal disk directly beneath the board
     const pedestalMat = new THREE.MeshStandardMaterial({
-      color: 0x1e293b,
+      color: bgTheme.palette.pedestalColor || 0x1e293b,
       roughness: 0.5,
       metalness: 0.15,
     });
+    pedestalMatRef.current = pedestalMat;
     const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(56, 58, 0.35, 32), pedestalMat);
     pedestal.position.y = -2.1;
     pedestal.receiveShadow = true;
@@ -1310,107 +1666,8 @@ export default function Board3D({
     const lawnCanvas = document.createElement('canvas');
     lawnCanvas.width = 2048;
     lawnCanvas.height = 2048;
-    const lCtx = lawnCanvas.getContext('2d');
-    lCtx.imageSmoothingEnabled = true;
-    lCtx.imageSmoothingQuality = 'high';
-
-    // 6a. Pure Emerald Stadium Lawn Pitch (Clean grass pitch directly meeting board tiles - no second road!)
-    lCtx.fillStyle = '#16a34a'; // Lush stadium turf base
-    lCtx.fillRect(0, 0, 2048, 2048);
-
-    
-
-    // Elegant Stone Curb / Perimeter Frame directly abutting inner tile edges
-    lCtx.strokeStyle = '#334155';
-    lCtx.lineWidth = 24;
-    lCtx.strokeRect(12, 12, 2048 - 24, 2048 - 24);
-
-    lCtx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-    lCtx.lineWidth = 10;
-    lCtx.strokeRect(36, 36, 2048 - 72, 2048 - 72);
-
-    // 6b. Center Field Graphics
-    lCtx.save();
-    lCtx.beginPath();
-    lCtx.rect(40, 40, 2048 - 80, 2048 - 80);
-    lCtx.clip();
-
-    // Diagonal alternating mowed grass stripes (Vibrant emerald light grass vs rich medium turf)
-    const stripeWidth = 56;
-    for (let x = -2048; x < 4096; x += stripeWidth) {
-      const isEven = Math.floor(x / stripeWidth) % 2 === 0;
-      lCtx.fillStyle = isEven ? '#22c55e' : '#16a34a';
-      lCtx.beginPath();
-      lCtx.moveTo(x, 0);
-      lCtx.lineTo(x + stripeWidth, 0);
-      lCtx.lineTo(x + stripeWidth + 2048, 2048);
-      lCtx.lineTo(x + 2048, 2048);
-      lCtx.closePath();
-      lCtx.fill();
-    }
-
-    // Subtle field perimeter chalk boundary
-    lCtx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-    lCtx.lineWidth = 6;
-    lCtx.strokeRect(180, 180, 1688, 1688);
-
-    // Glowing Cyan / Neon Inner Rail separating tiles from green field (matching reference image)
-    lCtx.shadowColor = '#00f0ff';
-    lCtx.shadowBlur = 28;
-    lCtx.strokeStyle = '#00f0ff';
-    lCtx.lineWidth = 14;
-    lCtx.strokeRect(48, 48, 1952, 1952);
-
-    lCtx.strokeStyle = '#ffffff';
-    lCtx.lineWidth = 6;
-    lCtx.strokeRect(52, 52, 1944, 1944);
-    lCtx.shadowBlur = 0;
-
-    // Digital Match Stopwatch Pill: "08:38" (matching reference image)
-    lCtx.save();
-    lCtx.translate(1024, 320);
-    lCtx.fillStyle = '#0f172a';
-    lCtx.beginPath();
-    lCtx.roundRect(-150, -42, 300, 84, 42);
-    lCtx.fill();
-    lCtx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-    lCtx.lineWidth = 4;
-    lCtx.stroke();
-
-    lCtx.fillStyle = '#ffffff';
-    lCtx.font = '900 46px monospace';
-    lCtx.textAlign = 'center';
-    lCtx.textBaseline = 'middle';
-    lCtx.fillText('08:38', 0, 2);
-    lCtx.restore();
-
-    // Floating 300 000 CR Center Pot / Jackpot Amount directly on the lawn (matching reference image)
-    lCtx.save();
-    lCtx.translate(1024, 760);
-    lCtx.font = '900 110px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    lCtx.textAlign = 'center';
-    lCtx.textBaseline = 'middle';
-    lCtx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-    lCtx.shadowBlur = 20;
-    lCtx.shadowOffsetY = 10;
-    lCtx.fillStyle = '#ffffff';
-    lCtx.fillText('300 000 CR', 0, 0);
-    lCtx.restore();
-
-    // Subtle scattered flower / confetti celebration petals (Business Tour festive feel)
-    const petalColors = ['#f43f5e', '#fbbf24', '#38bdf8', '#ffffff', '#ec4899'];
-    for (let i = 0; i < 65; i++) {
-      const px = 250 + Math.random() * 1548;
-      const py = 250 + Math.random() * 1548;
-      // Keep center dice rolling circle clear
-      if (Math.hypot(px - 1024, py - 1024) < 240) continue;
-      lCtx.fillStyle = petalColors[i % petalColors.length];
-      lCtx.beginPath();
-      lCtx.arc(px, py, 5 + Math.random() * 4, 0, Math.PI * 2);
-      lCtx.fill();
-    }
-
-    lCtx.restore();
+    renderPitchTexture(lawnCanvas.getContext('2d'), bgTheme, communityJackpot);
+    lawnCanvasRef.current = lawnCanvas;
 
     const lawnTexture = new THREE.CanvasTexture(lawnCanvas);
     lawnTexture.anisotropy = renderer.capabilities?.getMaxAnisotropy?.() || 16;
@@ -1418,12 +1675,14 @@ export default function Board3D({
     lawnTexture.magFilter = THREE.LinearFilter;
     lawnTexture.generateMipmaps = true;
     lawnTexture.needsUpdate = true;
+    lawnTextureRef.current = lawnTexture;
 
     const lawnMat = new THREE.MeshStandardMaterial({
       map: lawnTexture,
       roughness: 0.85,
       metalness: 0.05,
     });
+    lawnMatRef.current = lawnMat;
 
     const woodSideMat = new THREE.MeshStandardMaterial({
       color: 0x3d2415,
@@ -1433,10 +1692,11 @@ export default function Board3D({
 
     // 6c. Thick Polished Mahogany Wood Board Tray (1:1 Business Tour Luxury Wooden Frame)
     const mahoganyMat = new THREE.MeshStandardMaterial({
-      color: 0x24140e, // Rich dark walnut/mahogany wood
+      color: bgTheme.palette.frameColor || 0x24140e,
       roughness: 0.38,
       metalness: 0.08,
     });
+    mahoganyMatRef.current = mahoganyMat;
     // Base tray: width 86.0 gives 60.8 radius on apexes (surrounding the tiles 56.0 with 4.8 units margin)
     const mahoganyBorder = new THREE.Mesh(
       new THREE.BoxGeometry(86.0, 2.6, 86.0),
@@ -1450,10 +1710,11 @@ export default function Board3D({
 
     // Beveled inner dark lip
     const innerLipMat = new THREE.MeshStandardMaterial({
-      color: 0x140a06, // Deep espresso shadow lip
+      color: bgTheme.palette.innerLipColor || 0x140a06,
       roughness: 0.45,
       metalness: 0.1,
     });
+    innerLipMatRef.current = innerLipMat;
     const innerLip = new THREE.Mesh(
       new THREE.BoxGeometry(84.5, 0.4, 84.5),
       innerLipMat
@@ -1467,12 +1728,13 @@ export default function Board3D({
     const neonRailGroup = new THREE.Group();
     neonRailGroup.name = 'NeonInnerRail';
     const neonMat = new THREE.MeshStandardMaterial({
-      color: 0x00f0ff,
-      emissive: 0x00f0ff,
-      emissiveIntensity: 2.5,
+      color: bgTheme.palette.neonRailColor || 0x00f0ff,
+      emissive: bgTheme.palette.neonRailColor || 0x00f0ff,
+      emissiveIntensity: bgTheme.palette.neonEmissiveIntensity ?? 2.5,
       roughness: 0.15,
       metalness: 0.1,
     });
+    neonMatRef.current = neonMat;
     const rInner = 37.4;
     const neonCorners = [
       new THREE.Vector3(0, 0.42, rInner),       // South
@@ -2369,6 +2631,79 @@ export default function Board3D({
         cashTransfersRef.current = activeNotes;
       }
 
+      // Update 3D Cash Rain (Physical falling banknotes & coins showering the pawn)
+      if (cashRainRef.current.length > 0) {
+        const activeRain = [];
+        cashRainRef.current.forEach((item) => {
+          if (item.type === 'bill' || item.type === 'coin') {
+            item.delay -= delta;
+            if (item.delay > 0) {
+              item.mesh.visible = false;
+              activeRain.push(item);
+              return;
+            }
+            item.mesh.visible = true;
+
+            if (item.state === 'falling') {
+              item.vy -= 9.8 * delta; // Gravity
+              item.flutterPhase += item.flutterSpeed * delta;
+              item.mesh.position.y += item.vy * delta;
+              item.mesh.position.x += (item.vx + Math.sin(item.flutterPhase) * item.flutterAmp) * delta;
+              item.mesh.position.z += (item.vz + Math.cos(item.flutterPhase) * item.flutterAmp) * delta;
+              item.mesh.rotation.x += item.rotSpeed.x * delta;
+              item.mesh.rotation.y += item.rotSpeed.y * delta;
+              item.mesh.rotation.z += item.rotSpeed.z * delta;
+
+              // Check table collision at y = 0.36
+              if (item.mesh.position.y <= 0.36) {
+                item.state = 'grounded';
+                item.mesh.position.y = 0.36 + Math.random() * 0.03;
+                if (item.type === 'bill') {
+                  item.mesh.rotation.x = -Math.PI / 2;
+                }
+                item.groundElapsed = 0;
+              }
+              activeRain.push(item);
+            } else if (item.state === 'grounded') {
+              item.groundElapsed += delta;
+              const fade = Math.max(0, 1.0 - item.groundElapsed / 1.4);
+              if (item.mesh.material) {
+                item.mesh.material.opacity = fade;
+              }
+              if (fade > 0) {
+                activeRain.push(item);
+              } else {
+                if (cashGroupRef.current) cashGroupRef.current.remove(item.mesh);
+                if (item.mesh.geometry) item.mesh.geometry.dispose();
+                if (item.mesh.material) item.mesh.material.dispose();
+              }
+            }
+          } else if (item.type === 'billboard') {
+            item.elapsed += delta;
+            item.mesh.position.y += 1.3 * delta;
+            const progress = Math.min(1.0, item.elapsed / 2.2);
+            // Scale spring overshoot
+            const scaleP = Math.min(1.0, item.elapsed / 0.35);
+            const scale = Math.sin(scaleP * Math.PI * 0.5) * 1.0;
+            item.mesh.scale.set(scale, scale, scale);
+
+            if (item.elapsed > 1.2) {
+              const fade = Math.max(0, 1.0 - (item.elapsed - 1.2) / 1.0);
+              if (item.mesh.material) item.mesh.material.opacity = fade;
+            }
+
+            if (progress < 1.0) {
+              activeRain.push(item);
+            } else {
+              if (cashGroupRef.current) cashGroupRef.current.remove(item.mesh);
+              if (item.mesh.geometry) item.mesh.geometry.dispose();
+              if (item.mesh.material) item.mesh.material.dispose();
+            }
+          }
+        });
+        cashRainRef.current = activeRain;
+      }
+
       // Grounded High-Roller Banknote Stacks (firmly grounded on floor - no floating)
 
       // 3D Physics Dice Simulation: Visibly thrown FROM active player across the board to center lawn!
@@ -2436,6 +2771,55 @@ export default function Board3D({
       if (mountNode) mountNode.innerHTML = '';
     };
   }, []);
+
+  // Dynamic Real-time Board Background & Theme Texture Sync
+  useEffect(() => {
+    boardBackgroundRef.current = boardBackground;
+    const theme = getBoardBackground(boardBackground);
+
+    if (lawnCanvasRef.current && lawnTextureRef.current) {
+      renderPitchTexture(lawnCanvasRef.current.getContext('2d'), theme, communityJackpot);
+      lawnTextureRef.current.needsUpdate = true;
+    }
+
+    if (studioFloorCanvasRef.current && studioFloorTextureRef.current) {
+      renderStudioFloorTexture(studioFloorCanvasRef.current.getContext('2d'), theme);
+      studioFloorTextureRef.current.needsUpdate = true;
+    }
+
+    if (mahoganyMatRef.current && theme?.palette?.frameColor) {
+      mahoganyMatRef.current.color.set(theme.palette.frameColor);
+    }
+
+    if (innerLipMatRef.current && theme?.palette?.innerLipColor) {
+      innerLipMatRef.current.color.set(theme.palette.innerLipColor);
+    }
+
+    if (neonMatRef.current && theme?.palette?.neonRailColor) {
+      neonMatRef.current.color.set(theme.palette.neonRailColor);
+      neonMatRef.current.emissive.set(theme.palette.neonRailColor);
+      neonMatRef.current.emissiveIntensity = theme.palette.neonEmissiveIntensity ?? 2.5;
+    }
+
+    if (pedestalMatRef.current && theme?.palette?.pedestalColor) {
+      pedestalMatRef.current.color.set(theme.palette.pedestalColor);
+    }
+
+    if (ambientLightRef.current && theme?.palette?.ambientLightColor) {
+      ambientLightRef.current.color.set(theme.palette.ambientLightColor);
+      ambientLightRef.current.intensity = theme.palette.ambientIntensity ?? 0.82;
+    }
+
+    if (mainSunRef.current && theme?.palette?.sunLightColor) {
+      mainSunRef.current.color.set(theme.palette.sunLightColor);
+      mainSunRef.current.intensity = theme.palette.sunIntensity ?? 1.38;
+    }
+
+    if (softStudioFillRef.current && theme?.palette?.fillLightColor) {
+      softStudioFillRef.current.color.set(theme.palette.fillLightColor);
+      softStudioFillRef.current.intensity = theme.palette.fillIntensity ?? 0.55;
+    }
+  }, [boardBackground, communityJackpot]);
 
   // Update Dynamic 3D Buildings & Tile Rent Textures (Business Tour Progression)
   useEffect(() => {
@@ -2521,7 +2905,7 @@ export default function Board3D({
       }
 
       if (buildingMesh) {
-        const localOffset = new THREE.Vector3(0, 0, -2.4);
+        const localOffset = new THREE.Vector3(0, 0, 1.2);
         localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
         buildingMesh.position.set(p.x + localOffset.x, 0.35, p.z + localOffset.z);
         buildingMesh.rotation.y = p.rotationY;
@@ -2708,6 +3092,50 @@ export default function Board3D({
 
         onPawnMovementStart?.(player.id, toTile);
 
+        // 1. Direct Magnetic Pull Trajectory (Snappy linear pull, never crosses START)
+        if (player.lastMovementType === 'magnetic_pull') {
+          player.lastMovementType = null;
+          try { sounds.playMove?.(); } catch (err) {}
+          const startCoords = entry.group.position.clone();
+          const totalTileCount = TILES.length || 32;
+          const targetCoords = getPawnTile3DPos(toTile, totalTileCount, entry.subOffset);
+
+          const pullDuration = 650;
+          const pullStartTime = performance.now();
+
+          const pullAnim = () => {
+            const now = performance.now();
+            const p = Math.min(1.0, (now - pullStartTime) / pullDuration);
+            // Snappy magnetic acceleration (cubic ease-in-out)
+            const ease = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+
+            // Direct straight-line interpolation across the board
+            const curX = THREE.MathUtils.lerp(startCoords.x, targetCoords.x, ease);
+            const curZ = THREE.MathUtils.lerp(startCoords.z, targetCoords.z, ease);
+            // Magnetic levitation arc (rises up to y = 2.4 during pull)
+            const arcY = Math.sin(p * Math.PI) * 2.4;
+
+            entry.group.position.set(curX, 0.35 + arcY, curZ);
+
+            // Rotate towards the pull destination
+            entry.group.rotation.y = Math.atan2(targetCoords.x - startCoords.x, targetCoords.z - startCoords.z);
+
+            if (p < 1.0) {
+              requestAnimationFrame(pullAnim);
+            } else {
+              entry.group.position.copy(targetCoords);
+              entry.group.rotation.y = 0;
+              try { sounds.playPawnLand?.(); } catch (err) {}
+              entry.currentTile = toTile;
+              entry.targetTile = toTile;
+              entry.isMoving = false;
+              onPawnMovementComplete?.(player.id, toTile);
+            }
+          };
+          requestAnimationFrame(pullAnim);
+          return;
+        }
+
         const path = [];
         let curr = fromTile;
         const totalTileCount = TILES.length || 48;
@@ -2725,7 +3153,7 @@ export default function Board3D({
         }
 
         // Direct High-Altitude Soaring Flight along Board Perimeter for World Tour
-        const isWorldTourFlight = fromTile === 16 || path.length > 12;
+        const isWorldTourFlight = (fromTile === 16 || fromTile === 24) && path.length > 6;
         if (isWorldTourFlight) {
           try { sounds.playFlightTakeoff?.(); } catch (err) {}
           const startCoords = entry.group.position.clone();
@@ -2768,14 +3196,8 @@ export default function Board3D({
               const startRatio = (startIdx + 0.5) / path.length;
               if (ease >= startRatio) {
                 hasClaimedStartInFlight = true;
-                try {
-                  sounds.playCash?.();
-                  sounds.playDoublesSurge?.();
-                } catch (err) {}
-
-                // Spawn flying cash notes from START monument into the soaring pawn
-                const pStart = getPawnTile3DPos(0, totalTileCount);
-                spawnFlyingCash(pStart, entry.group.position, 200000);
+                // Trigger full 3D cash rain cascade directly on soaring pawn
+                spawnCashRainOnPawn(entry.group.position, 200000, player);
               }
             }
 
@@ -2859,13 +3281,9 @@ export default function Board3D({
 
           sounds.playPawnStep?.();
 
-          // If step lands on or passes START (Tile 0), trigger cash animation
+          // If step lands on or passes START (Tile 0), trigger cash rain animation on the pawn
           if (nextTileId === 0) {
-            try {
-              sounds.playCash?.();
-            } catch (e) {}
-            const pStart = getPawnTile3DPos(0, TILES.length);
-            spawnFlyingCash(pStart, targetPos, 200000);
+            spawnCashRainOnPawn(targetPos, 200000, player);
           }
 
           let t = 0;
@@ -2957,6 +3375,176 @@ export default function Board3D({
       });
     }
   }, []);
+
+  // 3D Physical Cash Rain Spawner: Cascading shower of banknotes & coins falling directly on player pawn
+  const spawnCashRainOnPawn = useCallback((pawnPos, amount = 200000, player = null) => {
+    if (!cashGroupRef.current) return;
+
+    try {
+      sounds.playCash?.();
+      sounds.playDoublesSurge?.();
+    } catch (e) {}
+
+    if (onSalaryRain && player) {
+      onSalaryRain(player, amount);
+    }
+
+    const noteCount = 36;
+    const coinCount = 14;
+
+    // Create crisp banknote texture
+    const bCanvas = document.createElement('canvas');
+    bCanvas.width = 160;
+    bCanvas.height = 80;
+    const bCtx = bCanvas.getContext('2d');
+    const grad = bCtx.createLinearGradient(0, 0, 160, 80);
+    grad.addColorStop(0, '#10b981');
+    grad.addColorStop(0.5, '#059669');
+    grad.addColorStop(1, '#047857');
+    bCtx.fillStyle = grad;
+    bCtx.fillRect(0, 0, 160, 80);
+    bCtx.strokeStyle = '#fbbf24';
+    bCtx.lineWidth = 4;
+    bCtx.strokeRect(4, 4, 152, 72);
+    bCtx.strokeStyle = 'rgba(254, 240, 138, 0.4)';
+    bCtx.lineWidth = 1.5;
+    bCtx.strokeRect(10, 10, 140, 60);
+    bCtx.fillStyle = '#fef08a';
+    bCtx.font = '900 24px monospace';
+    bCtx.textAlign = 'center';
+    bCtx.textBaseline = 'middle';
+    bCtx.fillText('CR', 80, 40);
+
+    const bTex = new THREE.CanvasTexture(bCanvas);
+    const billGeom = new THREE.PlaneGeometry(0.85, 0.45);
+
+    for (let i = 0; i < noteCount; i++) {
+      const bMat = new THREE.MeshBasicMaterial({
+        map: bTex,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 1.0,
+      });
+      const noteMesh = new THREE.Mesh(billGeom, bMat);
+
+      const rad = Math.random() * 2.4;
+      const angle = Math.random() * Math.PI * 2;
+      const startX = pawnPos.x + Math.cos(angle) * rad;
+      const startZ = pawnPos.z + Math.sin(angle) * rad;
+      const startY = (pawnPos.y || 0.35) + 4.5 + Math.random() * 4.0;
+
+      noteMesh.position.set(startX, startY, startZ);
+      noteMesh.rotation.set(
+        Math.random() * Math.PI * 2,
+        Math.random() * Math.PI * 2,
+        Math.random() * Math.PI * 2
+      );
+      noteMesh.visible = false;
+      cashGroupRef.current.add(noteMesh);
+
+      cashRainRef.current.push({
+        type: 'bill',
+        state: 'falling',
+        mesh: noteMesh,
+        delay: (i / noteCount) * 0.75,
+        vy: -3.5 - Math.random() * 2.5,
+        vx: (Math.random() - 0.5) * 1.4,
+        vz: (Math.random() - 0.5) * 1.4,
+        flutterPhase: Math.random() * Math.PI * 2,
+        flutterSpeed: 7.0 + Math.random() * 5.0,
+        flutterAmp: 0.6 + Math.random() * 0.5,
+        rotSpeed: new THREE.Vector3(
+          (Math.random() - 0.5) * 14,
+          (Math.random() - 0.5) * 12,
+          (Math.random() - 0.5) * 14
+        ),
+        groundElapsed: 0,
+      });
+    }
+
+    // 14 Spinning Gold Coins
+    const coinGeom = new THREE.CylinderGeometry(0.24, 0.24, 0.05, 16);
+    const coinMat = new THREE.MeshStandardMaterial({
+      color: 0xf59e0b,
+      metalness: 0.85,
+      roughness: 0.2,
+      emissive: 0x78350f,
+      transparent: true,
+      opacity: 1.0,
+    });
+
+    for (let c = 0; c < coinCount; c++) {
+      const coinMesh = new THREE.Mesh(coinGeom, coinMat.clone());
+      const rad = Math.random() * 2.0;
+      const angle = Math.random() * Math.PI * 2;
+      const startX = pawnPos.x + Math.cos(angle) * rad;
+      const startZ = pawnPos.z + Math.sin(angle) * rad;
+      const startY = (pawnPos.y || 0.35) + 5.0 + Math.random() * 3.5;
+
+      coinMesh.position.set(startX, startY, startZ);
+      coinMesh.visible = false;
+      cashGroupRef.current.add(coinMesh);
+
+      cashRainRef.current.push({
+        type: 'coin',
+        state: 'falling',
+        mesh: coinMesh,
+        delay: (c / coinCount) * 0.6,
+        vy: -4.5 - Math.random() * 3.0,
+        vx: (Math.random() - 0.5) * 1.2,
+        vz: (Math.random() - 0.5) * 1.2,
+        flutterPhase: Math.random() * Math.PI * 2,
+        flutterSpeed: 5.0,
+        flutterAmp: 0.2,
+        rotSpeed: new THREE.Vector3(
+          (Math.random() - 0.5) * 20,
+          (Math.random() - 0.5) * 20,
+          (Math.random() - 0.5) * 16
+        ),
+        groundElapsed: 0,
+      });
+    }
+
+    // Overhead 3D Billboard Sprite "+200,000 CR SALARY!"
+    const bbCanvas = document.createElement('canvas');
+    bbCanvas.width = 384;
+    bbCanvas.height = 128;
+    const bbCtx = bbCanvas.getContext('2d');
+
+    bbCtx.fillStyle = 'rgba(6, 78, 59, 0.92)';
+    bbCtx.roundRect(10, 10, 364, 108, 20);
+    bbCtx.fill();
+    bbCtx.strokeStyle = '#34d399';
+    bbCtx.lineWidth = 4;
+    bbCtx.stroke();
+
+    bbCtx.fillStyle = '#6ee7b7';
+    bbCtx.font = '900 20px sans-serif';
+    bbCtx.textAlign = 'center';
+    bbCtx.fillText('START SALARY CROSSED! 🚀', 192, 44);
+
+    bbCtx.fillStyle = '#fef08a';
+    bbCtx.font = '900 32px monospace';
+    bbCtx.fillText(`+${(amount || 200000).toLocaleString()} CR 💸`, 192, 88);
+
+    const bbTex = new THREE.CanvasTexture(bbCanvas);
+    const bbMat = new THREE.SpriteMaterial({
+      map: bbTex,
+      transparent: true,
+      opacity: 1.0,
+      depthTest: false,
+    });
+    const bbSprite = new THREE.Sprite(bbMat);
+    bbSprite.position.set(pawnPos.x, (pawnPos.y || 0.35) + 2.8, pawnPos.z);
+    bbSprite.scale.set(0.1, 0.1, 0.1);
+    cashGroupRef.current.add(bbSprite);
+
+    cashRainRef.current.push({
+      type: 'billboard',
+      mesh: bbSprite,
+      elapsed: 0,
+    });
+  }, [onSalaryRain]);
 
   // Listen to incoming lastPayment and trigger avatar distress & cash parabolic flight
   useEffect(() => {
@@ -3062,14 +3650,37 @@ export default function Board3D({
     // Reset all tile emissive styles
     tileMeshesRef.current.forEach((tMesh) => {
       if (tMesh) {
-        const topMat = tMesh.material?.[2];
-        if (topMat?.emissive) {
-          topMat.emissive.setHex(0x000000);
-          topMat.emissiveIntensity = 0;
+        if (Array.isArray(tMesh.material)) {
+          tMesh.material.forEach((mat) => {
+            if (mat?.emissive) {
+              mat.emissive.setHex(0x000000);
+              mat.emissiveIntensity = 0;
+            }
+          });
+        } else if (tMesh.material?.emissive) {
+          tMesh.material.emissive.setHex(0x000000);
+          tMesh.material.emissiveIntensity = 0;
         }
         tMesh.position.y = 0.17;
       }
     });
+
+    // Explicitly guarantee tile 16 (World Championship corner) does not retain any emissive glow
+    const champMesh = tileMeshesRef.current?.[16];
+    if (champMesh) {
+      if (Array.isArray(champMesh.material)) {
+        champMesh.material.forEach((mat) => {
+          if (mat?.emissive) {
+            mat.emissive.setHex(0x000000);
+            mat.emissiveIntensity = 0;
+          }
+        });
+      } else if (champMesh.material?.emissive) {
+        champMesh.material.emissive.setHex(0x000000);
+        champMesh.material.emissiveIntensity = 0;
+      }
+      champMesh.position.y = 0.17;
+    }
 
     // Clear existing beacons
     if (targetingGroupRef.current) {

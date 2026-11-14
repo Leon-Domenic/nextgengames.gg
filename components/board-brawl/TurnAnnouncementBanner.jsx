@@ -23,6 +23,7 @@ export default function TurnAnnouncementBanner({
 
     const isFlight = turnState === 'flight_select';
     const isChampionship = turnState === 'festival_select';
+    const isStartLaunchpad = turnState === 'start_tile_select';
 
     const bannerData = {
       id: currentKey,
@@ -30,17 +31,22 @@ export default function TurnAnnouncementBanner({
       isMyTurn,
       isFlight,
       isChampionship,
+      isStartLaunchpad,
       title: isFlight
         ? (isMyTurn ? '✈️ YOUR FLIGHT DEPARTURE!' : `✈️ ${activePlayer.name.toUpperCase()}'S FLIGHT`)
         : isChampionship
         ? (isMyTurn ? '🏆 WORLD CHAMPIONSHIP SELECTION!' : `🏆 ${activePlayer.name.toUpperCase()}'S CHAMPIONSHIP`)
+        : isStartLaunchpad
+        ? (isMyTurn ? '🚀 START LAUNCHPAD ACTION!' : `🚀 ${activePlayer.name.toUpperCase()}'S START PRIVILEGE`)
         : (isMyTurn ? '⭐ YOUR TURN!' : `${activePlayer.name.toUpperCase()}'S TURN`),
       subtitle: isFlight
         ? (isMyTurn ? 'Choose any highlighted destination on the board to fly!' : 'Selecting a flight destination...')
         : isChampionship
         ? (isMyTurn ? 'Select any owned city to host the Championship for 2X Rent!' : 'Selecting a city to host the Championship...')
+        : isStartLaunchpad
+        ? (isMyTurn ? 'Choose: One More Roll, Remote City Upgrade (+1), or Shield!' : 'Choosing Launchpad action...')
         : (isMyTurn ? 'Roll the 3D dice or play an action card!' : 'Preparing 3D dice roll...'),
-      color: isMyTurn ? '#38bdf8' : (activePlayer.avatarColor || '#f59e0b'),
+      color: isStartLaunchpad ? '#10b981' : isMyTurn ? '#38bdf8' : (activePlayer.avatarColor || '#f59e0b'),
     };
 
     setBanner(bannerData);

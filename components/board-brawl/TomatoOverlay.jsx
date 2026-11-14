@@ -342,7 +342,7 @@ export default function TomatoOverlay({
             position: 'fixed',
             inset: 0,
             pointerEvents: 'none',
-            zIndex: 99998,
+            zIndex: 46,
             overflow: 'visible',
           }}
         >
@@ -417,16 +417,16 @@ export default function TomatoOverlay({
             left: splat.x,
             top: splat.y,
             transform: 'translate(-50%, -50%)',
-            zIndex: 99997,
+            zIndex: 45,
             pointerEvents: 'none',
             animation: 'cardSplatPop 2.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
           }}
         >
-          {/* Comic Direct Hit Badge */}
+          {/* Comic Direct Hit Badge - positioned under card for top cards */}
           <div
             style={{
               position: 'absolute',
-              top: '-36px',
+              top: (splat.y && splat.y < 240) ? '60px' : '-36px',
               left: '50%',
               transform: 'translateX(-50%)',
               background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',

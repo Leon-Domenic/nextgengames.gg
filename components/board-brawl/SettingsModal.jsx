@@ -13,6 +13,7 @@ import {
 } from '@/lib/settings';
 import { CHARACTERS, CHARACTER_MAP } from '@/lib/board-brawl/characters.js';
 import { DICE_SKIN_MAP } from '@/lib/board-brawl/diceSkins.js';
+import { getBoardBackground, DEFAULT_BOARD_BACKGROUND_ID } from '@/lib/board-brawl/boardBackgrounds.js';
 import {
   X,
   Volume2,
@@ -93,6 +94,7 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
   // Cosmetics Equipped state
   const [equippedCharId, setEquippedCharId] = useState('warrior');
   const [equippedDiceSkinId, setEquippedDiceSkinId] = useState('classic_red');
+  const [equippedBgId, setEquippedBgId] = useState(DEFAULT_BOARD_BACKGROUND_ID);
 
   // Success indicator for reset
   const [showResetNotice, setShowResetNotice] = useState(false);
@@ -129,6 +131,7 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
       if (typeof window !== 'undefined') {
         setEquippedCharId(localStorage.getItem('ngg_equipped_character') || 'warrior');
         setEquippedDiceSkinId(localStorage.getItem('ngg_equipped_dice_skin') || 'classic_red');
+        setEquippedBgId(localStorage.getItem('ngg_equipped_board_background') || DEFAULT_BOARD_BACKGROUND_ID);
       }
     };
 
@@ -316,6 +319,7 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
 
   const equippedChar = CHARACTER_MAP[equippedCharId] || CHARACTERS[0];
   const equippedDice = DICE_SKIN_MAP[equippedDiceSkinId] || { name: 'Classic Red', icon: '🎲' };
+  const equippedBg = getBoardBackground(equippedBgId);
 
   return createPortal(
     <div
@@ -1732,7 +1736,7 @@ export default function SettingsModal({ isOpen, onClose, onOpenCosmetics }) {
                       Current Loadout
                     </div>
                     <div style={{ fontSize: '16px', fontWeight: 900, color: '#0f172a' }}>
-                      {equippedChar.name} &bull; {equippedDice.icon || '🎲'} {equippedDice.name}
+                      {equippedChar.name} &bull; {equippedDice.icon || '🎲'} {equippedDice.name} &bull; {equippedBg.icon || '🌱'} {equippedBg.name}
                     </div>
                   </div>
                 </div>

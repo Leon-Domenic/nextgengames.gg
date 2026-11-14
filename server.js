@@ -3,6 +3,7 @@ import { parse } from 'url';
 import next from 'next';
 import { Server as SocketIOServer } from 'socket.io';
 import { BoardBrawlGame } from './lib/board-brawl/engine.js';
+import { ALL_PLAYER_SUBCOLORS, getTeamSubcolor } from './lib/board-brawl/types.js';
 import { getRandomEventCard, getEventCard } from './lib/board-brawl/cards.js';
 import db from './lib/db.js';
 
@@ -205,9 +206,18 @@ app.prepare().then(() => {
         const botCount = game.players.filter(p => p.isBot).length + 1;
         const botNames = ['BaronVonCash', 'Apex-9', 'AxelNitro', 'CaptainMonaco', 'AstroVance', 'LordQuackers', 'HodlKing', 'QueenVictoria', 'Knuckles', 'MadameSolana', 'Rudolf', 'Cantino'];
         const botTokens = ['hat', 'robot', 'car', 'yacht', 'rocket', 'duck', 'diamond', 'crown', 'brawler', 'mystic', 'kitten', 'pigeon', 'unicorn'];
-        const availableColors = ['#00f0ff', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'];
-        const usedColors = new Set(game.players.map(p => (p.avatarColor || '').toLowerCase()));
-        const botColor = availableColors.find(c => !usedColors.has(c.toLowerCase())) || availableColors[(botCount - 1) % availableColors.length];
+        
+        let botColor;
+        const botSlot = game.players.length;
+        if (game.mode === '3v3') {
+          const teamFamily = (botSlot % 2 === 0) ? 'cyan' : 'crimson';
+          const playerIdxInTeam = Math.floor(botSlot / 2);
+          botColor = getTeamSubcolor(teamFamily, playerIdxInTeam).hex;
+        } else {
+          const availableColors = ALL_PLAYER_SUBCOLORS.map(c => c.hex);
+          const usedColors = new Set(game.players.map(p => (p.avatarColor || '').toLowerCase()));
+          botColor = availableColors.find(c => !usedColors.has(c.toLowerCase())) || availableColors[(botCount - 1) % availableColors.length];
+        }
 
         game.addPlayer({
           id: `bot_${Date.now()}_${botCount}`,
@@ -229,6 +239,8 @@ app.prepare().then(() => {
         game.updatePlayerCharacter(payload.playerId, payload.token, payload.color);
       } else if (action === 'select_dice_skin') {
         game.updatePlayerDiceSkin(payload.playerId, payload.skinId);
+      } else if (action === 'select_board_background') {
+        game.updatePlayerBoardBackground(payload.playerId, payload.bgId);
       } else if (action === 'play_action_card') {
         game.playActionCard(payload.playerId, payload.cardId, payload.target);
       } else if (action === 'trigger_event_card') {
@@ -244,6 +256,14 @@ app.prepare().then(() => {
         game.buyoutCity(payload.playerId, payload.tileId);
       } else if (action === 'upgrade_city') {
         game.upgradeCity(payload.playerId, payload.tileId, payload.targetLevel);
+      } else if (action === 'start_extra_roll') {
+        game.takeStartExtraRoll(payload?.playerId);
+      } else if (action === 'start_upgrade_property') {
+        game.upgradePropertyFromStart(payload?.playerId, payload?.tileId);
+      } else if (action === 'start_buy_shield') {
+        game.buyStartShield(payload?.playerId);
+      } else if (action === 'start_pass') {
+        game.passStartAction(payload?.playerId);
       } else if (action === 'set_festival') {
         game.setFestival(payload.playerId, payload.tileId);
       } else if (action === 'select_flight_destination') {

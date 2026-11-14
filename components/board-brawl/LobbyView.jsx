@@ -4,11 +4,18 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { CHARACTERS } from '@/lib/board-brawl/characters';
 import { DICE_SKIN_MAP, DICE_SKINS } from '@/lib/board-brawl/diceSkins';
+import { DEFAULT_BOARD_BACKGROUND_ID, getBoardBackground } from '@/lib/board-brawl/boardBackgrounds';
 import { sounds } from '@/lib/audio';
 import CosmeticsShopModal from '@/components/board-brawl/CosmeticsShopModal';
 import SettingsModal from '@/components/board-brawl/SettingsModal';
 import EmojiReactionPicker from '@/components/board-brawl/EmojiReactionPicker';
 import EmojiReactionBubble from '@/components/board-brawl/EmojiReactionBubble';
+import {
+  PLAYER_COLOR_FAMILIES,
+  ALL_PLAYER_SUBCOLORS,
+  resolvePlayerColor,
+  getTeamSubcolor
+} from '@/lib/board-brawl/types';
 import {
   Users, Bot, Play, Copy, CheckCheck, Settings, ShoppingCart, X, Home,
   ChevronLeft, ChevronRight, Volume2, VolumeX, Sparkles, Dices, ShoppingBag
@@ -16,7 +23,7 @@ import {
 
 export const PLAYER_COLORS = [
   { id: 'cyan', name: 'Cyan Sky', hex: '#00f0ff', accent: '#0284c7', headerBg: '#0284c7' },
-  { id: 'rose', name: 'Neon Rose', hex: '#ec4899', accent: '#be185d', headerBg: '#e11d48' },
+  { id: 'orange', name: 'Blazing Orange', hex: '#f97316', accent: '#ea580c', headerBg: '#ea580c' },
   { id: 'emerald', name: 'Cyber Emerald', hex: '#10b981', accent: '#059669', headerBg: '#059669' },
   { id: 'gold', name: 'Vegas Gold', hex: '#f59e0b', accent: '#d97706', headerBg: '#d97706' },
   { id: 'purple', name: 'Electric Violet', hex: '#8b5cf6', accent: '#6d28d9', headerBg: '#7c3aed' },
@@ -39,6 +46,8 @@ export default function LobbyView({
   onChangeColor,
   onChangeDiceSkin,
   equippedDiceSkin = 'classic_red',
+  onChangeBoardBackground,
+  equippedBoardBackground = DEFAULT_BOARD_BACKGROUND_ID,
   onCopyLink,
   copiedLink,
   playerReactions = {},
@@ -52,6 +61,7 @@ export default function LobbyView({
   const [showShop, setShowShop] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [activePickerSlot, setActivePickerSlot] = useState(null);
+  const [activeFamilyId, setActiveFamilyId] = useState(null);
 
   const handlePrevChar = () => {
     const nextIdx = (currentCharIdx - 1 + CHARACTERS.length) % CHARACTERS.length;
@@ -76,6 +86,28 @@ export default function LobbyView({
   const hasOpenSlot = players.length < maxSlots;
   const totalCards = players.length + (hasOpenSlot ? 1 : 0);
 
+  // Check if enemy team or opponents are entirely bots
+  const mySlotIdx = players.findIndex(p => p && (p.id === user?.id || p.id === myPlayer?.id));
+  const myTeamParity = mySlotIdx >= 0 ? (mySlotIdx % 2) : 0;
+
+  // In 3v3 mode, enemy team are slots with opposite parity. In FFA, enemies are all other players.
+  const enemyTeamPlayers = mode === '3v3'
+    ? players.filter((p, idx) => p && (idx % 2 !== myTeamParity))
+    : players.filter((p, idx) => p && idx !== mySlotIdx);
+  const isEnemyAllBots = enemyTeamPlayers.length > 0 && enemyTeamPlayers.every(p => p.isBot);
+
+  // Batch helper to set enemy bot team family in 3v3
+  const handleSetEnemyTeamFamily = (familyId) => {
+    const family = PLAYER_COLOR_FAMILIES.find(f => f.id === familyId) || PLAYER_COLOR_FAMILIES[0];
+    const enemyBots = players.map((p, idx) => ({ player: p, slotIdx: idx })).filter(({ player, slotIdx }) => player && (slotIdx % 2 !== myTeamParity) && player.isBot);
+    enemyBots.forEach(({ player }, i) => {
+      const shade = family.subcolors[i % family.subcolors.length];
+      if (onChangeColor) {
+        onChangeColor(shade.hex, player.id);
+      }
+    });
+  };
+
   return (
     <div style={{
       width: '100%',
@@ -95,6 +127,7 @@ export default function LobbyView({
         currentUserId={user?.id}
         equippedCharacter={CHARACTERS[currentCharIdx]?.id || 'hat'}
         equippedDiceSkin={equippedDiceSkin}
+        equippedBoardBackground={equippedBoardBackground}
         onEquipCharacter={(charId) => {
           const idx = CHARACTERS.findIndex(c => c.id === charId);
           if (idx >= 0) setCurrentCharIdx(idx);
@@ -102,6 +135,9 @@ export default function LobbyView({
         }}
         onEquipDiceSkin={(skinId) => {
           if (onChangeDiceSkin) onChangeDiceSkin(skinId);
+        }}
+        onEquipBoardBackground={(bgId) => {
+          if (onChangeBoardBackground) onChangeBoardBackground(bgId);
         }}
         userCash={5000}
         userCoins={50}
@@ -437,6 +473,33 @@ export default function LobbyView({
             >
               🏆 NORMAL (60M)
             </button>
+            <button
+              onClick={() => {
+                if (isHost && onChangeMode) {
+                  sounds.playBuy();
+                  onChangeMode('3v3');
+                }
+              }}
+              title={isHost ? "Switch to 3v3 Team Battle Mode (30 Minutes)" : "3v3 Team Mode: 30 Minutes (Host controls)"}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '7px',
+                background: mode === '3v3' ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' : 'transparent',
+                color: mode === '3v3' ? '#ffffff' : '#64748b',
+                border: 'none',
+                fontSize: '11px',
+                fontWeight: 900,
+                textTransform: 'uppercase',
+                cursor: isHost ? 'pointer' : 'default',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                boxShadow: mode === '3v3' ? '0 2px 8px rgba(139, 92, 246, 0.35)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              👥 3V3 TEAMS (30M)
+            </button>
           </div>
 
           <button
@@ -522,13 +585,12 @@ export default function LobbyView({
       >
         {players.map((player, slotIdx) => {
           const isMe = Boolean(player && (player.id === user?.id || player.id === myPlayer?.id));
-          const playerColorHex = player?.avatarColor || PLAYER_COLORS[slotIdx % PLAYER_COLORS.length].hex;
-          const colorObj = PLAYER_COLORS.find(c => c.hex.toLowerCase() === playerColorHex.toLowerCase()) || {
-            name: 'Player',
-            hex: playerColorHex,
-            headerBg: playerColorHex,
-            accent: playerColorHex
-          };
+          const canCustomizeColor = isMe || Boolean(player?.isBot && (isHost || isEnemyAllBots));
+          const defaultHex = mode === '3v3'
+            ? getTeamSubcolor(slotIdx % 2 === 0 ? 'cyan' : 'crimson', Math.floor(slotIdx / 2)).hex
+            : (ALL_PLAYER_SUBCOLORS[slotIdx % ALL_PLAYER_SUBCOLORS.length]?.hex || '#00f0ff');
+          const playerColorHex = player?.avatarColor || defaultHex;
+          const colorObj = resolvePlayerColor(playerColorHex);
           const slotColor = colorObj;
           const activeChar = isMe
             ? CHARACTERS[currentCharIdx]
@@ -555,6 +617,34 @@ export default function LobbyView({
                 transition: 'all 0.25s ease',
               }}
             >
+              {/* 3v3 Team Alliance Badge */}
+              {mode === '3v3' && (
+                <div style={{
+                  position: 'absolute',
+                  top: '-10px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: slotIdx % 2 === 0 ? 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)' : 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+                  color: '#ffffff',
+                  fontSize: '9px',
+                  fontWeight: 900,
+                  letterSpacing: '0.05em',
+                  padding: '2px 10px',
+                  borderRadius: '999px',
+                  border: '1.5px solid #ffffff',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                  whiteSpace: 'nowrap',
+                  zIndex: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}>
+                  <span>{slotIdx % 2 === 0 ? 'TEAM A (CYAN)' : 'TEAM B (CRIMSON)'}</span>
+                  <span style={{ opacity: 0.85 }}>•</span>
+                  <span>{colorObj.shadeRole || `Slot ${slotIdx + 1}`}</span>
+                </div>
+              )}
+
               {/* Card Header Ribbon with Avatar, Username & Remove Button */}
               <div style={{
                 background: slotColor.headerBg,
@@ -812,40 +902,84 @@ export default function LobbyView({
                     </div>
                   </div>
 
-                  {/* Selectable Distinct Player Colors */}
-                  {isMe ? (
+                  {/* Selectable Distinct Player Colors - Hierarchical Family + Subcolor System */}
+                  {canCustomizeColor ? (
                     <div style={{
-                      marginTop: '10px',
+                      marginTop: '8px',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
                       gap: '4px',
                       zIndex: 3,
+                      width: '100%',
+                      maxWidth: '220px',
                     }}>
-                      <div style={{ fontSize: '9px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        Pawn & Property Color
-                      </div>
-                      <div style={{ display: 'flex', gap: '5px', justifyContent: 'center' }}>
-                        {PLAYER_COLORS.map((col) => {
-                          const isSelected = playerColorHex.toLowerCase() === col.hex.toLowerCase();
-                          return (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '0 4px' }}>
+                        <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          {isMe ? 'Color & Shade' : '🤖 Bot Color'}
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          {mode === '3v3' && player?.isBot && isEnemyAllBots && (
                             <button
-                              key={col.id}
                               onClick={() => {
                                 sounds.playPawnStep?.();
-                                if (onChangeColor) onChangeColor(col.hex);
+                                handleSetEnemyTeamFamily(colorObj.familyId || 'crimson');
                               }}
-                              title={`${col.name} (${col.hex})`}
+                              title="Set entire enemy bot team to this color family"
                               style={{
-                                width: totalCards >= 6 ? '20px' : '24px',
-                                height: totalCards >= 6 ? '20px' : '24px',
-                                borderRadius: '50%',
-                                background: col.hex,
-                                border: isSelected ? '3px solid #ffffff' : '2px solid rgba(0,0,0,0.15)',
-                                boxShadow: isSelected ? `0 0 10px ${col.hex}, 0 2px 6px rgba(0,0,0,0.25)` : '0 1px 3px rgba(0,0,0,0.1)',
+                                fontSize: '8px',
+                                fontWeight: 800,
+                                color: '#0284c7',
+                                background: 'rgba(2, 132, 199, 0.1)',
+                                border: '1px solid rgba(2, 132, 199, 0.3)',
+                                borderRadius: '4px',
+                                padding: '1px 5px',
                                 cursor: 'pointer',
-                                transform: isSelected ? 'scale(1.22)' : 'scale(1)',
-                                transition: 'transform 0.15s, box-shadow 0.15s',
+                              }}
+                            >
+                              Team All
+                            </button>
+                          )}
+                          <span style={{
+                            fontSize: '8px',
+                            fontWeight: 900,
+                            color: '#ffffff',
+                            background: colorObj.headerBg || '#0284c7',
+                            padding: '1px 5px',
+                            borderRadius: '4px',
+                            textTransform: 'uppercase',
+                          }}>
+                            {colorObj.shadeRole || 'Primary'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Tier 1: 6 Distinct Color Family Circles */}
+                      <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                        {PLAYER_COLOR_FAMILIES.map((family) => {
+                          const isFamilyActive = (colorObj.familyId || 'cyan') === family.id;
+                          return (
+                            <button
+                              key={family.id}
+                              onClick={() => {
+                                sounds.playPawnStep?.();
+                                const targetPlayerId = isMe ? null : player.id;
+                                if (colorObj.familyId !== family.id) {
+                                  // Switch to the first shade in this family
+                                  if (onChangeColor) onChangeColor(family.subcolors[0].hex, targetPlayerId);
+                                }
+                              }}
+                              title={`${family.name}`}
+                              style={{
+                                width: totalCards >= 6 ? '18px' : '20px',
+                                height: totalCards >= 6 ? '18px' : '20px',
+                                borderRadius: '50%',
+                                background: family.baseHex,
+                                border: isFamilyActive ? '2.5px solid #0f172a' : '1.5px solid rgba(0,0,0,0.15)',
+                                boxShadow: isFamilyActive ? `0 0 8px ${family.baseHex}, 0 2px 4px rgba(0,0,0,0.25)` : 'none',
+                                cursor: 'pointer',
+                                transform: isFamilyActive ? 'scale(1.2)' : 'scale(1)',
+                                transition: 'all 0.15s ease',
                                 outline: 'none',
                                 padding: 0,
                               }}
@@ -853,11 +987,74 @@ export default function LobbyView({
                           );
                         })}
                       </div>
+
+                      {/* Tier 2: 3 Coordinated Subcolors for Active Family */}
+                      {(() => {
+                        const curFamily = PLAYER_COLOR_FAMILIES.find(f => f.id === (colorObj.familyId || 'cyan')) || PLAYER_COLOR_FAMILIES[0];
+                        return (
+                          <div style={{
+                            display: 'flex',
+                            gap: '3px',
+                            justifyContent: 'center',
+                            background: 'rgba(241, 245, 249, 0.9)',
+                            padding: '3px 6px',
+                            borderRadius: '10px',
+                            border: '1px solid #cbd5e1',
+                            width: '100%',
+                            boxSizing: 'border-box',
+                          }}>
+                            {curFamily.subcolors.map((sub) => {
+                              const isSelected = playerColorHex.toLowerCase() === sub.hex.toLowerCase();
+                              return (
+                                <button
+                                  key={sub.id}
+                                  onClick={() => {
+                                    sounds.playPawnStep?.();
+                                    const targetPlayerId = isMe ? null : player.id;
+                                    if (onChangeColor) onChangeColor(sub.hex, targetPlayerId);
+                                  }}
+                                  title={`${sub.name} (${sub.shadeRole})`}
+                                  style={{
+                                    flex: 1,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '3px',
+                                    padding: '2px 4px',
+                                    borderRadius: '6px',
+                                    background: isSelected ? sub.hex : 'transparent',
+                                    border: isSelected ? '1.5px solid #ffffff' : '1px solid transparent',
+                                    color: isSelected ? (['gold', 'cyan', 'orange'].includes(curFamily.id) ? '#0f172a' : '#ffffff') : '#475569',
+                                    cursor: 'pointer',
+                                    fontSize: '8px',
+                                    fontWeight: 900,
+                                    boxShadow: isSelected ? `0 2px 6px ${sub.hex}88` : 'none',
+                                    transition: 'all 0.12s ease',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  <span style={{
+                                    width: '7px',
+                                    height: '7px',
+                                    borderRadius: '50%',
+                                    background: sub.hex,
+                                    border: isSelected ? '1px solid #ffffff' : '1px solid rgba(0,0,0,0.2)',
+                                    flexShrink: 0,
+                                  }} />
+                                  <span>{sub.shadeRole === 'Primary' ? 'Pri' : (sub.shadeRole === 'Subcolor 1' ? 'Sub 1' : 'Sub 2')}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
                   ) : (
                     <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px', zIndex: 3 }}>
                       <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: playerColorHex, border: '2px solid #ffffff', boxShadow: `0 0 6px ${playerColorHex}` }} />
-                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748b' }}>{colorObj.name}</span>
+                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748b' }}>
+                        {colorObj.name} {colorObj.shadeRole ? `(${colorObj.shadeRole})` : ''}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -888,6 +1085,44 @@ export default function LobbyView({
                   >
                     <ChevronRight size={18} />
                   </button>
+                )}
+
+                {/* Equipped Board Background Badge on Bottom Left of Standee */}
+                {isMe && (
+                  <div
+                    onClick={() => setShowShop(true)}
+                    title={`Equipped Board Theme: ${getBoardBackground(equippedBoardBackground).name} (Click to open Shop)`}
+                    style={{
+                      position: 'absolute',
+                      bottom: '10px',
+                      left: '10px',
+                      padding: '3px 7px',
+                      borderRadius: '12px',
+                      background: getBoardBackground(equippedBoardBackground).badgeBg || '#15803d',
+                      border: '1.5px solid #ffffff',
+                      boxShadow: '0 3px 8px rgba(0, 0, 0, 0.25)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '10px',
+                      fontWeight: 900,
+                      color: '#ffffff',
+                      cursor: 'pointer',
+                      zIndex: 5,
+                      transition: 'transform 0.1s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.08)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                  >
+                    <span>{getBoardBackground(equippedBoardBackground).icon || '🌱'}</span>
+                    <span style={{ maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {getBoardBackground(equippedBoardBackground).name}
+                    </span>
+                  </div>
                 )}
 
                 {/* Equipped Dice Skin Badge at Bottom of Standee */}

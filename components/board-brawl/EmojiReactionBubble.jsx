@@ -27,16 +27,10 @@ export default function EmojiReactionBubble({
 
   if (!isVisible) return null;
 
-  // Placement next to the avatar box
+  // Placement prominent over the avatar box
   const placementStyle = {
-    'top-left': { left: '52px', top: '-6px' },
-    'top-right': { right: '52px', top: '-6px' },
-    'mid-left': { left: '52px', top: '-6px' },
-    'mid-right': { right: '52px', top: '-6px' },
-    'bottom-left': { left: '52px', bottom: '-6px' },
-    'bottom-right': { right: '52px', bottom: '-6px' },
     'pedestal': { top: '-46px', left: '50%', transform: 'translateX(-50%)' },
-  }[position] || { left: '52px', top: '-6px' };
+  }[position] || { top: '-14px', left: '26px' };
 
   return (
     <div

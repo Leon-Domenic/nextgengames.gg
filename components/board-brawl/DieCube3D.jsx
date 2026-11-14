@@ -35,6 +35,9 @@ function DiceFace({ value, faceTransform, half, radius, borderWidth, pipOneSize,
   const isMagma = skin.id === 'obsidian_flame';
   const isCosmic = skin.id === 'amethyst_galaxy';
   const isFrost = skin.id === 'arctic_frost';
+  const isSupernova = skin.id === 'solar_supernova';
+  const isVoid = skin.id === 'void_phantom';
+  const isPrism = skin.id === 'chroma_prism';
 
   // Customized face gradient for distinctive visual finishes
   const faceBg = isGold
@@ -43,12 +46,24 @@ function DiceFace({ value, faceTransform, half, radius, borderWidth, pipOneSize,
     ? `linear-gradient(145deg, #090d16 0%, #030712 100%)`
     : isFrost
     ? `linear-gradient(135deg, #0284c7 0%, #38bdf8 60%, #0369a1 100%)`
+    : isSupernova
+    ? `linear-gradient(135deg, #f59e0b 0%, #ea580c 45%, #9a3412 100%)`
+    : isVoid
+    ? `linear-gradient(145deg, #090514 0%, #1e1035 50%, #05020a 100%)`
+    : isPrism
+    ? `linear-gradient(135deg, rgba(240, 249, 255, 0.96) 0%, rgba(224, 231, 255, 0.9) 25%, rgba(252, 231, 243, 0.88) 50%, rgba(224, 242, 254, 0.92) 75%, rgba(254, 243, 199, 0.9) 100%)`
     : `linear-gradient(145deg, ${skin.palette?.body || '#dc2626'} 0%, ${skin.palette?.border || '#991b1b'} 100%)`;
 
   const faceBorder = isCyber
     ? `${borderWidth}px solid rgba(0, 240, 255, 0.7)`
     : isGold
     ? `${borderWidth}px solid rgba(254, 240, 138, 0.7)`
+    : isSupernova
+    ? `${borderWidth}px solid rgba(254, 240, 138, 0.85)`
+    : isVoid
+    ? `${borderWidth}px solid rgba(168, 85, 247, 0.85)`
+    : isPrism
+    ? `${borderWidth}px solid rgba(56, 189, 248, 0.85)`
     : `${borderWidth}px solid rgba(255, 255, 255, 0.38)`;
 
   const pipGlow = isCyber
@@ -59,6 +74,12 @@ function DiceFace({ value, faceTransform, half, radius, borderWidth, pipOneSize,
     ? `0 0 5px ${pipColor}, 0 1px 2px rgba(0,0,0,0.5)`
     : isGold
     ? `inset 0 1px 2px rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0,0,0,0.9)`
+    : isSupernova
+    ? `0 0 8px #ffffff, 0 0 14px #f59e0b, 0 1px 2px rgba(0,0,0,0.8)`
+    : isVoid
+    ? `0 0 7px #22d3ee, 0 0 12px rgba(168, 85, 247, 0.7)`
+    : isPrism
+    ? `0 0 6px #38bdf8, 0 0 10px #f472b6, 0 1px 2px rgba(0,0,0,0.4)`
     : `0 1px 2px rgba(0, 0, 0, 0.45), 0 0 5px ${pipColor}66`;
 
   return (
@@ -73,6 +94,12 @@ function DiceFace({ value, faceTransform, half, radius, borderWidth, pipOneSize,
           ? 'inset 0 2px 7px rgba(255, 255, 200, 0.5), inset 0 -2px 6px rgba(180, 83, 9, 0.5)'
           : isCyber
           ? 'inset 0 0 8px rgba(0, 240, 255, 0.25), inset 0 2px 5px rgba(255, 255, 255, 0.2)'
+          : isSupernova
+          ? 'inset 0 0 10px rgba(254, 240, 138, 0.6), inset 0 2px 5px rgba(255, 255, 255, 0.4), 0 0 12px rgba(245, 158, 11, 0.4)'
+          : isVoid
+          ? 'inset 0 0 10px rgba(34, 211, 238, 0.4), inset 0 2px 4px rgba(192, 132, 252, 0.35)'
+          : isPrism
+          ? 'inset 0 2px 8px rgba(255, 255, 255, 0.9), inset 0 -2px 6px rgba(168, 85, 247, 0.35), 0 0 10px rgba(56, 189, 248, 0.4)'
           : 'inset 0 2px 5px rgba(255, 255, 255, 0.32), inset 0 -2px 5px rgba(0, 0, 0, 0.36)',
         transform: `${faceTransform} translateZ(${half}px)`,
         backfaceVisibility: 'hidden',
