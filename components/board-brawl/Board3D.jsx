@@ -1764,6 +1764,7 @@ export default function Board3D({
   const lawnTextureRef = useRef(null);
   const studioFloorCanvasRef = useRef(null);
   const studioFloorTextureRef = useRef(null);
+  const groundMatRef = useRef(null);
   const mahoganyMatRef = useRef(null);
   const innerLipMatRef = useRef(null);
   const neonMatRef = useRef(null);
