@@ -200,6 +200,58 @@ export default function BoardBrawlArenaPage() {
     }, 350);
   }, []);
 
+  const handleSalaryRain = useCallback((player, amount) => {
+    const pId = player?.id || myPlayerObj?.id;
+    const bonus = amount || 200000;
+
+    // 1. Immediately release the pending salary so HUD cash updates at this exact millisecond
+    if (pId) {
+      setPendingSalaries((prev) => {
+        if (!prev[pId]) return prev;
+        const next = { ...prev };
+        delete next[pId];
+        return next;
+      });
+
+      // 2. Trigger high-energy green cash glow & bounce on the player HUD card
+      setSalaryPulsePlayerId(pId);
+      if (salaryPulseTimerRef.current) clearTimeout(salaryPulseTimerRef.current);
+      salaryPulseTimerRef.current = setTimeout(() => {
+        setSalaryPulsePlayerId(null);
+      }, 1400);
+
+      // 3. Spawn floating celebratory credit badge over player card
+      const badgeId = `salary_${Date.now()}_${Math.random()}`;
+      setCashFloatingBadges((prev) => ({
+        ...prev,
+        [pId]: [
+          ...(prev[pId] || []),
+          {
+            id: `credit_${badgeId}`,
+            type: 'credit',
+            text: `+${formatCash(bonus)} CR`,
+          },
+        ],
+      }));
+      setTimeout(() => {
+        setCashFloatingBadges((prev) => {
+          const next = { ...prev };
+          if (next[pId]) {
+            next[pId] = next[pId].filter(b => !b.id.includes(badgeId));
+          }
+          return next;
+        });
+      }, 2400);
+    }
+
+    // 4. Trigger full screen cash rain & banner overlay
+    setCashRainState({
+      active: true,
+      player: player || myPlayerObj,
+      amount: bonus,
+    });
+  }, [myPlayerObj]);
+
   // Ensure roll phase is never blocked by movement pending arrival
   useEffect(() => {
     if (gameState?.turnState === 'roll') {
@@ -777,59 +829,6 @@ export default function BoardBrawlArenaPage() {
       payload: { playerId: activePlayerId },
     });
   };
-
-  const handleSalaryRain = useCallback((player, amount) => {
-    const pId = player?.id || myPlayerObj?.id;
-    const bonus = amount || 200000;
-
-    // 1. Immediately release the pending salary so HUD cash updates at this exact millisecond
-    if (pId) {
-      setPendingSalaries((prev) => {
-        if (!prev[pId]) return prev;
-        const next = { ...prev };
-        delete next[pId];
-        return next;
-      });
-
-      // 2. Trigger high-energy green cash glow & bounce on the player HUD card
-      setSalaryPulsePlayerId(pId);
-      if (salaryPulseTimerRef.current) clearTimeout(salaryPulseTimerRef.current);
-      salaryPulseTimerRef.current = setTimeout(() => {
-        setSalaryPulsePlayerId(null);
-      }, 1400);
-
-      // 3. Spawn floating celebratory credit badge over player card
-      const badgeId = `salary_${Date.now()}_${Math.random()}`;
-      setCashFloatingBadges((prev) => ({
-        ...prev,
-        [pId]: [
-          ...(prev[pId] || []),
-          {
-            id: `credit_${badgeId}`,
-            type: 'credit',
-            text: `+${formatCash(bonus)} CR`,
-          },
-        ],
-      }));
-      setTimeout(() => {
-        setCashFloatingBadges((prev) => {
-          const next = { ...prev };
-          if (next[pId]) {
-            next[pId] = next[pId].filter(b => !b.id.includes(badgeId));
-          }
-          return next;
-        });
-      }, 2400);
-    }
-
-    // 4. Trigger full screen cash rain & banner overlay
-    setCashRainState({
-      active: true,
-      player: player || myPlayerObj,
-      amount: bonus,
-    });
-  }, [myPlayerObj]);
-
 
   // Compute active targeting mode for direct 3D board selection & highlights
   const getActiveTargetingMode = () => {
