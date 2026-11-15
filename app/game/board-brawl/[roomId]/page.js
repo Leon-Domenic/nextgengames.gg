@@ -27,6 +27,8 @@ import ActionBannerOverlay from '@/components/board-brawl/ActionBannerOverlay';
 import FestivalSelectModal from '@/components/board-brawl/FestivalSelectModal';
 import WorldTourSelectModal from '@/components/board-brawl/WorldTourSelectModal';
 import DebtLiquidationModal from '@/components/board-brawl/DebtLiquidationModal';
+import StartTileModal from '@/components/board-brawl/StartTileModal';
+import CashRainOverlay from '@/components/board-brawl/CashRainOverlay';
 import TileInfoModal from '@/components/board-brawl/TileInfoModal';
 import EmojiReactionPicker from '@/components/board-brawl/EmojiReactionPicker';
 import EmojiReactionBubble from '@/components/board-brawl/EmojiReactionBubble';
@@ -37,9 +39,11 @@ import {
   Volume2, VolumeX, Crown, ShieldAlert, X, ShoppingBag, Home, Settings, Clock, ArrowRight, Handshake
 } from 'lucide-react';
 import { TILES, formatCash } from '@/lib/board-brawl/types';
+import { isTeammate } from '@/lib/board-brawl/engine';
 
 import { TOKEN_ICONS, CHARACTERS } from '@/lib/board-brawl/characters.js';
 import { useTranslation } from '@/lib/board-brawl/i18n';
+import { DEFAULT_BOARD_BACKGROUND_ID } from '@/lib/board-brawl/boardBackgrounds';
 
 const CORNER_SLOT_THEMES = [
   { headerBg: '#e11d48', accent: '#fb7185', name: 'Pink/Red' },
@@ -110,6 +114,27 @@ export default function BoardBrawlArenaPage() {
   const [isThrowingTomato, setIsThrowingTomato] = useState(false);
 
   const [activeCardTargeting, setActiveCardTargeting] = useState(null);
+  const [showWorldTourModal, setShowWorldTourModal] = useState(true);
+  const [showFestivalModal, setShowFestivalModal] = useState(false);
+  const [showStartTileModal, setShowStartTileModal] = useState(true);
+  const [cashRainState, setCashRainState] = useState({ active: false, player: null, amount: 200000 });
+
+  // When start_tile_select begins, ensure StartTileModal is open and clear any inspected tile
+  useEffect(() => {
+    if (gameState?.turnState === 'start_tile_select' && isMyTurn) {
+      setInspectedTileId(null);
+      setShowStartTileModal(true);
+    }
+  }, [gameState?.turnState, isMyTurn]);
+
+  // When flight_select begins, ensure WorldTourModal is open, play airport chime, and clear any inspected tile
+  useEffect(() => {
+    if (gameState?.turnState === 'flight_select' && isMyTurn) {
+      setInspectedTileId(null);
+      setShowWorldTourModal(true);
+      try { sounds.playAirportEntry?.(); } catch (e) {}
+    }
+  }, [gameState?.turnState, isMyTurn]);
 
   // Pawn Movement Arrival & Modal Deferral State
   const [movementPendingArrival, setMovementPendingArrival] = useState(false);
@@ -117,13 +142,25 @@ export default function BoardBrawlArenaPage() {
   const safetyArrivalTimerRef = useRef(null);
   const lastTomatoThrowRef = useRef(0);
 
-  const handlePawnMovementStart = useCallback((playerId, targetTileId) => {
+  // Salary Deferral State: Hold back +200k CR from HUD until pawn physically touches down on Tile 0
+  const [pendingSalaries, setPendingSalaries] = useState({});
+  const [salaryPulsePlayerId, setSalaryPulsePlayerId] = useState(null);
+  const salaryPulseTimerRef = useRef(null);
+
+  const handlePawnMovementStart = useCallback((playerId, targetTileId, meta) => {
     // Only defer modals for the local player's pawn
     setMovementPendingArrival(true);
     if (safetyArrivalTimerRef.current) clearTimeout(safetyArrivalTimerRef.current);
     safetyArrivalTimerRef.current = setTimeout(() => {
       setMovementPendingArrival(false);
     }, 10000);
+
+    if (meta?.willCrossStart) {
+      setPendingSalaries((prev) => ({
+        ...prev,
+        [playerId]: meta.startBonus || 200000,
+      }));
+    }
   }, []);
 
   const handleVictimImpact = useCallback(() => {
@@ -137,6 +174,13 @@ export default function BoardBrawlArenaPage() {
     if (safetyArrivalTimerRef.current) {
       clearTimeout(safetyArrivalTimerRef.current);
     }
+    // Safety cleanup: ensure any pending salary for this player is cleared once movement completes
+    setPendingSalaries((prev) => {
+      if (!prev[playerId]) return prev;
+      const next = { ...prev };
+      delete next[playerId];
+      return next;
+    });
     // Defer showing ActionModal, EventCardModal, FestivalSelectModal, and WorldTourSelectModal
     // until the pawn has physically arrived and landed on the target tile (+ 350ms pause for visual landing impact)
     setTimeout(() => {
@@ -216,6 +260,12 @@ export default function BoardBrawlArenaPage() {
       return localStorage.getItem('ngg_equipped_dice_skin') || 'classic_red';
     }
     return 'classic_red';
+  });
+  const [equippedBoardBackground, setEquippedBoardBackground] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('ngg_equipped_board_background') || DEFAULT_BOARD_BACKGROUND_ID;
+    }
+    return DEFAULT_BOARD_BACKGROUND_ID;
   });
 
   const socket = getSocket();
@@ -328,20 +378,25 @@ export default function BoardBrawlArenaPage() {
       }
 
       if (paymentData.receiverId) {
-        setCashFloatingBadges((prev) => ({
-          ...prev,
-          [paymentData.receiverId]: [
-            ...(prev[paymentData.receiverId] || []),
-            {
-              id: `credit_${badgeId}`,
-              type: 'credit',
-              text: `+${formatCash(paymentData.amount)} CR`,
-            },
-          ],
-        }));
+        // If it's a salary payment, skip premature badge & overlay here; handleSalaryRain fires exactly on tile touchdown
+        if (paymentData.type !== 'salary') {
+          setCashFloatingBadges((prev) => ({
+            ...prev,
+            [paymentData.receiverId]: [
+              ...(prev[paymentData.receiverId] || []),
+              {
+                id: `credit_${badgeId}`,
+                type: 'credit',
+                text: `+${formatCash(paymentData.amount)} CR`,
+              },
+            ],
+          }));
+        }
       }
 
-      try { sounds.playCash?.(); } catch (e) {}
+      if (paymentData.type !== 'salary') {
+        try { sounds.playCash?.(); } catch (e) {}
+      }
 
       setTimeout(() => {
         setCashFloatingBadges((prev) => {
@@ -554,13 +609,14 @@ export default function BoardBrawlArenaPage() {
     });
   };
 
-  const handleSelectColor = (colorHex) => {
-    if (!activePlayerId) return;
+  const handleSelectColor = (colorHex, targetPlayerId) => {
+    const pId = targetPlayerId || activePlayerId;
+    if (!pId) return;
     sounds.playBuy();
     socket.emit('game_action', {
       roomId,
       action: 'select_character',
-      payload: { playerId: activePlayerId, color: colorHex }
+      payload: { playerId: pId, color: colorHex }
     });
   };
 
@@ -574,6 +630,20 @@ export default function BoardBrawlArenaPage() {
         roomId,
         action: 'select_dice_skin',
         payload: { playerId: activePlayerId, skinId }
+      });
+    }
+  };
+
+  const handleSelectBoardBackground = (bgId) => {
+    setEquippedBoardBackground(bgId);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ngg_equipped_board_background', bgId);
+    }
+    if (activePlayerId) {
+      socket.emit('game_action', {
+        roomId,
+        action: 'select_board_background',
+        payload: { playerId: activePlayerId, bgId }
       });
     }
   };
@@ -660,15 +730,100 @@ export default function BoardBrawlArenaPage() {
 
   const handleSelectFlightDestination = (tileId) => {
     if (!socket || !activePlayerId) return;
-    try {
-      sounds.playFlightTakeoff?.();
-    } catch (e) {}
     socket.emit('game_action', {
       roomId,
       action: 'select_flight_destination',
       payload: { playerId: activePlayerId, tileId }
     });
   };
+
+  const handleStartExtraRoll = () => {
+    if (!socket || !activePlayerId) return;
+    socket.emit('game_action', {
+      roomId,
+      action: 'start_extra_roll',
+      payload: { playerId: activePlayerId },
+    });
+  };
+
+  const handleStartUpgradeProperty = (tileId) => {
+    if (!socket || !activePlayerId) return;
+    socket.emit('game_action', {
+      roomId,
+      action: 'start_upgrade_property',
+      payload: { playerId: activePlayerId, tileId },
+    });
+  };
+
+  const handleStartBuyShield = () => {
+    if (!socket || !activePlayerId) return;
+    socket.emit('game_action', {
+      roomId,
+      action: 'start_buy_shield',
+      payload: { playerId: activePlayerId },
+    });
+  };
+
+  const handleStartPass = () => {
+    if (!socket || !activePlayerId) return;
+    socket.emit('game_action', {
+      roomId,
+      action: 'start_pass',
+      payload: { playerId: activePlayerId },
+    });
+  };
+
+  const handleSalaryRain = useCallback((player, amount) => {
+    const pId = player?.id || myPlayerObj?.id;
+    const bonus = amount || 200000;
+
+    // 1. Immediately release the pending salary so HUD cash updates at this exact millisecond
+    if (pId) {
+      setPendingSalaries((prev) => {
+        if (!prev[pId]) return prev;
+        const next = { ...prev };
+        delete next[pId];
+        return next;
+      });
+
+      // 2. Trigger high-energy green cash glow & bounce on the player HUD card
+      setSalaryPulsePlayerId(pId);
+      if (salaryPulseTimerRef.current) clearTimeout(salaryPulseTimerRef.current);
+      salaryPulseTimerRef.current = setTimeout(() => {
+        setSalaryPulsePlayerId(null);
+      }, 1400);
+
+      // 3. Spawn floating celebratory credit badge over player card
+      const badgeId = `salary_${Date.now()}_${Math.random()}`;
+      setCashFloatingBadges((prev) => ({
+        ...prev,
+        [pId]: [
+          ...(prev[pId] || []),
+          {
+            id: `credit_${badgeId}`,
+            type: 'credit',
+            text: `+${formatCash(bonus)} CR`,
+          },
+        ],
+      }));
+      setTimeout(() => {
+        setCashFloatingBadges((prev) => {
+          const next = { ...prev };
+          if (next[pId]) {
+            next[pId] = next[pId].filter(b => !b.id.includes(badgeId));
+          }
+          return next;
+        });
+      }, 2400);
+    }
+
+    // 4. Trigger full screen cash rain & banner overlay
+    setCashRainState({
+      active: true,
+      player: player || myPlayerObj,
+      amount: bonus,
+    });
+  }, [myPlayerObj]);
 
 
   // Compute active targeting mode for direct 3D board selection & highlights
@@ -729,16 +884,16 @@ export default function BoardBrawlArenaPage() {
 
     // 3. World Championship / Festival Select (Tile 24 Championship or Tile 22 World Fair)
     if (isMyTurn && gameState?.turnState === 'festival_select' && !movementPendingArrival) {
-      const myCities = Object.entries(gameState?.properties || {})
-        .filter(([id, prop]) => prop?.ownerId === myPlayerObj?.id && TILES[id]?.type === 'city')
+      const eligibleCities = Object.entries(gameState?.properties || {})
+        .filter(([id, prop]) => prop?.ownerId && (prop.ownerId === myPlayerObj?.id || isTeammate(myPlayerObj, gameState.players?.find(p => p.id === prop.ownerId), gameState?.players, gameState?.mode)) && TILES[id]?.type === 'city')
         .map(([id]) => Number(id));
       return {
         active: true,
         type: 'festival',
         label: 'World Championship Host City',
         icon: '🏆',
-        color: 0xa855f7,
-        eligibleTileIds: myCities,
+        color: 0x8b5cf6,
+        eligibleTileIds: eligibleCities,
         onSelectTarget: (tileId) => handleSetFestival(tileId),
       };
     }
@@ -949,6 +1104,14 @@ export default function BoardBrawlArenaPage() {
               onVictimImpact={handleVictimImpact}
             />
 
+            {/* Start Salary Cash Rain Shower Overlay */}
+            <CashRainOverlay
+              active={cashRainState.active}
+              player={cashRainState.player}
+              amount={cashRainState.amount}
+              onComplete={() => setCashRainState((prev) => ({ ...prev, active: false }))}
+            />
+
             {/* Action Card Announcement Banner */}
             <ActionCardPlayOverlay lastActionCardPlayed={actionCardPlayEvent || gameState.lastActionCardPlayed} />
             <CardYoinkOverlay yoinkData={cardYoinkEvent} currentUserId={myPlayerObj?.id || user?.id} onComplete={() => setCardYoinkEvent(null)} />
@@ -997,61 +1160,113 @@ export default function BoardBrawlArenaPage() {
           />
         )}
 
+        {/* World Tour Flight Destination Select Modal */}
+        {isMyTurn && gameState.turnState === 'flight_select' && !movementPendingArrival && showWorldTourModal && (
+          <WorldTourSelectModal
+            properties={gameState.properties}
+            myPlayer={myPlayerObj}
+            onSelectDestination={(tId) => {
+              setShowWorldTourModal(false);
+              handleSelectFlightDestination(tId);
+            }}
+            onSkip={() => {
+              setShowWorldTourModal(false);
+              handleSkipFlight();
+            }}
+            onSkipFlight={() => {
+              setShowWorldTourModal(false);
+              handleSkipFlight();
+            }}
+            onMinimize={() => setShowWorldTourModal(false)}
+            turnTimer={localTurnTimerRemaining || gameState.turnTimerRemaining || 25}
+          />
+        )}
+
         {/* Direct 3D World Map Targeting: World Tour Flight Control Map HUD */}
         {isMyTurn && gameState.turnState === 'flight_select' && !movementPendingArrival && (
           <div
             style={{
               position: 'fixed',
-              top: '56px',
+              top: '78px',
               left: '50%',
               transform: 'translateX(-50%)',
               zIndex: 75,
+              pointerEvents: 'none',
               display: 'flex',
               alignItems: 'center',
-              gap: '14px',
-              padding: '8px 20px',
-              borderRadius: '16px',
-              background: 'rgba(15, 23, 42, 0.94)',
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
-              border: '2px solid #38bdf8',
-              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.6), 0 0 24px rgba(56, 189, 248, 0.35)',
-              animation: 'fadeIn 0.2s ease-out',
-              color: '#ffffff',
-              pointerEvents: 'none',
+              justifyContent: 'center',
+              width: '100%',
+              maxWidth: '850px',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '22px' }}>✈️</span>
-              <div>
-                <div style={{ fontSize: '13px', fontWeight: 900, color: '#38bdf8', letterSpacing: '0.04em' }}>
-                  WORLD TOUR: Click any highlighted destination directly on the board to fly! (Ticket: 50,000 CR)
-                </div>
-                <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                  Choose unowned city/resort or your own property • Time Remaining: <span style={{ color: '#fef08a', fontWeight: 800 }}>{localTurnTimerRemaining}s</span>
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={handleSkipFlight}
+            <div
               style={{
                 pointerEvents: 'auto',
-                padding: '7px 16px',
-                borderRadius: '10px',
-                background: 'rgba(255, 255, 255, 0.12)',
-                border: '1px solid rgba(255, 255, 255, 0.25)',
-                color: '#f8fafc',
-                fontWeight: 800,
-                fontSize: '12px',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '14px',
+                padding: '12px 24px',
+                borderRadius: '20px',
+                background: 'rgba(15, 23, 42, 0.94)',
+                backdropFilter: 'blur(16px)',
+                border: '2px solid #38bdf8',
+                boxShadow: '0 12px 36px rgba(0, 0, 0, 0.7), 0 0 28px rgba(56, 189, 248, 0.4)',
+                animation: 'fadeIn 0.25s ease-out',
+                color: '#ffffff',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'; }}
             >
-              Skip Flight (Roll Dice)
-            </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '28px' }}>✈️</span>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: 900, color: '#38bdf8', letterSpacing: '0.04em' }}>
+                    WORLD TOUR: Click any highlighted destination directly on the board to fly! (Ticket: 50,000 CR)
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                    Choose unowned city/resort or your own property • Time Remaining: <span style={{ color: '#fef08a', fontWeight: 800 }}>{localTurnTimerRemaining}s</span>
+                  </div>
+                </div>
+              </div>
+              {!showWorldTourModal && (
+                <button
+                  onClick={() => setShowWorldTourModal(true)}
+                  style={{
+                    padding: '9px 16px',
+                    borderRadius: '12px',
+                    background: '#0284c7',
+                    border: '1px solid #38bdf8',
+                    color: '#ffffff',
+                    fontWeight: 800,
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#0369a1'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = '#0284c7'; }}
+                >
+                  📋 Destination List
+                </button>
+              )}
+              <button
+                onClick={handleSkipFlight}
+                style={{
+                  padding: '9px 18px',
+                  borderRadius: '12px',
+                  background: 'rgba(255, 255, 255, 0.12)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  color: '#f8fafc',
+                  fontWeight: 800,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'; }}
+              >
+                Skip Flight (Roll Dice)
+              </button>
+            </div>
           </div>
         )}
 
@@ -1060,29 +1275,27 @@ export default function BoardBrawlArenaPage() {
           <div
             style={{
               position: 'fixed',
-              top: '56px',
+              top: '78px',
               left: '50%',
               transform: 'translateX(-50%)',
               zIndex: 75,
               display: 'flex',
               alignItems: 'center',
-              gap: '14px',
-              padding: '8px 20px',
-              borderRadius: '16px',
+              gap: '16px',
+              padding: '12px 24px',
+              borderRadius: '20px',
               background: 'rgba(30, 10, 15, 0.95)',
               backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
               border: '2px solid #ef4444',
-              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.6), 0 0 24px rgba(239, 68, 68, 0.4)',
-              animation: 'fadeIn 0.2s ease-out',
+              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.7), 0 0 28px rgba(239, 68, 68, 0.45)',
+              animation: 'fadeIn 0.25s ease-out',
               color: '#ffffff',
-              pointerEvents: 'none',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '22px' }}>💣</span>
+              <span style={{ fontSize: '28px' }}>💣</span>
               <div>
-                <div style={{ fontSize: '13px', fontWeight: 900, color: '#f87171', letterSpacing: '0.04em' }}>
+                <div style={{ fontSize: '14px', fontWeight: 900, color: '#f87171', letterSpacing: '0.04em' }}>
                   DEMOLITION STRIKE: Click any opponent property directly on the board to demolish!
                 </div>
                 <div style={{ fontSize: '11px', color: '#fca5a5' }}>
@@ -1093,9 +1306,8 @@ export default function BoardBrawlArenaPage() {
             <button
               onClick={() => setActiveCardTargeting(null)}
               style={{
-                pointerEvents: 'auto',
-                padding: '7px 16px',
-                borderRadius: '10px',
+                padding: '9px 18px',
+                borderRadius: '12px',
                 background: 'rgba(239, 68, 68, 0.25)',
                 border: '1px solid rgba(239, 68, 68, 0.45)',
                 color: '#fee2e2',
@@ -1113,60 +1325,170 @@ export default function BoardBrawlArenaPage() {
           </div>
         )}
 
+        {/* World Championship / World Fair Festival Select Modal */}
+        {isMyTurn && gameState.turnState === 'festival_select' && !movementPendingArrival && showFestivalModal && (
+          <FestivalSelectModal
+            properties={gameState.properties}
+            myPlayer={myPlayerObj}
+            players={gameState.players}
+            mode={gameState.mode}
+            onSelectFestival={(tId) => {
+              setShowFestivalModal(false);
+              handleSetFestival(tId);
+            }}
+            onSkip={() => {
+              setShowFestivalModal(false);
+              handleEndTurn(myPlayerObj?.id);
+            }}
+            turnTimer={localTurnTimerRemaining || gameState.turnTimerRemaining || 25}
+          />
+        )}
+
         {/* Direct 3D World Map Targeting: World Fair Festival Banner */}
         {isMyTurn && gameState.turnState === 'festival_select' && !movementPendingArrival && (
           <div
             style={{
               position: 'fixed',
-              top: '56px',
+              top: '78px',
               left: '50%',
               transform: 'translateX(-50%)',
               zIndex: 75,
               display: 'flex',
               alignItems: 'center',
-              gap: '14px',
-              padding: '8px 20px',
-              borderRadius: '16px',
-              background: 'rgba(30, 25, 10, 0.95)',
+              gap: '16px',
+              padding: '12px 24px',
+              borderRadius: '20px',
+              background: 'rgba(28, 14, 54, 0.95)',
               backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
-              border: '2px solid #fbbf24',
-              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.6), 0 0 24px rgba(251, 191, 36, 0.4)',
-              animation: 'fadeIn 0.2s ease-out',
+              border: '2px solid #a855f7',
+              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.7), 0 0 28px rgba(168, 85, 247, 0.45)',
+              animation: 'fadeIn 0.25s ease-out',
               color: '#ffffff',
-              pointerEvents: 'none',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '22px' }}>🎪</span>
+              <span style={{ fontSize: '28px' }}>🎪</span>
               <div>
-                <div style={{ fontSize: '13px', fontWeight: 900, color: '#fbbf24', letterSpacing: '0.04em' }}>
-                  WORLD FAIR FESTIVAL: Click one of your cities on the board to host (2x Rent)!
+                <div style={{ fontSize: '14px', fontWeight: 900, color: '#c084fc', letterSpacing: '0.04em' }}>
+                  WORLD CHAMPIONSHIP: Click one of your or your teammate's cities to host (2x Rent)!
                 </div>
-                <div style={{ fontSize: '11px', color: '#fef08a' }}>
+                <div style={{ fontSize: '11px', color: '#e9d5ff' }}>
                   Doubles all rent on the selected property • Time Remaining: <span style={{ fontWeight: 800 }}>{gameState.turnTimerRemaining}s</span>
                 </div>
               </div>
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {!showFestivalModal && (
+                <button
+                  onClick={() => setShowFestivalModal(true)}
+                  style={{
+                    padding: '9px 16px',
+                    borderRadius: '12px',
+                    background: 'rgba(168, 85, 247, 0.25)',
+                    border: '1px solid rgba(168, 85, 247, 0.5)',
+                    color: '#e9d5ff',
+                    fontWeight: 800,
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(168, 85, 247, 0.42)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(168, 85, 247, 0.25)'; }}
+                >
+                  List View
+                </button>
+              )}
+              <button
+                onClick={() => handleEndTurn(myPlayerObj?.id)}
+                style={{
+                  padding: '9px 18px',
+                  borderRadius: '12px',
+                  background: 'rgba(239, 68, 68, 0.22)',
+                  border: '1px solid rgba(239, 68, 68, 0.45)',
+                  color: '#fca5a5',
+                  fontWeight: 800,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.38)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.22)'; }}
+              >
+                Skip Festival
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* START Launchpad Privilege Action Modal */}
+        {isMyTurn && gameState.turnState === 'start_tile_select' && !movementPendingArrival && showStartTileModal && (
+          <StartTileModal
+            properties={gameState.properties}
+            myPlayer={myPlayerObj}
+            players={gameState.players}
+            mode={gameState.mode}
+            turnTimer={localTurnTimerRemaining || gameState.turnTimerRemaining || 25}
+            onExtraRoll={handleStartExtraRoll}
+            onUpgradeProperty={handleStartUpgradeProperty}
+            onBuyShield={handleStartBuyShield}
+            onPass={handleStartPass}
+            onMinimize={() => setShowStartTileModal(false)}
+          />
+        )}
+
+        {/* Minimized START Privilege Banner */}
+        {isMyTurn && gameState.turnState === 'start_tile_select' && !movementPendingArrival && !showStartTileModal && (
+          <div
+            style={{
+              position: 'fixed',
+              top: '78px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 75,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              background: 'linear-gradient(135deg, rgba(6, 78, 59, 0.95) 0%, rgba(2, 44, 34, 0.95) 100%)',
+              border: '2px solid #10b981',
+              borderRadius: '20px',
+              padding: '10px 22px',
+              boxShadow: '0 0 30px rgba(16, 185, 129, 0.5)',
+              backdropFilter: 'blur(10px)',
+              color: '#ffffff',
+            }}
+          >
+            <span style={{ fontWeight: 800, fontSize: '13px' }}>🚀 START PRIVILEGE ACTIVE</span>
             <button
-              onClick={() => handleEndTurn(myPlayerObj?.id)}
+              onClick={() => setShowStartTileModal(true)}
               style={{
-                pointerEvents: 'auto',
-                padding: '7px 16px',
+                background: '#10b981',
+                color: '#022c22',
+                border: 'none',
+                padding: '5px 14px',
                 borderRadius: '10px',
-                background: 'rgba(251, 191, 36, 0.22)',
-                border: '1px solid rgba(251, 191, 36, 0.45)',
-                color: '#fef08a',
                 fontWeight: 800,
                 fontSize: '12px',
                 cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                whiteSpace: 'nowrap',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(251, 191, 36, 0.38)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(251, 191, 36, 0.22)'; }}
             >
-              Skip Festival
+              Open Menu
+            </button>
+            <button
+              onClick={handleStartPass}
+              style={{
+                background: 'rgba(255, 255, 255, 0.1)',
+                color: '#cbd5e1',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                padding: '5px 14px',
+                borderRadius: '10px',
+                fontWeight: 700,
+                fontSize: '12px',
+                cursor: 'pointer',
+              }}
+            >
+              Pass
             </button>
           </div>
         )}
@@ -1259,6 +1581,8 @@ export default function BoardBrawlArenaPage() {
             onChangeColor={handleSelectColor}
             onChangeDiceSkin={handleSelectDiceSkin}
             equippedDiceSkin={myPlayerObj?.diceSkin || equippedDiceSkin}
+            onChangeBoardBackground={handleSelectBoardBackground}
+            equippedBoardBackground={myPlayerObj?.boardBackground || equippedBoardBackground}
             onCopyLink={copyInviteLink}
             copiedLink={copiedLink}
             playerReactions={playerReactions}
@@ -1355,10 +1679,14 @@ export default function BoardBrawlArenaPage() {
                 const pos = slotOrder[offset] || 'top-left';
                 const theme = CORNER_SLOT_THEMES[idx % CORNER_SLOT_THEMES.length];
 
+                const effectiveCash = Math.max(0, (player.cash || 0) - (pendingSalaries[player.id] || 0));
+
                 return (
                   <PlayerCornerCard
                     key={player.id || `player-${idx}`}
                     player={player}
+                    displayCash={effectiveCash}
+                    isSalaryPulsing={salaryPulsePlayerId === player.id}
                     isCurrent={gameState.activePlayerIndex === idx}
                     isMe={player.id === myPlayerObj?.id}
                     timer={gameState.turnTimerRemaining}
@@ -1780,8 +2108,10 @@ export default function BoardBrawlArenaPage() {
               currentUserId={user?.id}
               equippedCharacter={myPlayerObj?.avatarToken || 'hat'}
               equippedDiceSkin={myPlayerObj?.diceSkin || equippedDiceSkin}
+              equippedBoardBackground={myPlayerObj?.boardBackground || equippedBoardBackground}
               onEquipCharacter={handleSelectCharacter}
               onEquipDiceSkin={handleSelectDiceSkin}
+              onEquipBoardBackground={handleSelectBoardBackground}
               userCash={5000}
               userCoins={50}
             />
@@ -1805,13 +2135,21 @@ export default function BoardBrawlArenaPage() {
               activeTileId={currentPlayer?.position}
               lastDiceResult={gameState.lastDiceResult}
               diceSkin={myPlayerObj?.diceSkin || equippedDiceSkin}
+              boardBackground={myPlayerObj?.boardBackground || equippedBoardBackground}
               communityJackpot={gameState.communityJackpot || 100000}
               centerContent={null}
               targetingMode={activeTargetingMode}
-              onTileClick={(tileId) => setInspectedTileId(tileId)}
-              onInspectTile={(tileId) => setInspectedTileId(tileId)}
+              onTileClick={(tileId) => {
+                if (isMyTurn && (gameState?.turnState === 'flight_select' || activeTargetingMode?.active)) return;
+                setInspectedTileId(tileId);
+              }}
+              onInspectTile={(tileId) => {
+                if (isMyTurn && (gameState?.turnState === 'flight_select' || activeTargetingMode?.active)) return;
+                setInspectedTileId(tileId);
+              }}
               onPawnMovementStart={handlePawnMovementStart}
               onPawnMovementComplete={handlePawnMovementComplete}
+              onSalaryRain={handleSalaryRain}
             />
 
             {/* Clickable 3D Tile Info Inspector Modal */}
@@ -1820,6 +2158,12 @@ export default function BoardBrawlArenaPage() {
               tileId={inspectedTileId}
               properties={gameState.properties}
               players={gameState.players}
+              isMyTurn={isMyTurn}
+              turnState={gameState?.turnState}
+              onSelectFlightDestination={(tId) => {
+                setInspectedTileId(null);
+                handleSelectFlightDestination(tId);
+              }}
               onClose={() => setInspectedTileId(null)}
             />
 
@@ -1953,6 +2297,8 @@ export default function BoardBrawlArenaPage() {
 // HUD Player Capsule Component (Supports 2-6 Players)
 function PlayerCornerCard({
   player,
+  displayCash,
+  isSalaryPulsing = false,
   isCurrent,
   isMe,
   timer,
@@ -1980,20 +2326,20 @@ function PlayerCornerCard({
   // Business Tour Turn Hierarchy: Active player card is crisp and highlighted (blur effect shifted to 3D pawns)
   const cardOpacity = isBankrupt ? 0.45 : (isCurrent ? 1.0 : (isHovered ? 1.0 : 0.92));
   const cardFilter = isBankrupt ? 'grayscale(80%)' : 'none';
-  const cardTransform = isCurrent
-    ? 'scale(1.03)'
-    : (isHovered ? 'scale(1.01)' : 'scale(1.0)');
-
-  const isTopCard = position.startsWith('top') || position.startsWith('mid');
+  const cardTransform = isSalaryPulsing
+    ? 'scale(1.06)'
+    : (isCurrent
+      ? 'scale(1.03)'
+      : (isHovered ? 'scale(1.01)' : 'scale(1.0)'));
 
   const posStyles = {
-    'top-left': { top: '24px', left: '16px' },
-    'top-right': { top: '24px', right: '16px' },
+    'top-left': { top: '16px', left: '16px' },
+    'top-right': { top: '16px', right: '16px' },
     'mid-left': { top: '50%', left: '16px', transform: 'translateY(-50%)' },
     'mid-right': { top: '50%', right: '16px', transform: 'translateY(-50%)' },
     'bottom-left': { bottom: '16px', left: '16px' },
     'bottom-right': { bottom: '16px', right: '16px' },
-  }[position] || { top: '24px', left: '16px' };
+  }[position] || { top: '16px', left: '16px' };
 
   return (
     <div
@@ -2005,40 +2351,28 @@ function PlayerCornerCard({
         ...posStyles,
         width: isCompact ? '230px' : '260px',
         background: '#ffffff',
-        border: isCurrent ? '3px solid #f59e0b' : `2px solid ${playerColor}55`,
+        border: isSalaryPulsing
+          ? '3px solid #10b981'
+          : (isCurrent ? '3px solid #f59e0b' : `2px solid ${playerColor}55`),
         borderRadius: '16px',
-        boxShadow: isCurrent
-          ? '0 12px 36px rgba(245, 158, 11, 0.55), 0 0 0 2px #fde047'
-          : '0 4px 16px rgba(0, 0, 0, 0.08)',
+        boxShadow: isSalaryPulsing
+          ? '0 0 32px rgba(16, 185, 129, 0.85), 0 0 0 3px #34d399'
+          : (isCurrent
+            ? '0 12px 36px rgba(245, 158, 11, 0.55), 0 0 0 2px #fde047'
+            : '0 4px 16px rgba(0, 0, 0, 0.08)'),
         overflow: 'visible',
-        zIndex: showPicker ? 90 : (isCurrent ? 60 : (isHovered ? 55 : 50)),
+        zIndex: isSalaryPulsing ? 30 : (isCurrent ? 25 : (isHovered ? 24 : 20)),
         opacity: cardOpacity,
         filter: cardFilter,
         transform: cardTransform,
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
-      {/* Dynamic Keyframes for Cash Float Badges */}
-      <style>{`
-        @keyframes cashBadgeFloatUp {
-          0% { transform: translateY(0px) scale(0.85); opacity: 0; }
-          20% { transform: translateY(-6px) scale(1.08); opacity: 1; }
-          75% { transform: translateY(-20px) scale(1); opacity: 0.95; }
-          100% { transform: translateY(-32px) scale(0.92); opacity: 0; }
-        }
-        @keyframes cashBadgeFloatDown {
-          0% { transform: translateY(0px) scale(0.85); opacity: 0; }
-          20% { transform: translateY(6px) scale(1.08); opacity: 1; }
-          75% { transform: translateY(20px) scale(1); opacity: 0.95; }
-          100% { transform: translateY(32px) scale(0.92); opacity: 0; }
-        }
-      `}</style>
-
-      {/* Active Turn Speech Bubble (Rendered under cards for top cards to prevent clipping) */}
+      {/* Active Turn Speech Bubble (Matches Business Tour comic prompt) */}
       {isCurrent && !isBankrupt && (
         <div style={{
           position: 'absolute',
-          top: isTopCard ? 'calc(100% + 8px)' : '-38px',
+          top: '-38px',
           left: position.includes('right') ? 'auto' : '16px',
           right: position.includes('right') ? '16px' : 'auto',
           background: '#ffffff',
@@ -2052,37 +2386,30 @@ function PlayerCornerCard({
           display: 'flex',
           alignItems: 'center',
           gap: '6px',
-          zIndex: 48,
+          zIndex: 40,
         }}>
           <span>🎲</span>
           <span>{isMe ? (t('yourTurn') || 'Your Turn!') : `${player.name}'s Turn`}</span>
           <div style={{
             position: 'absolute',
-            ...(isTopCard ? {
-              top: '-6px',
-              borderBottom: '6px solid #f59e0b',
-              borderTop: 'none',
-            } : {
-              bottom: '-6px',
-              borderTop: '6px solid #f59e0b',
-              borderBottom: 'none',
-            }),
+            bottom: '-6px',
             left: position.includes('right') ? 'auto' : '22px',
             right: position.includes('right') ? '22px' : 'auto',
             width: 0,
             height: 0,
             borderLeft: '6px solid transparent',
             borderRight: '6px solid transparent',
+            borderTop: '6px solid #f59e0b',
           }} />
         </div>
       )}
-      {/* Floating Cash Debit / Credit Badges (Rendered under cards for top cards to prevent clipping) */}
+      {/* Floating Cash Debit / Credit Badges */}
       {cashBadges && cashBadges.map((badge) => (
         <div
           key={badge.id}
           style={{
             position: 'absolute',
-            top: isTopCard ? 'calc(100% + 8px)' : '-28px',
+            top: '-28px',
             right: '12px',
             padding: '4px 12px',
             borderRadius: '999px',
@@ -2096,10 +2423,8 @@ function PlayerCornerCard({
             boxShadow: badge.type === 'debit'
               ? '0 4px 14px rgba(239, 68, 68, 0.7), 0 0 10px rgba(239, 68, 68, 0.4)'
               : '0 4px 14px rgba(16, 185, 129, 0.7), 0 0 10px rgba(16, 185, 129, 0.4)',
-            animation: isTopCard
-              ? 'cashBadgeFloatDown 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards'
-              : 'cashBadgeFloatUp 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',
-            zIndex: 48,
+            animation: 'cashBadgeFloat 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',
+            zIndex: 100,
             pointerEvents: 'none',
             whiteSpace: 'nowrap',
           }}
@@ -2207,8 +2532,17 @@ function PlayerCornerCard({
               )}
             </div>
 
-            {/* Reaction Bubble Displayed Prominently Next to Avatar */}
+            {/* Reaction Bubble Displayed Next to Avatar */}
             <EmojiReactionBubble reaction={activeReaction} position={position} />
+
+            {/* Reaction Picker Popover */}
+            <EmojiReactionPicker
+              isOpen={showPicker}
+              onClose={() => setShowPicker(false)}
+              onSelectEmoji={onSendReaction}
+              position={position}
+              playerName={player.name}
+            />
           </div>
 
           <div>
@@ -2216,22 +2550,26 @@ function PlayerCornerCard({
               fontSize: '18px',
               fontWeight: 900,
               fontFamily: 'monospace',
-              color: isBankrupt ? '#ef4444' : '#15803d',
+              color: isBankrupt ? '#ef4444' : (isSalaryPulsing ? '#16a34a' : '#15803d'),
               lineHeight: '1.1',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
+              transform: isSalaryPulsing ? 'scale(1.2)' : 'scale(1)',
+              textShadow: isSalaryPulsing ? '0 0 14px rgba(34, 197, 94, 0.85)' : 'none',
+              transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
             }}>
-              <span>{formatCash(player.cash, false)}</span>
+              <span>{formatCash(displayCash !== undefined ? displayCash : player.cash, false)}</span>
               <span style={{
                 fontSize: '11px',
                 fontWeight: 900,
-                color: '#0284c7',
-                background: 'rgba(2, 132, 199, 0.12)',
-                border: '1px solid #bae6fd',
+                color: isSalaryPulsing ? '#ffffff' : '#0284c7',
+                background: isSalaryPulsing ? '#10b981' : 'rgba(2, 132, 199, 0.12)',
+                border: isSalaryPulsing ? '1px solid #34d399' : '1px solid #bae6fd',
                 padding: '2px 6px',
                 borderRadius: '6px',
                 letterSpacing: '0.5px',
+                transition: 'all 0.25s ease',
               }}>
                 🪐 CR
               </span>
@@ -2309,37 +2647,9 @@ function PlayerCornerCard({
           </div>
         </div>
 
-        {/* Right action buttons: Trade, Tomato Sabotage & Emoji Reactions */}
+        {/* Right action buttons: Trade & Tomato Sabotage */}
         {!isMe && !isBankrupt && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            {/* 😊 React / Emote Button */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowPicker(prev => !prev);
-              }}
-              title={`React to ${player.name} with emoji`}
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                background: showPicker ? '#f59e0b' : 'rgba(245, 158, 11, 0.18)',
-                border: '1.5px solid #f59e0b',
-                color: showPicker ? '#ffffff' : '#d97706',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '15px',
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(245, 158, 11, 0.3)',
-                transition: 'all 0.15s ease',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.15)'}
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-            >
-              😊
-            </button>
-
             {/* 🤝 Trade Button */}
             <button
               onClick={() => {
@@ -2417,52 +2727,7 @@ function PlayerCornerCard({
             )}
           </div>
         )}
-
-        {/* Local Player Action Buttons: React/Emote shortcut */}
-        {isMe && !isBankrupt && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowPicker(prev => !prev);
-              }}
-              title="Express reaction with emoji"
-              style={{
-                padding: '4px 10px',
-                borderRadius: '20px',
-                background: showPicker ? '#f59e0b' : 'rgba(245, 158, 11, 0.15)',
-                border: '1.5px solid #f59e0b',
-                color: showPicker ? '#ffffff' : '#b45309',
-                fontSize: '11px',
-                fontWeight: 900,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                boxShadow: '0 2px 8px rgba(245, 158, 11, 0.2)',
-                transition: 'all 0.15s ease',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-            >
-              <span>😊</span>
-              <span>EMOTE</span>
-            </button>
-          </div>
-        )}
       </div>
-
-      {/* Reaction Picker Popover anchored cleanly to the card */}
-      <EmojiReactionPicker
-        isOpen={showPicker}
-        onClose={() => setShowPicker(false)}
-        onSelectEmoji={(emoji) => {
-          onSendReaction?.(emoji);
-          setShowPicker(false);
-        }}
-        position={position}
-        playerName={player.name}
-      />
 
       {/* Turn Countdown Progress Line */}
       {isCurrent && (

@@ -2699,6 +2699,35 @@ export default function Board3D({
               if (item.mesh.geometry) item.mesh.geometry.dispose();
               if (item.mesh.material) item.mesh.material.dispose();
             }
+          } else if (item.type === 'shockwave') {
+            item.elapsed += delta;
+            const p = Math.min(1.0, item.elapsed / (item.duration || 0.85));
+            const curScale = 1.0 + ((item.maxScale || 6.5) - 1.0) * Math.sin(p * Math.PI * 0.5);
+            item.mesh.scale.set(curScale, curScale, curScale);
+            if (item.mesh.material) {
+              item.mesh.material.opacity = Math.max(0, 0.95 * (1.0 - p));
+            }
+            if (p < 1.0) {
+              activeRain.push(item);
+            } else {
+              if (cashGroupRef.current) cashGroupRef.current.remove(item.mesh);
+              if (item.mesh.geometry) item.mesh.geometry.dispose();
+              if (item.mesh.material) item.mesh.material.dispose();
+            }
+          } else if (item.type === 'lightbeam') {
+            item.elapsed += delta;
+            const p = Math.min(1.0, item.elapsed / (item.duration || 1.1));
+            if (item.mesh.material) {
+              item.mesh.material.opacity = Math.max(0, 0.8 * (1.0 - p * p));
+            }
+            item.mesh.position.y += delta * 1.5;
+            if (p < 1.0) {
+              activeRain.push(item);
+            } else {
+              if (cashGroupRef.current) cashGroupRef.current.remove(item.mesh);
+              if (item.mesh.geometry) item.mesh.geometry.dispose();
+              if (item.mesh.material) item.mesh.material.dispose();
+            }
           }
         });
         cashRainRef.current = activeRain;
@@ -3090,11 +3119,10 @@ export default function Board3D({
         const fromTile = entry.currentTile;
         const toTile = player.position;
 
-        onPawnMovementStart?.(player.id, toTile);
-
         // 1. Direct Magnetic Pull Trajectory (Snappy linear pull, never crosses START)
         if (player.lastMovementType === 'magnetic_pull') {
           player.lastMovementType = null;
+          onPawnMovementStart?.(player.id, toTile, { willCrossStart: false, path: [toTile] });
           try { sounds.playMove?.(); } catch (err) {}
           const startCoords = entry.group.position.clone();
           const totalTileCount = TILES.length || 32;
@@ -3144,6 +3172,9 @@ export default function Board3D({
           path.push(curr);
         }
 
+        const willCrossStart = path.includes(0);
+        onPawnMovementStart?.(player.id, toTile, { willCrossStart, path, startBonus: 200000 });
+
         if (path.length === 0) {
           entry.currentTile = toTile;
           entry.targetTile = toTile;
@@ -3155,7 +3186,6 @@ export default function Board3D({
         // Direct High-Altitude Soaring Flight along Board Perimeter for World Tour
         const isWorldTourFlight = (fromTile === 16 || fromTile === 24) && path.length > 6;
         if (isWorldTourFlight) {
-          try { sounds.playFlightTakeoff?.(); } catch (err) {}
           const startCoords = entry.group.position.clone();
           const totalTileCount = TILES.length || 32;
 
@@ -3196,8 +3226,9 @@ export default function Board3D({
               const startRatio = (startIdx + 0.5) / path.length;
               if (ease >= startRatio) {
                 hasClaimedStartInFlight = true;
-                // Trigger full 3D cash rain cascade directly on soaring pawn
-                spawnCashRainOnPawn(entry.group.position, 200000, player);
+                // Trigger full 3D cash rain cascade directly on soaring pawn at Tile 0
+                const tile0Pos = getPawnTile3DPos(0, totalTileCount, entry.subOffset);
+                spawnCashRainOnPawn(tile0Pos, 200000, player);
               }
             }
 
@@ -3281,11 +3312,6 @@ export default function Board3D({
 
           sounds.playPawnStep?.();
 
-          // If step lands on or passes START (Tile 0), trigger cash rain animation on the pawn
-          if (nextTileId === 0) {
-            spawnCashRainOnPawn(targetPos, 200000, player);
-          }
-
           let t = 0;
           const hopDuration = 180;
           const hopStartTime = performance.now();
@@ -3300,6 +3326,14 @@ export default function Board3D({
             if (t < 1.0) {
               requestAnimationFrame(stepAnim);
             } else {
+              // Physical touchdown on nextTileId!
+              if (nextTileId === 0) {
+                // Stepped directly onto START (Tile 0): Trigger cash rain, light beam, shockwave & award salary on tile touchdown!
+                spawnCashRainOnPawn(targetPos, 200000, player);
+                stepIndex++;
+                setTimeout(hopToNext, 220); // 220ms celebratory touchdown pause
+                return;
+              }
               stepIndex++;
               setTimeout(hopToNext, 40);
             }
@@ -3321,7 +3355,7 @@ export default function Board3D({
         pawnMap.delete(id);
       }
     });
-  }, [players, sceneReady, onPawnMovementStart, onPawnMovementComplete]);
+  }, [players, sceneReady, onPawnMovementStart, onPawnMovementComplete, onSalaryRain]);
 
   // Trigger 3D Dice Simulation on NEW Roll ID
     // 3D Flying Cash Transfer Spawner
@@ -3388,6 +3422,48 @@ export default function Board3D({
     if (onSalaryRain && player) {
       onSalaryRain(player, amount);
     }
+
+    // Expanding Emerald/Golden Shockwave Ring on tile surface
+    const ringGeom = new THREE.RingGeometry(0.3, 0.75, 32);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0x34d399,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false,
+    });
+    const ringMesh = new THREE.Mesh(ringGeom, ringMat);
+    ringMesh.rotation.x = -Math.PI / 2;
+    ringMesh.position.set(pawnPos.x, 0.38, pawnPos.z);
+    cashGroupRef.current.add(ringMesh);
+
+    cashRainRef.current.push({
+      type: 'shockwave',
+      mesh: ringMesh,
+      elapsed: 0,
+      duration: 0.85,
+      maxScale: 6.5,
+    });
+
+    // Vertical Golden Light Beam rising through the pawn
+    const beamGeom = new THREE.CylinderGeometry(0.75, 0.95, 14, 24, 1, true);
+    const beamMat = new THREE.MeshBasicMaterial({
+      color: 0xfef08a,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.8,
+      depthWrite: false,
+    });
+    const beamMesh = new THREE.Mesh(beamGeom, beamMat);
+    beamMesh.position.set(pawnPos.x, 7.0, pawnPos.z);
+    cashGroupRef.current.add(beamMesh);
+
+    cashRainRef.current.push({
+      type: 'lightbeam',
+      mesh: beamMesh,
+      elapsed: 0,
+      duration: 1.1,
+    });
 
     const noteCount = 36;
     const coinCount = 14;
