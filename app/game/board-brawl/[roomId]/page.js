@@ -78,6 +78,18 @@ export default function BoardBrawlArenaPage() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [activeCamMode, setActiveCamMode] = useState('follow');
 
+  const localPlayerIdRef = useRef(null);
+  const nonBots = gameState?.players ? gameState.players.filter(p => !p.isBot) : [];
+  const myPlayerObj = gameState?.players ? (
+    gameState.players.find(p => p.id === user?.id)
+    || gameState.players.find(p => p.id === localPlayerIdRef.current)
+    || (nonBots.length === 1 ? nonBots[0] : null)
+  ) : null;
+  const currentPlayer = (gameState?.players && gameState?.activePlayerIndex != null)
+    ? gameState.players[gameState.activePlayerIndex]
+    : null;
+  const isMyTurn = Boolean(currentPlayer && myPlayerObj && currentPlayer.id === myPlayerObj.id);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('ngg_camera_mode') || 'follow';
@@ -285,7 +297,6 @@ export default function BoardBrawlArenaPage() {
 
   // Join Room & Real-time State Sync (Defensively debounced to prevent socket storms)
   const hasJoinedRef = useRef(false);
-  const localPlayerIdRef = useRef(null);
   const gameStateRef = useRef(null);
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -571,15 +582,9 @@ export default function BoardBrawlArenaPage() {
     );
   }
 
-  const nonBots = gameState.players.filter(p => !p.isBot);
-  const myPlayerObj = gameState.players.find(p => p.id === user?.id)
-    || gameState.players.find(p => p.id === localPlayerIdRef.current)
-    || (nonBots.length === 1 ? nonBots[0] : null);
   const isHost = Boolean(
     myPlayerObj && gameState.players[0] && myPlayerObj.id === gameState.players[0].id
   ) || (gameState.players.length > 0 && !gameState.players[0]?.isBot && (myPlayerObj?.id === gameState.players[0]?.id || !gameState.players.some(p => !p.isBot && p.id !== myPlayerObj?.id)));
-  const currentPlayer = gameState.players[gameState.activePlayerIndex];
-  const isMyTurn = Boolean(currentPlayer && myPlayerObj && currentPlayer.id === myPlayerObj.id);
   const activePlayerId = myPlayerObj?.id || user?.id;
 
   // Actions
