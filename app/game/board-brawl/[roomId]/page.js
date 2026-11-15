@@ -1775,55 +1775,6 @@ export default function BoardBrawlArenaPage() {
                 </div>
               </div>
 
-              {/* 2. Active Player & Turn Timer Pill */}
-              {currentPlayer && !currentPlayer.isBankrupt && (
-                <div style={{
-                  background: 'rgba(15, 23, 42, 0.88)',
-                  backdropFilter: 'blur(12px)',
-                  border: '1.5px solid rgba(56, 189, 248, 0.35)',
-                  borderRadius: '16px',
-                  padding: '7px 16px',
-                  boxShadow: '0 8px 25px rgba(0, 0, 0, 0.35)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '4px',
-                  minWidth: '190px',
-                }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '11px',
-                    fontWeight: 900,
-                    color: '#f8fafc',
-                    letterSpacing: '0.04em',
-                    textTransform: 'uppercase',
-                  }}>
-                    <span style={{ color: '#38bdf8' }}>{currentPlayer.name}{isMyTurn ? ' (YOU)' : ''}</span>
-                    <span style={{ color: '#64748b' }}>•</span>
-                    <span style={{
-                      color: (gameState.turnTimerRemaining || 0) <= 3 ? '#ef4444' : '#f59e0b',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                    }}>
-                      ⏱️ {gameState.turnTimerRemaining}s
-                    </span>
-                  </div>
-
-                  {/* Draining Timer Bar */}
-                  <SmoothTimerBar
-                    secondsRemaining={localTurnTimerRemaining}
-                    totalDuration={gameState.turnDuration || (gameState.mode === 'blitz' ? 25 : 35)}
-                    expiresAt={gameState.turnExpiresAt}
-                    activeKey={`${currentPlayer?.id}_${gameState.turnState}`}
-                    height={4}
-                    borderRadius={999}
-                  />
-                </div>
-              )}
-
               {/* 3. Tomato Bucket HUD Capsule */}
               {myPlayerObj && (
                 <div
@@ -2139,6 +2090,12 @@ export default function BoardBrawlArenaPage() {
               communityJackpot={gameState.communityJackpot || 100000}
               centerContent={null}
               targetingMode={activeTargetingMode}
+              turnTimer={localTurnTimerRemaining}
+              turnDuration={gameState.turnDuration || (gameState.mode === 'blitz' ? 25 : 35)}
+              turnExpiresAt={gameState.turnExpiresAt}
+              currentPlayer={currentPlayer}
+              isMyTurn={isMyTurn}
+              turnState={gameState.turnState}
               onTileClick={(tileId) => {
                 if (isMyTurn && (gameState?.turnState === 'flight_select' || activeTargetingMode?.active)) return;
                 setInspectedTileId(tileId);

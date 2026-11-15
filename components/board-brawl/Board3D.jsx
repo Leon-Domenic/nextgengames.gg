@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { TILES, formatCash } from '@/lib/board-brawl/types';
 import { sounds } from '@/lib/audio';
 import { Sparkles } from 'lucide-react';
+import SmoothTimerBar from '@/components/board-brawl/SmoothTimerBar';
 import {
   create3DPlot,
   create3DHouse,
@@ -1702,6 +1703,12 @@ export default function Board3D({
   centerContent = null,
   communityJackpot = 100000,
   lastPayment = null,
+  turnTimer = 25,
+  turnDuration = 25,
+  turnExpiresAt = null,
+  currentPlayer = null,
+  isMyTurn = false,
+  turnState = 'roll',
   onRollDice,
   onBuyCity,
   onBuyoutCity,
@@ -1739,6 +1746,16 @@ export default function Board3D({
   const cashRainRef = useRef([]);
   const lastPaymentIdRef = useRef(null);
   const lastRollIdRef = useRef(null);
+  const [visibleDiceResult, setVisibleDiceResult] = useState(null);
+  const diceResultTimeoutRef = useRef(null);
+
+  const clearDiceResult = useCallback(() => {
+    if (diceResultTimeoutRef.current) {
+      clearTimeout(diceResultTimeoutRef.current);
+      diceResultTimeoutRef.current = null;
+    }
+    setVisibleDiceResult(null);
+  }, []);
 
   // Board Background Refs for Dynamic Live Theming
   const boardBackgroundRef = useRef(boardBackground);
@@ -3451,6 +3468,7 @@ export default function Board3D({
         }
 
         const willCrossStart = path.includes(0);
+        clearDiceResult();
         onPawnMovementStart?.(player.id, toTile, { willCrossStart, path, startBonus: 200000 });
 
         if (path.length === 0) {
@@ -3482,6 +3500,7 @@ export default function Board3D({
           let hasClaimedStartInFlight = false;
 
           const flightAnim = () => {
+            clearDiceResult();
             const now = performance.now();
             const fp = Math.min(1.0, (now - flightStartTime) / flightDuration);
 
@@ -3551,6 +3570,7 @@ export default function Board3D({
 
         let stepIndex = 0;
         const hopToNext = () => {
+          clearDiceResult();
           if (stepIndex >= path.length) {
             // Landing thump sound and visual squash-and-stretch landing impact (350ms)
             sounds.playPawnLand?.();
@@ -3994,6 +4014,16 @@ export default function Board3D({
       const skin = rollingPlayer?.diceSkin || diceSkin || 'classic_red';
       const d2Val = lastDiceResult.d2 !== undefined ? lastDiceResult.d2 : 1;
       triggerDiceRoll(lastDiceResult.d1 || 1, d2Val, skin, rollingPlayer);
+
+      // Display dice roll result for max 2 seconds
+      setVisibleDiceResult(lastDiceResult);
+      if (diceResultTimeoutRef.current) {
+        clearTimeout(diceResultTimeoutRef.current);
+      }
+      diceResultTimeoutRef.current = setTimeout(() => {
+        setVisibleDiceResult(null);
+        diceResultTimeoutRef.current = null;
+      }, 2000);
     }
   }, [lastDiceResult, triggerDiceRoll, players, diceSkin]);
 
@@ -4146,10 +4176,82 @@ export default function Board3D({
 
       
 
-      {/* Floating Total Dice Roll Indicator Pill (Above Pitch Center) */}
-      {lastDiceResult && (
+      {/* Board-Anchored Turn Timer (Top-Middle of Board, above dice display & dice results card) */}
+      {currentPlayer && !currentPlayer.isBankrupt && (
         <div
-          key={lastDiceResult.id || `${lastDiceResult.d1}_${lastDiceResult.d2}`}
+          style={{
+            position: 'absolute',
+            top: '24%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 14,
+            padding: '8px 18px',
+            borderRadius: '20px',
+            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.94) 0%, rgba(30, 41, 59, 0.96) 100%)',
+            border: isMyTurn ? '1.5px solid #38bdf8' : '1.5px solid rgba(255, 255, 255, 0.16)',
+            boxShadow: isMyTurn
+              ? '0 0 24px rgba(56, 189, 248, 0.45), 0 10px 28px rgba(0, 0, 0, 0.55)'
+              : '0 8px 24px rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '5px',
+            minWidth: '180px',
+            pointerEvents: 'none',
+            backdropFilter: 'blur(12px)',
+            userSelect: 'none',
+          }}
+        >
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '11px',
+            fontWeight: 900,
+            color: '#f8fafc',
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+          }}>
+            <span style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: currentPlayer.color || '#38bdf8',
+              boxShadow: `0 0 8px ${currentPlayer.color || '#38bdf8'}`,
+              display: 'inline-block',
+            }} />
+            <span style={{ color: isMyTurn ? '#38bdf8' : '#f8fafc' }}>
+              {currentPlayer.name}{isMyTurn ? ' (YOU)' : ''}
+            </span>
+            <span style={{ color: '#64748b' }}>•</span>
+            <span style={{
+              color: (turnTimer || 0) <= 3 ? '#ef4444' : '#f59e0b',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              ⏱️ {turnTimer}s
+            </span>
+          </div>
+
+          {/* Draining Timer Bar */}
+          <SmoothTimerBar
+            secondsRemaining={turnTimer}
+            totalDuration={turnDuration}
+            expiresAt={turnExpiresAt}
+            activeKey={`${currentPlayer?.id}_${turnState}`}
+            height={4}
+            borderRadius={999}
+            containerStyle={{ width: '100%' }}
+          />
+        </div>
+      )}
+
+      {/* Floating Total Dice Roll Indicator Pill (Above Pitch Center) - Auto-dismisses after 2s or on pawn move */}
+      {visibleDiceResult && (
+        <div
+          key={visibleDiceResult.id || `${visibleDiceResult.d1}_${visibleDiceResult.d2}`}
           style={{
             position: 'absolute',
             top: '36%',
@@ -4159,19 +4261,19 @@ export default function Board3D({
             padding: '10px 22px',
             borderRadius: '24px',
             background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.96) 100%)',
-            border: lastDiceResult.isDoubles ? '2px solid #a855f7' : '2px solid #38bdf8',
+            border: visibleDiceResult.isDoubles ? '2px solid #a855f7' : '2px solid #38bdf8',
             color: '#ffffff',
             display: 'flex',
             alignItems: 'center',
             gap: '12px',
-            boxShadow: lastDiceResult.isDoubles
+            boxShadow: visibleDiceResult.isDoubles
               ? '0 0 25px rgba(168, 85, 247, 0.5), 0 12px 30px rgba(0, 0, 0, 0.5)'
               : '0 0 22px rgba(56, 189, 248, 0.4), 0 12px 30px rgba(0, 0, 0, 0.5)',
             pointerEvents: 'none',
             backdropFilter: 'blur(8px)',
           }}
         >
-          {lastDiceResult.d2 === 0 ? (
+          {visibleDiceResult.d2 === 0 ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '18px' }}>🍅</span>
               <span style={{ fontSize: '11px', fontWeight: 900, color: '#f87171', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
@@ -4193,7 +4295,7 @@ export default function Board3D({
                   border: '1px solid #ef4444',
                 }}
               >
-                {lastDiceResult.d1}
+                {visibleDiceResult.d1}
               </span>
             </div>
           ) : (
@@ -4214,7 +4316,7 @@ export default function Board3D({
                   border: '1px solid #ef4444',
                 }}
               >
-                {lastDiceResult.d1}
+                {visibleDiceResult.d1}
               </span>
               <span style={{ color: '#94a3b8', fontSize: '15px', fontWeight: 800 }}>+</span>
               <span
@@ -4233,7 +4335,7 @@ export default function Board3D({
                   border: '1px solid #ef4444',
                 }}
               >
-                {lastDiceResult.d2}
+                {visibleDiceResult.d2}
               </span>
             </div>
           )}
@@ -4247,15 +4349,15 @@ export default function Board3D({
                 fontSize: '26px',
                 fontWeight: 900,
                 letterSpacing: '-0.5px',
-                background: lastDiceResult.isDoubles
+                background: visibleDiceResult.isDoubles
                   ? 'linear-gradient(180deg, #fef08a 0%, #facc15 100%)'
                   : 'linear-gradient(180deg, #ffffff 0%, #e2e8f0 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
-                filter: lastDiceResult.isDoubles ? 'drop-shadow(0 0 8px rgba(250, 204, 21, 0.6))' : 'none',
+                filter: visibleDiceResult.isDoubles ? 'drop-shadow(0 0 8px rgba(250, 204, 21, 0.6))' : 'none',
               }}
             >
-              {lastDiceResult.d1 + lastDiceResult.d2}
+              {visibleDiceResult.d1 + visibleDiceResult.d2}
             </span>
             <span style={{ fontSize: '12px', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>
               Roll
@@ -4263,7 +4365,7 @@ export default function Board3D({
           </div>
 
           {/* Doubles Callout */}
-          {lastDiceResult.isDoubles && (
+          {visibleDiceResult.isDoubles && (
             <div
               style={{
                 padding: '3px 8px',
