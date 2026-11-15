@@ -1762,6 +1762,7 @@ export default function Board3D({
   boardBackgroundRef.current = boardBackground;
   const lawnCanvasRef = useRef(null);
   const lawnTextureRef = useRef(null);
+  const lawnMatRef = useRef(null);
   const studioFloorCanvasRef = useRef(null);
   const studioFloorTextureRef = useRef(null);
   const groundMatRef = useRef(null);
