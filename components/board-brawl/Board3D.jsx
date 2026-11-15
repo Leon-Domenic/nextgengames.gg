@@ -582,7 +582,7 @@ function drawStreetTileContent(ctx, tile, p, prop, properties = {}, players = []
   ctx.strokeStyle = '#cbd5e1';
   ctx.strokeRect(14, 14, cW - 28, cH - 28);
 
-  // Helper function to draw outward text rotated 180 deg
+  // Helper function to draw outward text rotated 180 deg (Side 0 & Side 3)
   const drawOutwardText = (text, cx, cy, font, fillStyle, maxW = null) => {
     ctx.save();
     ctx.translate(cx, cy);
@@ -599,41 +599,25 @@ function drawStreetTileContent(ctx, tile, p, prop, properties = {}, players = []
     ctx.restore();
   };
 
-  if (tile.type === 'city') {
-    // 1. TOP / OUTER ZONE: District Header & City Name (y = 16 to 140)
-    ctx.fillStyle = tile.color || '#3b82f6';
-    ctx.fillRect(16, 16, 480, 56);
-
-    // Glossy highlight
-    const gloss = ctx.createLinearGradient(0, 16, 0, 45);
-    gloss.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
-    gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
-    ctx.fillStyle = gloss;
-    ctx.fillRect(16, 16, 480, 30);
-
-    // Dark divider
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(16, 72, 480, 4);
-
-    // Country Flag + City Name
-    const name = tile.name.toUpperCase();
-    if (tile.country) {
-      ctx.save();
-      ctx.translate(256, 44);
-      ctx.rotate(Math.PI);
-      drawVectorFlag(ctx, tile.country, -32, -18, 64, 36, 6);
-      ctx.restore();
+  // Helper function to draw upright text facing the player (Side 1 & Side 2 top lines)
+  const drawUprightText = (text, cx, cy, font, fillStyle, maxW = null) => {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.fillStyle = fillStyle;
+    ctx.font = font;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    if (maxW) {
+      ctx.fillText(text, 0, 0, maxW);
+    } else {
+      ctx.fillText(text, 0, 0);
     }
+    ctx.restore();
+  };
 
-    const fontSize = name.length > 15 ? 28 : name.length > 11 ? 32 : 36;
-    drawOutwardText(name, 256, 114, '900 ' + fontSize + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a', 450);
+  const isTopLine = p?.side === 1 || p?.side === 2;
 
-    // 2. DEDICATED ARCHITECTURAL ESTATE BUILDING LOT (y = 150 to 745)
-    // Distinct textured materials per color group: cobblestone vs stone vs bricks vs terracotta vs granite vs marble vs slate!
-    drawDistrictEstateLot(ctx, tile.colorGroup, 16, 150, 480, 595);
-
-    // 3. INNER RIM DYNAMIC RENT / PRICE BADGE (y = 756 to 854)
-    // Matches Business Tour screenshot: huge white badge with bold price/rent facing center
+  if (tile.type === 'city') {
     let badgeText = '';
     let isOwned = false;
     let ownerColor = '#3b82f6';
@@ -680,142 +664,165 @@ function drawStreetTileContent(ctx, tile, p, prop, properties = {}, players = []
       badgeText = formatCash(tile.price || 0, true);
     }
 
-    const badgeX = 42;
-    const badgeY = 756;
-    const badgeW = 428;
-    const badgeH = 98;
-    const badgeR = 18;
-
-    // Subtle drop shadow underneath badge
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.12)';
-    ctx.beginPath();
-    ctx.roundRect(badgeX + 2, badgeY + 4, badgeW, badgeH, badgeR);
-    ctx.fill();
-
-    // Clean white badge background (or festive gold tint if festival active)
-    ctx.fillStyle = isFestival ? '#fef9c3' : '#ffffff';
-    ctx.beginPath();
-    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeR);
-    ctx.fill();
-
-    // Sharp outer border
-    ctx.lineWidth = 5;
-    ctx.strokeStyle = isFestival ? '#eab308' : '#0f172a';
-    ctx.stroke();
-
-    // Top owner-color accent bar if owned
-    if (isOwned && !isMortgaged) {
-      ctx.fillStyle = ownerColor;
-      ctx.beginPath();
-      ctx.roundRect(badgeX + 3, badgeY + 3, badgeW - 6, 12, [badgeR - 2, badgeR - 2, 0, 0]);
-      ctx.fill();
-    }
-
-    // High contrast big bold rent / price text
-    const textY = isOwned && !isMortgaged ? badgeY + 54 : badgeY + 50;
+    const name = tile.name.toUpperCase();
+    const fontSize = name.length > 15 ? 28 : name.length > 11 ? 32 : 36;
     const badgeFont = isMortgaged
       ? '900 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       : (badgeText.length > 7
         ? '900 48px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
         : '900 58px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif');
-
     const textColor = isMortgaged ? '#ef4444' : (isFestival ? '#b45309' : '#0f172a');
-    drawOutwardText(badgeText, 256, textY, badgeFont, textColor, 400);
+
+    if (!isTopLine) {
+      // Side 0 (First row) & Side 3 (Bottom-right line):
+      // Bottom of field in 3D = Canvas top (y = 16 to 140)
+      ctx.fillStyle = tile.color || '#3b82f6';
+      ctx.fillRect(16, 16, 480, 56);
+
+      // Glossy highlight
+      const gloss = ctx.createLinearGradient(0, 16, 0, 45);
+      gloss.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+      gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = gloss;
+      ctx.fillRect(16, 16, 480, 30);
+
+      // Dark divider
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(16, 72, 480, 4);
+
+      // Country Flag + City Name on the BOTTOM side of the field
+      if (tile.country) {
+        ctx.save();
+        ctx.translate(256, 44);
+        ctx.rotate(Math.PI);
+        drawVectorFlag(ctx, tile.country, -32, -18, 64, 36, 6);
+        ctx.restore();
+      }
+
+      drawOutwardText(name, 256, 114, '900 ' + fontSize + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a', 450);
+
+      // Championship Status Banner on the bottom side of the field
+      if (isFestival) {
+        ctx.save();
+        ctx.fillStyle = '#fef08a';
+        ctx.strokeStyle = '#eab308';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(40, 142, 432, 38, 10);
+        ctx.fill();
+        ctx.stroke();
+        drawOutwardText('🏆 2X CHAMPIONSHIP HOST', 256, 161, '900 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#854d0e', 400);
+        ctx.restore();
+      }
+
+      // Architectural Estate Building Lot (Middle)
+      drawDistrictEstateLot(ctx, tile.colorGroup, 16, isFestival ? 186 : 150, 480, isFestival ? 558 : 595);
+
+      // Rent / Price Badge on the TOP side of the field (Canvas bottom)
+      const badgeX = 42;
+      const badgeY = 756;
+      const badgeW = 428;
+      const badgeH = 98;
+      const badgeR = 18;
+
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.12)';
+      ctx.beginPath();
+      ctx.roundRect(badgeX + 2, badgeY + 4, badgeW, badgeH, badgeR);
+      ctx.fill();
+
+      ctx.fillStyle = isFestival ? '#fef9c3' : '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeR);
+      ctx.fill();
+
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = isFestival ? '#eab308' : '#0f172a';
+      ctx.stroke();
+
+      if (isOwned && !isMortgaged) {
+        ctx.fillStyle = ownerColor;
+        ctx.beginPath();
+        ctx.roundRect(badgeX + 3, badgeY + 3, badgeW - 6, 12, [badgeR - 2, badgeR - 2, 0, 0]);
+        ctx.fill();
+      }
+
+      const textY = isOwned && !isMortgaged ? badgeY + 54 : badgeY + 50;
+      drawOutwardText(badgeText, 256, textY, badgeFont, textColor, 400);
+
+    } else {
+      // Side 1 (Top-left line) & Side 2 (Top-right line):
+      // Rent badge on TOP side of field (Canvas top, y = 22 to 120)
+      const badgeX = 42;
+      const badgeY = 22;
+      const badgeW = 428;
+      const badgeH = 98;
+      const badgeR = 18;
+
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.12)';
+      ctx.beginPath();
+      ctx.roundRect(badgeX + 2, badgeY + 4, badgeW, badgeH, badgeR);
+      ctx.fill();
+
+      ctx.fillStyle = isFestival ? '#fef9c3' : '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeR);
+      ctx.fill();
+
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = isFestival ? '#eab308' : '#0f172a';
+      ctx.stroke();
+
+      if (isOwned && !isMortgaged) {
+        ctx.fillStyle = ownerColor;
+        ctx.beginPath();
+        ctx.roundRect(badgeX + 3, badgeY + badgeH - 14, badgeW - 6, 11, [0, 0, badgeR - 2, badgeR - 2]);
+        ctx.fill();
+      }
+
+      const textY = isOwned && !isMortgaged ? badgeY + 44 : badgeY + 49;
+      drawUprightText(badgeText, 256, textY, badgeFont, textColor, 400);
+
+      // Architectural Estate Building Lot (Middle)
+      drawDistrictEstateLot(ctx, tile.colorGroup, 16, 130, 480, isFestival ? 560 : 595);
+
+      // Championship Status Banner on the BOTTOM side of the field
+      if (isFestival) {
+        ctx.save();
+        ctx.fillStyle = '#fef08a';
+        ctx.strokeStyle = '#eab308';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(40, 730, 432, 38, 10);
+        ctx.fill();
+        ctx.stroke();
+        drawUprightText('🏆 2X CHAMPIONSHIP HOST', 256, 749, '900 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#854d0e', 400);
+        ctx.restore();
+      }
+
+      // Country Flag + City Name on the BOTTOM side of the field (Canvas bottom, y = 770 to 880)
+      ctx.fillStyle = tile.color || '#3b82f6';
+      ctx.fillRect(16, 824, 480, 56);
+
+      const gloss = ctx.createLinearGradient(0, 824, 0, 854);
+      gloss.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+      gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = gloss;
+      ctx.fillRect(16, 824, 480, 30);
+
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(16, 820, 480, 4);
+
+      if (tile.country) {
+        ctx.save();
+        ctx.translate(256, 852);
+        drawVectorFlag(ctx, tile.country, -32, -18, 64, 36, 6);
+        ctx.restore();
+      }
+
+      drawUprightText(name, 256, 792, '900 ' + fontSize + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a', 450);
+    }
 
   } else if (tile.type === 'resort') {
-    // 1. TOP / OUTER ZONE: Tropical Cyan Header Band (y = 16 to 140)
-    ctx.fillStyle = '#06b6d4';
-    ctx.fillRect(16, 16, 480, 56);
-
-    const gloss = ctx.createLinearGradient(0, 16, 0, 45);
-    gloss.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
-    gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
-    ctx.fillStyle = gloss;
-    ctx.fillRect(16, 16, 480, 30);
-
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(16, 72, 480, 4);
-
-    const rName = tile.name.toUpperCase();
-    if (tile.country) {
-      ctx.save();
-      ctx.translate(256, 44);
-      ctx.rotate(Math.PI);
-      drawVectorFlag(ctx, tile.country, -32, -18, 64, 36, 6);
-      ctx.restore();
-    }
-
-    drawOutwardText(rName, 256, 114, '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0891b2', 450);
-
-    // 2. DEDICATED GOLDEN BEACH SAND RESORT LOT (y = 150 to 745)
-    ctx.fillStyle = '#fde047'; // Golden sand
-    ctx.fillRect(16, 150, 480, 595);
-
-    // Granular sand stippling grain
-    const sandColors = ['#fef08a', '#fbbf24', '#f59e0b', '#fef9c3', '#d97706'];
-    for (let s = 0; s < 350; s++) {
-      const sx = 24 + ((s * 47) % 464);
-      const sy = 160 + ((s * 83) % 480);
-      const sr = 1 + (s % 3);
-      ctx.fillStyle = sandColors[s % sandColors.length];
-      ctx.beginPath();
-      ctx.arc(sx, sy, sr, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Gentle curved sand dune ripples
-    ctx.strokeStyle = 'rgba(217, 119, 6, 0.22)';
-    ctx.lineWidth = 5;
-    for (let ry = 190; ry < 620; ry += 65) {
-      ctx.beginPath();
-      ctx.moveTo(30, ry);
-      ctx.bezierCurveTo(160, ry - 18, 320, ry + 18, 480, ry);
-      ctx.stroke();
-    }
-
-    // Turquoise Ocean Shoreline with White Foam Waves at lower lot edge
-    const waterGrad = ctx.createLinearGradient(0, 620, 0, 745);
-    waterGrad.addColorStop(0, 'rgba(6, 182, 212, 0)');
-    waterGrad.addColorStop(0.3, 'rgba(14, 165, 233, 0.6)');
-    waterGrad.addColorStop(0.7, '#0284c7');
-    waterGrad.addColorStop(1, '#0369a1');
-    ctx.fillStyle = waterGrad;
-    ctx.fillRect(16, 620, 480, 125);
-
-    // White Foamy Wave Surf Lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.moveTo(20, 645);
-    ctx.bezierCurveTo(150, 625, 310, 665, 492, 640);
-    ctx.stroke();
-
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(20, 680);
-    ctx.bezierCurveTo(170, 665, 330, 695, 492, 675);
-    ctx.stroke();
-
-    // 2D Beach details: Beach towel graphic
-    ctx.fillStyle = '#ef4444';
-    ctx.fillRect(80, 320, 65, 100);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(80, 340, 65, 20);
-    ctx.fillRect(80, 380, 65, 20);
-
-    // Starfish in the sand
-    ctx.fillStyle = '#f97316';
-    ctx.beginPath();
-    ctx.arc(380, 420, 14, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Resort boundary frame
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = 'rgba(6, 182, 212, 0.6)';
-    ctx.strokeRect(30, 165, 452, 565);
-
-    // 3. INNER RIM RESORT RENT / PRICE BADGE (y = 756 to 854)
     let rBadgeText = '';
     let rIsOwned = false;
     let rOwnerColor = '#06b6d4';
@@ -839,40 +846,227 @@ function drawStreetTileContent(ctx, tile, p, prop, properties = {}, players = []
       rBadgeText = formatCash(tile.price || 0, true);
     }
 
-    const badgeX = 42;
-    const badgeY = 756;
-    const badgeW = 428;
-    const badgeH = 98;
-    const badgeR = 18;
-
-    ctx.fillStyle = 'rgba(6, 182, 212, 0.15)';
-    ctx.beginPath();
-    ctx.roundRect(badgeX + 2, badgeY + 4, badgeW, badgeH, badgeR);
-    ctx.fill();
-
-    ctx.fillStyle = rIsFestival ? '#fef9c3' : '#ffffff';
-    ctx.beginPath();
-    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeR);
-    ctx.fill();
-
-    ctx.lineWidth = 5;
-    ctx.strokeStyle = rIsFestival ? '#eab308' : '#0891b2';
-    ctx.stroke();
-
-    if (rIsOwned) {
-      ctx.fillStyle = rOwnerColor;
-      ctx.beginPath();
-      ctx.roundRect(badgeX + 3, badgeY + 3, badgeW - 6, 12, [badgeR - 2, badgeR - 2, 0, 0]);
-      ctx.fill();
-    }
-
-    const textY = rIsOwned ? badgeY + 54 : badgeY + 50;
+    const rName = tile.name.toUpperCase();
     const rFont = rBadgeText.length > 7
       ? '900 48px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       : '900 58px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-
     const rTextColor = rIsFestival ? '#b45309' : '#0891b2';
-    drawOutwardText(rBadgeText, 256, textY, rFont, rTextColor, 400);
+
+    if (!isTopLine) {
+      // Side 0 & Side 3: Header & Flag on BOTTOM side of field (Canvas top, y = 16 to 140)
+      ctx.fillStyle = '#06b6d4';
+      ctx.fillRect(16, 16, 480, 56);
+
+      const gloss = ctx.createLinearGradient(0, 16, 0, 45);
+      gloss.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+      gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = gloss;
+      ctx.fillRect(16, 16, 480, 30);
+
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(16, 72, 480, 4);
+
+      if (tile.country) {
+        ctx.save();
+        ctx.translate(256, 44);
+        ctx.rotate(Math.PI);
+        drawVectorFlag(ctx, tile.country, -32, -18, 64, 36, 6);
+        ctx.restore();
+      }
+
+      drawOutwardText(rName, 256, 114, '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0891b2', 450);
+
+      if (rIsFestival) {
+        ctx.save();
+        ctx.fillStyle = '#fef08a';
+        ctx.strokeStyle = '#eab308';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(40, 142, 432, 38, 10);
+        ctx.fill();
+        ctx.stroke();
+        drawOutwardText('🏆 2X CHAMPIONSHIP RESORT', 256, 161, '900 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#854d0e', 400);
+        ctx.restore();
+      }
+
+      // Dedicated Golden Beach Sand Resort Lot (Middle)
+      const sandY = rIsFestival ? 186 : 150;
+      const sandH = rIsFestival ? 558 : 595;
+      ctx.fillStyle = '#fde047';
+      ctx.fillRect(16, sandY, 480, sandH);
+
+      // Sand stippling grain
+      const sandColors = ['#fef08a', '#fbbf24', '#f59e0b', '#fef9c3', '#d97706'];
+      for (let s = 0; s < 300; s++) {
+        const sx = 24 + ((s * 47) % 464);
+        const sy = sandY + 10 + ((s * 83) % (sandH - 20));
+        const sr = 1 + (s % 3);
+        ctx.fillStyle = sandColors[s % sandColors.length];
+        ctx.beginPath();
+        ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Turquoise Ocean Shoreline with White Foam Waves
+      const waterGrad = ctx.createLinearGradient(0, 620, 0, 745);
+      waterGrad.addColorStop(0, 'rgba(6, 182, 212, 0)');
+      waterGrad.addColorStop(0.3, 'rgba(14, 165, 233, 0.6)');
+      waterGrad.addColorStop(0.7, '#0284c7');
+      waterGrad.addColorStop(1, '#0369a1');
+      ctx.fillStyle = waterGrad;
+      ctx.fillRect(16, 620, 480, 125);
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(20, 645);
+      ctx.bezierCurveTo(150, 625, 310, 665, 492, 640);
+      ctx.stroke();
+
+      // Resort boundary frame
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.6)';
+      ctx.strokeRect(30, sandY + 15, 452, sandH - 30);
+
+      // Inner Rim Resort Rent / Price Badge (TOP of field in 3D, canvas bottom)
+      const badgeX = 42;
+      const badgeY = 756;
+      const badgeW = 428;
+      const badgeH = 98;
+      const badgeR = 18;
+
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.15)';
+      ctx.beginPath();
+      ctx.roundRect(badgeX + 2, badgeY + 4, badgeW, badgeH, badgeR);
+      ctx.fill();
+
+      ctx.fillStyle = rIsFestival ? '#fef9c3' : '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeR);
+      ctx.fill();
+
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = rIsFestival ? '#eab308' : '#0891b2';
+      ctx.stroke();
+
+      if (rIsOwned) {
+        ctx.fillStyle = rOwnerColor;
+        ctx.beginPath();
+        ctx.roundRect(badgeX + 3, badgeY + 3, badgeW - 6, 12, [badgeR - 2, badgeR - 2, 0, 0]);
+        ctx.fill();
+      }
+
+      const textY = rIsOwned ? badgeY + 54 : badgeY + 50;
+      drawOutwardText(rBadgeText, 256, textY, rFont, rTextColor, 400);
+
+    } else {
+      // Side 1 & Side 2 (Top Lines):
+      // Price pill on TOP of field (Canvas top, y = 22 to 120)
+      const badgeX = 42;
+      const badgeY = 22;
+      const badgeW = 428;
+      const badgeH = 98;
+      const badgeR = 18;
+
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.15)';
+      ctx.beginPath();
+      ctx.roundRect(badgeX + 2, badgeY + 4, badgeW, badgeH, badgeR);
+      ctx.fill();
+
+      ctx.fillStyle = rIsFestival ? '#fef9c3' : '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeR);
+      ctx.fill();
+
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = rIsFestival ? '#eab308' : '#0891b2';
+      ctx.stroke();
+
+      if (rIsOwned) {
+        ctx.fillStyle = rOwnerColor;
+        ctx.beginPath();
+        ctx.roundRect(badgeX + 3, badgeY + badgeH - 14, badgeW - 6, 11, [0, 0, badgeR - 2, badgeR - 2]);
+        ctx.fill();
+      }
+
+      const textY = rIsOwned ? badgeY + 44 : badgeY + 49;
+      drawUprightText(rBadgeText, 256, textY, rFont, rTextColor, 400);
+
+      // Dedicated Golden Beach Sand Resort Lot (Middle)
+      const sandY = 130;
+      const sandH = rIsFestival ? 560 : 595;
+      ctx.fillStyle = '#fde047';
+      ctx.fillRect(16, sandY, 480, sandH);
+
+      // Sand stippling grain
+      const sandColors = ['#fef08a', '#fbbf24', '#f59e0b', '#fef9c3', '#d97706'];
+      for (let s = 0; s < 300; s++) {
+        const sx = 24 + ((s * 47) % 464);
+        const sy = sandY + 10 + ((s * 83) % (sandH - 20));
+        const sr = 1 + (s % 3);
+        ctx.fillStyle = sandColors[s % sandColors.length];
+        ctx.beginPath();
+        ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Turquoise Ocean Shoreline with White Foam Waves
+      const waterGrad = ctx.createLinearGradient(0, sandY + sandH - 120, 0, sandY + sandH);
+      waterGrad.addColorStop(0, 'rgba(6, 182, 212, 0)');
+      waterGrad.addColorStop(0.3, 'rgba(14, 165, 233, 0.6)');
+      waterGrad.addColorStop(0.7, '#0284c7');
+      waterGrad.addColorStop(1, '#0369a1');
+      ctx.fillStyle = waterGrad;
+      ctx.fillRect(16, sandY + sandH - 120, 480, 120);
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(20, sandY + sandH - 95);
+      ctx.bezierCurveTo(150, sandY + sandH - 115, 310, sandY + sandH - 75, 492, sandY + sandH - 100);
+      ctx.stroke();
+
+      // Resort boundary frame
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.6)';
+      ctx.strokeRect(30, sandY + 15, 452, sandH - 30);
+
+      // Championship Status Banner on BOTTOM of field
+      if (rIsFestival) {
+        ctx.save();
+        ctx.fillStyle = '#fef08a';
+        ctx.strokeStyle = '#eab308';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(40, 730, 432, 38, 10);
+        ctx.fill();
+        ctx.stroke();
+        drawUprightText('🏆 2X CHAMPIONSHIP RESORT', 256, 749, '900 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#854d0e', 400);
+        ctx.restore();
+      }
+
+      // Country Flag + Resort Name on BOTTOM side of field (Canvas bottom, y = 770 to 880)
+      ctx.fillStyle = '#06b6d4';
+      ctx.fillRect(16, 824, 480, 56);
+
+      const gloss = ctx.createLinearGradient(0, 824, 0, 854);
+      gloss.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+      gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = gloss;
+      ctx.fillRect(16, 824, 480, 30);
+
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(16, 820, 480, 4);
+
+      if (tile.country) {
+        ctx.save();
+        ctx.translate(256, 852);
+        drawVectorFlag(ctx, tile.country, -32, -18, 64, 36, 6);
+        ctx.restore();
+      }
+
+      drawUprightText(rName, 256, 792, '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0891b2', 450);
+    }
 
   } else {
     // SPECIAL EVENT TILES (Chance, Tax, Mystery, Armory, Festival)
@@ -893,200 +1087,283 @@ function drawStreetTileContent(ctx, tile, p, prop, properties = {}, players = []
       bg: '#0f172a',
     };
 
-    ctx.fillStyle = cfg.color;
-    ctx.fillRect(16, 16, 480, 56);
-
-    const gloss = ctx.createLinearGradient(0, 16, 0, 45);
-    gloss.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
-    gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
-    ctx.fillStyle = gloss;
-    ctx.fillRect(16, 16, 480, 30);
-
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(16, 72, 480, 4);
-
-    drawOutwardText(cfg.icon + ' ' + cfg.title, 256, 114, '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a', 450);
-
-    // Dedicated Themed Lot Texture (y = 150 to 745)
-    ctx.fillStyle = cfg.bg;
-    ctx.fillRect(16, 150, 480, 595);
-
-    // Authentic Chance Wheel or Themed Event Lot Graphic
-    if (tile.type === 'chance' || tile.type === 'mystery') {
-      // ----------------------------------------------------
-      // AUTHENTIC 8-SLICE RAINBOW PIE WHEEL (Wheel of Fortune from reference screenshot)
-      // ----------------------------------------------------
-      ctx.save();
-      ctx.translate(256, 440);
-      ctx.rotate(Math.PI);
-
-      const wheelR = 175;
-      const wheelColors = [
-        '#ec4899', // Pink
-        '#8b5cf6', // Violet
-        '#3b82f6', // Blue
-        '#06b6d4', // Cyan
-        '#10b981', // Green
-        '#facc15', // Yellow
-        '#f97316', // Orange
-        '#ef4444', // Red
-      ];
-
-      // Outer gold rim ring with dropshadow
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
-      ctx.shadowBlur = 18;
-      ctx.fillStyle = '#f59e0b';
-      ctx.beginPath();
-      ctx.arc(0, 0, wheelR + 10, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-
-      // Dark rim edge
-      ctx.lineWidth = 5;
-      ctx.strokeStyle = '#0f172a';
-      ctx.stroke();
-
-      // 8 Slices
-      const sliceAngle = (Math.PI * 2) / 8;
-      for (let s = 0; s < 8; s++) {
-        const start = s * sliceAngle;
-        const end = start + sliceAngle;
-        ctx.fillStyle = wheelColors[s];
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.arc(0, 0, wheelR, start, end);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-      }
-
-      // Center gold hub cap with star
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(0, 0, 42, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = '#0f172a';
-      ctx.stroke();
-
-      ctx.fillStyle = '#f59e0b';
-      ctx.beginPath();
-      ctx.arc(0, 0, 32, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Star in center
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '32px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('★', 0, 2);
-
-      // Top indicator pointer arrow pointing to winning slice
-      ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = '#0f172a';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(0, -wheelR + 14);
-      ctx.lineTo(-14, -wheelR - 22);
-      ctx.lineTo(14, -wheelR - 22);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.restore();
-
-    } else if (tile.type === 'tax') {
-      // ----------------------------------------------------
-      // AUTHENTIC TAX INVOICE WITH RED AUDIT STAMP
-      // ----------------------------------------------------
-      ctx.save();
-      ctx.translate(256, 435);
-      ctx.rotate(Math.PI);
-
-      // Angled white paper invoice document
-      ctx.save();
-      ctx.rotate(-0.06);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-      ctx.fillRect(-126, -164, 252, 332); // drop shadow
-
-      ctx.fillStyle = '#f8fafc';
-      ctx.fillRect(-130, -170, 260, 340);
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.strokeRect(-130, -170, 260, 340);
-
-      // Document title header bar
-      ctx.fillStyle = '#ef4444';
-      ctx.fillRect(-120, -155, 240, 28);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '900 16px -apple-system, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('TAX ASSESSMENT', 0, -135);
-
-      // Horizontal receipt/invoice lines
-      ctx.fillStyle = '#94a3b8';
-      for (let ly = -105; ly < 80; ly += 24) {
-        ctx.fillRect(-110, ly, 220, 6);
-      }
-
-      // Red circular TAX AUDIT rubber stamp
-      ctx.save();
-      ctx.rotate(-0.25);
-      ctx.strokeStyle = '#dc2626';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.arc(20, 50, 48, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(20, 50, 42, 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.fillStyle = '#dc2626';
-      ctx.font = '900 20px -apple-system, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('AUDIT', 20, 42);
-      ctx.font = '900 14px -apple-system, sans-serif';
-      ctx.fillText('PAID', 20, 60);
-      ctx.restore();
-
-      ctx.restore();
-      ctx.restore();
-
-    } else {
-      // Themed Center Icon Embellishment for Championship / Armory / Festival
-      ctx.font = '110px sans-serif';
-      drawOutwardText(cfg.icon, 256, 440, '110px sans-serif', '#ffffff');
-
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-      ctx.strokeRect(36, 165, 440, 565);
-    }
-
-    // Inner Rim Badge for Event Tiles (y = 756 to 854)
-    const badgeX = 42;
-    const badgeY = 756;
-    const badgeW = 428;
-    const badgeH = 98;
-    const badgeR = 18;
-
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeR);
-    ctx.fill();
-
-    ctx.lineWidth = 5;
-    ctx.strokeStyle = '#0f172a';
-    ctx.stroke();
-
     const subFont = cfg.sub.length > 10
       ? '900 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       : '900 46px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
-    drawOutwardText(cfg.sub, 256, badgeY + 50, subFont, cfg.subColor, 400);
+    if (!isTopLine) {
+      // Side 0 & Side 3: Header on BOTTOM side of field (Canvas top, y = 16 to 140)
+      ctx.fillStyle = cfg.color;
+      ctx.fillRect(16, 16, 480, 56);
+
+      const gloss = ctx.createLinearGradient(0, 16, 0, 45);
+      gloss.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+      gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = gloss;
+      ctx.fillRect(16, 16, 480, 30);
+
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(16, 72, 480, 4);
+
+      drawOutwardText(cfg.icon + ' ' + cfg.title, 256, 114, '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a', 450);
+
+      // Dedicated Themed Lot Texture (Middle)
+      ctx.fillStyle = cfg.bg;
+      ctx.fillRect(16, 150, 480, 595);
+
+      if (tile.type === 'chance' || tile.type === 'mystery') {
+        ctx.save();
+        ctx.translate(256, 440);
+        ctx.rotate(Math.PI);
+
+        const wheelR = 175;
+        const wheelColors = ['#ec4899', '#8b5cf6', '#3b82f6', '#06b6d4', '#10b981', '#facc15', '#f97316', '#ef4444'];
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+        ctx.shadowBlur = 18;
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(0, 0, wheelR + 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = '#0f172a';
+        ctx.stroke();
+
+        const sliceAngle = (Math.PI * 2) / 8;
+        for (let s = 0; s < 8; s++) {
+          const start = s * sliceAngle;
+          const end = start + sliceAngle;
+          ctx.fillStyle = wheelColors[s];
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.arc(0, 0, wheelR, start, end);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, 0, 42, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#0f172a';
+        ctx.stroke();
+
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(0, 0, 32, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '32px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('★', 0, 2);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(0, -wheelR + 14);
+        ctx.lineTo(-14, -wheelR - 22);
+        ctx.lineTo(14, -wheelR - 22);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+      } else if (tile.type === 'tax') {
+        ctx.save();
+        ctx.translate(256, 435);
+        ctx.rotate(Math.PI);
+
+        ctx.save();
+        ctx.rotate(-0.06);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+        ctx.fillRect(-126, -164, 252, 332);
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(-130, -170, 260, 340);
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.strokeRect(-130, -170, 260, 340);
+
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(-120, -155, 240, 28);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 16px -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('TAX ASSESSMENT', 0, -135);
+
+        ctx.fillStyle = '#94a3b8';
+        for (let ly = -105; ly < 80; ly += 24) {
+          ctx.fillRect(-110, ly, 220, 6);
+        }
+
+        ctx.save();
+        ctx.rotate(-0.25);
+        ctx.strokeStyle = '#dc2626';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(20, 50, 48, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(20, 50, 42, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = '#dc2626';
+        ctx.font = '900 20px -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('AUDIT', 20, 42);
+        ctx.font = '900 14px -apple-system, sans-serif';
+        ctx.fillText('PAID', 20, 60);
+        ctx.restore();
+
+        ctx.restore();
+        ctx.restore();
+
+      } else {
+        ctx.font = '110px sans-serif';
+        drawOutwardText(cfg.icon, 256, 440, '110px sans-serif', '#ffffff');
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.strokeRect(36, 165, 440, 565);
+      }
+
+      // Inner Rim Badge for Event Tiles (TOP side of field in 3D, canvas bottom)
+      const badgeX = 42;
+      const badgeY = 756;
+      const badgeW = 428;
+      const badgeH = 98;
+      const badgeR = 18;
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeR);
+      ctx.fill();
+
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = '#0f172a';
+      ctx.stroke();
+
+      drawOutwardText(cfg.sub, 256, badgeY + 50, subFont, cfg.subColor, 400);
+
+    } else {
+      // Side 1 & Side 2 (Top Lines):
+      // Sub Badge on TOP side of field (Canvas top, y = 22 to 120)
+      const badgeX = 42;
+      const badgeY = 22;
+      const badgeW = 428;
+      const badgeH = 98;
+      const badgeR = 18;
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeR);
+      ctx.fill();
+
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = '#0f172a';
+      ctx.stroke();
+
+      drawUprightText(cfg.sub, 256, badgeY + 49, subFont, cfg.subColor, 400);
+
+      // Dedicated Themed Lot Texture (Middle)
+      ctx.fillStyle = cfg.bg;
+      ctx.fillRect(16, 130, 480, 595);
+
+      if (tile.type === 'chance' || tile.type === 'mystery') {
+        ctx.save();
+        ctx.translate(256, 430);
+
+        const wheelR = 175;
+        const wheelColors = ['#ec4899', '#8b5cf6', '#3b82f6', '#06b6d4', '#10b981', '#facc15', '#f97316', '#ef4444'];
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+        ctx.shadowBlur = 18;
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(0, 0, wheelR + 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = '#0f172a';
+        ctx.stroke();
+
+        const sliceAngle = (Math.PI * 2) / 8;
+        for (let s = 0; s < 8; s++) {
+          const start = s * sliceAngle;
+          const end = start + sliceAngle;
+          ctx.fillStyle = wheelColors[s];
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.arc(0, 0, wheelR, start, end);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, 0, 42, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#0f172a';
+        ctx.stroke();
+
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(0, 0, 32, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '32px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('★', 0, 2);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(0, -wheelR + 14);
+        ctx.lineTo(-14, -wheelR - 22);
+        ctx.lineTo(14, -wheelR - 22);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+      } else {
+        ctx.font = '110px sans-serif';
+        drawUprightText(cfg.icon, 256, 430, '110px sans-serif', '#ffffff');
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.strokeRect(36, 145, 440, 565);
+      }
+
+      // Themed Event Header on BOTTOM side of field (Canvas bottom, y = 770 to 880)
+      ctx.fillStyle = cfg.color;
+      ctx.fillRect(16, 824, 480, 56);
+
+      const gloss = ctx.createLinearGradient(0, 824, 0, 854);
+      gloss.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+      gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = gloss;
+      ctx.fillRect(16, 824, 480, 30);
+
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(16, 820, 480, 4);
+
+      drawUprightText(cfg.icon + ' ' + cfg.title, 256, 792, '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', '#0f172a', 450);
+    }
   }
 }
 
@@ -2904,7 +3181,8 @@ export default function Board3D({
         const ownerColor = owner?.avatarColor || '#00f0ff';
 
         // 1. Subtle Flat Glowing Owner Crest & Border Ring on the Street Tile
-        const crest = createOwnerCrest(ownerColor, p.width, p.length);
+        const isTopLine = p?.side === 1 || p?.side === 2;
+        const crest = createOwnerCrest(ownerColor, p.width, p.length, isTopLine);
         crest.position.set(p.x, 0.35, p.z);
         crest.rotation.y = p.rotationY;
         crest.traverse((obj) => {
